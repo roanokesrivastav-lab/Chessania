@@ -43,6 +43,15 @@
   traceback. Fixed by wrapping the fetch in try/except httpx.RequestError -> raise
   UpstreamError, verified the regression test genuinely catches it (broke the fix on
   purpose, watched the test fail, restored it, watched it pass).
+- 2026-07-25: Session 6 build caught a real discrepancy between Appendix 9 and the
+  actual live Lichess API: the appendix documents `opening.{eco,name}` as part of the
+  response shape, but the exact query string it specifies doesn't include `opening=true`
+  — without that flag, Lichess omits the `opening` key entirely (not just nulls it),
+  so every game's opening_eco/opening_name would have silently stayed None forever.
+  Found by comparing two real curl calls (with/without the flag) after the live
+  verification script showed blank ECO columns for a real account. Added `opening: "true"`
+  to fetch_lichess()'s params; confirmed against the real API that ECO codes now
+  populate (see Session 6 log entry below).
 - \_\_\_\_-\_\_: S17 report-quality gate → \_\_\_\_
 - \_\_\_\_-\_\_: S23 pre-deploy gate → \_\_\_\_
 
@@ -60,12 +69,49 @@
 ## SESSION CHECKLIST
 
 Phase 0:  [ ] P0-1  [ ] P0-2  [ ] P0-3  [ ] P0-4
-Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [ ] S6 [ ] S7
+Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [ ] S7
 Phase 2:  [ ] S8 [ ] S9 [ ] S10 [ ] S11 [ ] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
 Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-25 · Session 6 · Lichess fetcher, persistence, dedupe
+
+- Pre-session: full /review of Sessions 1-5 first (see the entry below this one) — found
+  and fixed one bug (network failures not translated to UpstreamError) before starting
+  Session 6's new work.
+- Changed: backend/app/ingest.py (`fetch_lichess()`; `fetch_games()` dispatcher;
+  `upsert_player()`; `persist_games()` with insert-if-absent dedupe); backend/app/main.py
+  (temporary `POST /api/ingest` endpoint — deleted in S10 per the roadmap); backend/scripts
+  /ingest_lichess_hello.py; backend/tests/test_ingest.py (10 new tests: Lichess error paths
+  + happy path + draw mapping, dispatcher, upsert/dedupe/no-collision).
+- Bug found and fixed during live verification (not caught by the offline mocks, since
+  my mocks controlled their own response content): Appendix 9 documents
+  `opening.{eco,name}` as part of Lichess's response shape, but the exact query string
+  it specifies doesn't include `opening=true` — without that flag the real API omits the
+  `opening` key entirely, not just nulls it. Confirmed via two direct curl calls
+  (with/without the flag) after the live script showed blank ECO columns for a real
+  account. Fixed by adding `opening: "true"` to the request params.
+- Claims:
+  - All 19 tests pass (was 8 after Session 5's fix; +11 this session net of 2 test bugs
+    fixed along the way — mismatched usernames in two tests that used the wrong player
+    name against the NDJSON helper's default) [AI-verified]
+  - Genuinely offline: re-ran with a bogus HTTP_PROXY forcing any real network attempt
+    to fail loudly — still green [AI-verified]
+  - Live Lichess account (`DrNykterstein`) ingests correctly: 20 games, all blitz,
+    ECO codes now populating after the opening=true fix, ratings/colors/results
+    structurally sound [AI-verified]
+  - Full live end-to-end DoD check via the running server: first `POST /api/ingest`
+    for a real Lichess account returns `{"fetched":20,"new":20,"already_known":0}`;
+    the identical second call returns `{"fetched":20,"new":0,"already_known":20}`
+    (dedupe genuinely working); ingesting a different platform+player (chesscom/hikaru)
+    adds its own 20 games with zero collision — verified both via the API responses and
+    by querying the SQLite file directly afterward [AI-verified]
+  - Spot-check "colors/results match what's on lichess.org" — [\_\_\_\_ **unverified —
+    founder to confirm**, same caveat as Session 5: I can't browse lichess.org visually]
+- Open bugs: none
+- Next step: Session 7 (ingestion tests: the fixture system begins).
 
 ### 2026-07-24 · Full /review of Sessions 1-5 · one real bug found and fixed
 
