@@ -196,6 +196,12 @@ def fetch_lichess(username: str) -> list[NormalizedGame]:
         # part of the response shape, so this flag is required to actually
         # get what the appendix promises.
         "opening": "true",
+        # Same story for clocks: without this flag the PGN has no [%clk] stamps.
+        # We don't read per-move time in v1, but we capture the raw clocks now so
+        # future v2 time-management coaching (roadmap Part G #11) never needs a
+        # painful re-fetch. Chess.com includes clocks by default; this brings
+        # Lichess to parity. (2026-07-25 amendment.)
+        "clocks": "true",
     }
 
     try:

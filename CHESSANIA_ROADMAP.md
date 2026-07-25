@@ -570,7 +570,8 @@ From the mover's perspective: loss = (before − after) if mover is White, (afte
 2. Classification per Locked thresholds: 0–49 ok · 50–99 inaccuracy · 100–199 mistake · ≥200 blunder. Decided-position rule: if |eval_before| > 800 (from the mover's POV), classification = skipped — a "blunder" in a dead-lost position is noise, not signal, and counting it would poison every downstream rate.
 3. Phase tagging: opening = ply ≤ 20 · endgame = ≤ 6 non-king, non-pawn pieces remain on the board · middlegame = the rest. (Deliberately simple; a smarter boundary is a logged v2 nicety, not a v1 blocker.)
 4. Wire both into analyze_game; re-analyze the three ground-truth games (cache makes this cheap).
-5. The calibration check: compare the pipeline's blunder list per game against the founder's P0-3 annotations. Target: every human-flagged bad move is caught (recall), and nothing the founder considers fine is labeled a blunder (precision on the big label). Threshold disagreements at the inaccuracy/mistake border are acceptable; blunder-level disagreements are bugs — investigate, don't rationalize.
+5. Populate move_evals.seconds_spent (added by the 2026-07-25 amendment): for each of the player's moves, derive the clock time spent from the PGN's [%clk] comments — python-chess exposes the remaining clock per node via node.clock(); time_spent = (this player's previous remaining clock − current remaining clock) + increment (parsed from the TimeControl header, e.g. "180" = no increment, "180+2" = 2s), with the first move measured from the starting clock. Leave it null when the PGN has no clock data. This is CAPTURE ONLY — no v1 feature, detector, or rule reads it (Part G reserves the time-management coaching that will).
+6. The calibration check: compare the pipeline's blunder list per game against the founder's P0-3 annotations. Target: every human-flagged bad move is caught (recall), and nothing the founder considers fine is labeled a blunder (precision on the big label). Threshold disagreements at the inaccuracy/mistake border are acceptable; blunder-level disagreements are bugs — investigate, don't rationalize.
 
 
 Explain-to-me moment: walk one real move through the math out loud: "eval was +120 for you, after your move it's −180 for you, that's a 300-centipawn loss, that's a blunder, and here's the better move the engine saw."
@@ -1057,6 +1058,7 @@ During MVP sessions this list is a hard fence (Rule 4). Each entry notes the sea
 8. Coach-mode chat ("ask about your report") — trigger: only after #3, and only with the report as grounding.
 9. Durable job queue (Celery/Redis) + horizontal engine workers — seat: the Evaluator seam and job registry isolate exactly what would change. Trigger: real queue-depth pain in the weekly metrics, not imagined scale.
 10. Openings deep-dive product (repertoire builder, line trainer) — seat: the ECO-family stats from detector #3. Trigger: opening recs are the most-clicked report section for weeks running.
+11. Time-management coaching (added 2026-07-25) — detectors + rules for "you spent too long on this move" and "you moved too fast here and it became a blunder," and per-move time-pressure framing. Seat reserved: move_evals.seconds_spent is captured from S9 onward (via the 2026-07-25 amendment), and games.pgn retains the raw [%clk] data verbatim, so nothing has to be re-fetched or retrofitted. Trigger: the v1 eval-based coaching loop is trusted first. (Note: v1 does NOT read seconds_spent anywhere — capture only.)
 
 
 ________________
@@ -1208,6 +1210,21 @@ create table move_evals (
 
 
                    ('opening','middlegame','endgame')),
+
+
+  seconds_spent  int,                       -- player's clock time on this move (sec);
+
+
+                                            -- null when the PGN carries no clock data.
+
+
+                                            -- Populated S9 from [%clk] deltas; captured
+
+
+                                            -- for v2 time-management coaching (Part G),
+
+
+                                            -- NOT used by any v1 feature/rule.
 
 
   unique (game_id, ply)
@@ -1893,8 +1910,8 @@ Chess.com public API (no key, no auth)
 * Result mapping: win → win · agreed|repetition|stalemate|insufficient|50move|timevsinsufficient → draw · everything else (checkmated|timeout|resigned|abandoned, etc.) → loss.
 * Requires a real User-Agent (Chessania/0.1 (+{CONTACT_EMAIL})) or requests get blocked. Usernames lowercase in URLs. Fetch serially; on 429 raise UpstreamRateLimited (no retry loops).
 Lichess public API (no key for public games)
-* GET https://lichess.org/api/games/user/{username}?max=20&perfType=blitz,rapid&pgnInJson=true with header Accept: application/x-ndjson.
-* Each line = one JSON game: id, speed, winner (white|black; absent = draw), players.{color}.{user.name, rating}, pgn, opening.{eco,name}, createdAt (ms).
+* GET https://lichess.org/api/games/user/{username}?max=20&perfType=blitz,rapid&pgnInJson=true&opening=true&clocks=true with header Accept: application/x-ndjson. (opening=true is required or the opening object is omitted entirely — discovered S6. clocks=true is required or the PGN has no [%clk] stamps — added by the 2026-07-25 amendment so per-move time can be captured on both platforms; Chess.com includes clocks by default.)
+* Each line = one JSON game: id, speed, winner (white|black; absent = draw), players.{color}.{user.name, rating}, pgn (with [%clk] when clocks=true), opening.{eco,name}, createdAt (ms).
 * On 429: Lichess convention is a full stop for ≥ 60 s — raise, surface friendly copy, do not hammer.
 Money & accounts checklist
 Item

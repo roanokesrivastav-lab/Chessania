@@ -171,6 +171,11 @@ class MoveEval(Base):
     best_move_san: Mapped[str] = mapped_column(Text, nullable=False)
     classification: Mapped[str] = mapped_column(Text, nullable=False)
     phase: Mapped[str] = mapped_column(Text, nullable=False)
+    # Player's clock time spent on this move, in seconds. Nullable: null when the
+    # PGN carries no clock data. Populated in Session 9 from the PGN's [%clk]
+    # comments; CAPTURED for future v2 time-management coaching (roadmap Part G #11),
+    # NOT read by any v1 feature, detector, or rule. Added by the 2026-07-25 amendment.
+    seconds_spent: Mapped[int | None] = mapped_column(Integer)
 
     __table_args__ = (
         CheckConstraint(

@@ -59,6 +59,22 @@
   full live end-to-end ingest dedupe check (repeat POST /api/ingest for a real Lichess
   account, second call still correctly shows new:0). No new bugs found — everything
   built in Sessions 1-6 holds up.
+- 2026-07-25: Roadmap amendment (deliberate, outside a session — Rule 3/4) — **capture
+  per-move time now, coach later.** Founder wants future time-management coaching (spent
+  too long on a move / moved too fast then blundered). Audit found per-move timing is the
+  one real gap (no column, not in Appendix 5, no detector/rule), but games.pgn already
+  preserves raw [%clk] verbatim. Chose "capture the signal now" (matches S3's own
+  "cheap now, painful to retrofit mid-pipeline"): added nullable move_evals.seconds_spent
+  (Appendix 1 + models.py + migration 0002), a populate-it step to S9, clocks=true to the
+  Lichess fetch, and Part G #11 reserving the coaching. v1 reads seconds_spent NOWHERE —
+  capture only. S9 will populate it.
+- 2026-07-25: Playstyle system affirmation (no build) — founder confirmed the whole-account
+  playstyle → strengths/weaknesses → openings design is what they want, and it's ALREADY
+  the roadmap's core (playstyle index across all games = Appendix 5/S14; strengths+issues
+  = S12-13/S15; openings chosen from the playstyle bucket = Appendix 4/S16; the Report is
+  one per-player synthesis, not game-by-game). Founder chose to KEEP the intentional split:
+  playstyle drives the opening repertoire, measured weaknesses drive study prescriptions
+  (weakness-driven for specificity). No code/spec change — recorded here only.
 - \_\_\_\_-\_\_: S17 report-quality gate → \_\_\_\_
 - \_\_\_\_-\_\_: S23 pre-deploy gate → \_\_\_\_
 
@@ -407,3 +423,10 @@ confirm they can answer this without looking it up]
 ## WEEKLY BETA METRICS SQL (filled in S26)
 
 ## PARKING LOT (wants that appeared mid-session — logged, not built)
+
+- Time-management coaching (v2, Part G #11): detectors/rules for spent-too-long and
+  moved-too-fast-then-blundered. Data is being captured now (move_evals.seconds_spent
+  from S9) — this parks the *coaching*, not the capture.
+- Playstyle-weighted study prescriptions (considered 2026-07-25, deferred): founder chose
+  to keep playstyle→openings and weaknesses→study split for v1; revisit only if beta says
+  the study framing feels impersonal.
