@@ -115,6 +115,19 @@
   tactical-black-vs-d4 alt is theory-heavy/strategically complex for club level — defensible
   and popular, but worth the founder's eye at S16. Opening table = founder-approvable as-is.
   P0-3 ground truth drafted (see GROUND TRUTH section), pending founder verification.
+- 2026-07-25: Full coaching-model defined (founder interview). The "personalized coach
+  that does everything" = v1 blunder-classification (ship first) + a v2 layer of critical-
+  moment detectors: **missed saves** (worse-but-fighting position with a rescue you missed —
+  the founder's -4->-1 example), **missed wins/tactics**, **tilt/compounding** (blunder right
+  after a blunder), and **time coaching** (too-fast->blundered, dawdling, time-trouble
+  collapse). Output stays the aggregate report + evidence links (new detectors, not a new
+  surface). Sequencing: **ship v1 first, layer richness** (founder's call). LOCKED coaching
+  rule from a founder insight: do NOT flag "thought long AND still blundered" — that's good
+  judgment (you picked a critical moment to invest in), not a weakness. **Proven, not
+  assumed: the entire v2 needs ZERO new data capture** — a read-only derivation over the
+  founder's own piece-drop game, using only stored eval_cp_before + cp_loss + player_color,
+  surfaced his exact example (move 19 Rd7, -1.3 and fighting, 274cp collapse). Recorded as
+  the expanded Part G #11 "v2 Coaching Layer". No schema/code change; v1 continues at S10.
 - \_\_\_\_-\_\_: S17 report-quality gate → \_\_\_\_
 - \_\_\_\_-\_\_: S23 pre-deploy gate → \_\_\_\_
 
@@ -570,3 +583,8 @@ confirm they can answer this without looking it up]
 - Playstyle-weighted study prescriptions (considered 2026-07-25, deferred): founder chose
   to keep playstyle→openings and weaknesses→study split for v1; revisit only if beta says
   the study framing feels impersonal.
+- v2 Coaching Layer (Part G #11, defined 2026-07-25 — ship v1 first): missed saves, missed
+  wins/tactics, tilt/compounding, time coaching (too-fast / dawdling / time-trouble). All
+  derivable from existing move_evals columns + retained PGN clocks — no capture gap. Build
+  after v1 ships; S13's turning-point detector is the natural base (same critical-moments
+  family). Do NOT flag "thought long and still blundered" (good judgment, not a weakness).
