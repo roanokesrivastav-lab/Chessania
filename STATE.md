@@ -48,12 +48,40 @@
 ## SESSION CHECKLIST
 
 Phase 0:  [ ] P0-1  [ ] P0-2  [ ] P0-3  [ ] P0-4
-Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [ ] S5 [ ] S6 [ ] S7
+Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [ ] S6 [ ] S7
 Phase 2:  [ ] S8 [ ] S9 [ ] S10 [ ] S11 [ ] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
 Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-24 · Session 5 · Chess.com fetcher
+
+- Pre-session check: quick sanity pass before starting (clean working tree in sync with
+  origin, fresh `alembic upgrade head`, `pytest` both green) — not a full /review, just
+  confirming nothing had drifted since the last one.
+- Changed: backend/app/ingest.py (`NormalizedGame` dataclass; `fetch_chesscom()`; typed
+  exceptions `PlayerNotFound` / `NoEligibleGames` / `UpstreamRateLimited` / `UpstreamError`);
+  backend/scripts/ingest_chesscom_hello.py (manual check script); backend/tests/test_ingest.py
+  (6 respx-mocked tests: the 4 error paths + happy-path eligibility/color/result mapping +
+  draw-reason mapping); requirements.txt (added respx).
+- Claims:
+  - All 6 offline tests pass, and genuinely offline — re-ran with `HTTP_PROXY`/`HTTPS_PROXY`
+    pointed at an unreachable address to force any real network attempt to fail loudly;
+    all 6 still passed, proving respx intercepts before anything touches the network
+    [AI-verified]
+  - Ran the fetcher against a real, live Chess.com account (`hikaru`): got exactly 20
+    games, all `time_class: blitz` (rapid/blitz filter working on real data), colors
+    alternating plausibly, mixed win/loss results, newest-first by timestamp
+    [AI-verified]
+  - `PlayerNotFound` verified against the *real* API, not just the mock: hit a made-up
+    username against the live Chess.com endpoint directly via curl, confirmed a genuine
+    404, confirmed the fetcher raises the same typed exception for it [AI-verified]
+  - Spot-check "colors and results matching what the founder sees on chess.com" —
+    [\_\_\_\_ **unverified — founder to confirm** against their own account, since I
+    can't browse chess.com visually myself]
+- Open bugs: none
+- Next step: Session 6 (Lichess fetcher, persistence, dedupe).
 
 ### 2026-07-24 · Closing out Session 2's remaining item · pushed to origin
 
