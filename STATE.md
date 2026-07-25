@@ -75,6 +75,22 @@
   one per-player synthesis, not game-by-game). Founder chose to KEEP the intentional split:
   playstyle drives the opening repertoire, measured weaknesses drive study prescriptions
   (weakness-driven for specificity). No code/spec change — recorded here only.
+- 2026-07-25: Analysis-depth decision (S9 planning) — **keep SF_DEPTH=12.** A live probe
+  analyzing the founder's piece-drop game at depth 12 vs 16 gave near-identical
+  classifications (16.dxc4 = mistake, 19.Rd7 = blunder, 22.Nh3 = ok at both depths) for
+  ~8x the time (1.6s vs 12.5s per game). Deeper is confirmed diminishing-returns for
+  coaching-grade classification. Clarification for the record: the engine is Stockfish 18,
+  already the strongest engine in the world — "deeper analysis" means larger search DEPTH,
+  not a different/"stronger" binary; there is nothing stronger to install. The separate
+  S24 prod-speed question (maybe drop to 11 on Railway) stays open; this decision only
+  rules OUT going ABOVE 12-14.
+- 2026-07-25: Two v1 analysis enhancements scheduled (founder-approved, roadmap amended) —
+  (1) **color-split weaknesses in S12**: split results/blunder-rate/ACPL/worst-phase/
+  opening-leak/endgame-conversion by player_color so "weaker as Black than White" surfaces
+  (openings are already color-split via Appendix 4); (2) **turning-point detection in S13**:
+  a rule-based "point after which the eval never recovers" signal to pinpoint WHERE a game
+  slipped. Positional "why" explanations (opened a file / passed pawn) stay v2 — reserved
+  under Part G's LLM-phrasing seat; it's a phrasing problem, not a depth problem.
 - 2026-07-25: Phase 0 worked through. P0-2 (manual API walk) — treated as done: both
   public APIs were exercised extensively against real accounts during S5-S7 (chess.com
   archives+month walk, lichess NDJSON), including error paths verified against the live
@@ -115,13 +131,18 @@ depth-12 pipeline, so S9's calibration against them is still a real check. Tag s
   but not an error here). worst phase = n/a (opening only). Coach take: "Clean kingside
   attack punishing Black's weak f7 — nothing to fix." → Pipeline should flag ~0 player
   blunders (PRECISION test). [founder-to-verify]
-- **Game 2 — piece-drop loss** (chess.com/game/live/171401969338, founder = Black, London
-  D02): decisive bad move = **22...Nh3+?? (23.gxh3)** dropping a knight for a pawn with no
-  compensation; softer earlier error ~13...–15... letting White plant a protected passed
-  pawn on d6. worst phase = **middlegame** (piece dropped move 22; endgame was just
-  conversion). Coach take: "One move lost this — 22...Nh3 hung a knight; a 5-second 'is it
-  defended?' check saves it." → Pipeline MUST catch move 22 as a blunder (RECALL test;
-  also feeds S13 hung-pieces). [founder-to-verify]
+- **Game 2 — positional decline loss** (chess.com/game/live/171401969338, founder = Black,
+  London D02): **CORRECTED 2026-07-25** after a depth-12/16 probe during S9 planning — my
+  first read (22...Nh3 "hung a knight") was WRONG. The pipeline and the founder agree the
+  game was decided EARLIER: the real errors are the **16...dxc4 (mistake, ~-130cp) → 18...
+  Rad8 (mistake) → 19...Rd7 (blunder, ~-275cp)** slide, which opened lines and let White's
+  passed pawn run. By move 22 Black was already ~-5, so **22...Nh3 is correctly "ok"
+  (cp_loss ~16)** — you can't lose much when already lost. worst phase = **middlegame**.
+  Coach take: "You didn't lose this to one hung piece — you drifted from move 16 (dxc4)
+  through 19 (Rd7), opening the position for White's passed pawn; by move 22 it was already
+  gone." → Calibration target: pipeline flags the 16→19 decline and rates 22 as ok (both
+  ALREADY VERIFIED by the planning probe). This is exactly what ground truth is for — the
+  calibration caught my wrong annotation. [founder-to-verify]
 - **Game 3 — lost endgame** (chess.com/game/live/170685592218, founder = Black, Dragon
   B76): reached a roughly balanced King+pawn endgame (~move 28) and **lost the pawn race**
   — around **30...Kxe4** (pawn-grabbing instead of stopping/racing White's c-pawn), White

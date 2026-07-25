@@ -490,7 +490,7 @@ ________________
 
 
 PART D — Phase 2: The Analysis & Coaching Pipeline (Sessions 8–17)
-The heart of the product. Order matters tightly here: evals → classification → jobs → tests → features → playstyle → coach → openings → quality gate. Opus is preferred for this phase. Standing guardrail: Part G is in force — in particular, no ML scaffolding, no LLM report phrasing, no "while we're here" extra detectors beyond the five specified.
+The heart of the product. Order matters tightly here: evals → classification → jobs → tests → features → playstyle → coach → openings → quality gate. Opus is preferred for this phase. Standing guardrail: Part G is in force — in particular, no ML scaffolding, no LLM report phrasing, no "while we're here" extra detectors beyond the six specified (was five; a sixth, turning-point, added by the 2026-07-25 founder-approved amendment — still a hard cap, Rule 4).
 
 
 ________________
@@ -669,6 +669,7 @@ Steps:
    * opening_leak_rate: % of games where the player's eval (their POV) dropped ≥150cp by ply 20.
    * endgame_conversion: of games that reached an endgame while the player was ahead ≥200cp, the % actually won. Guard division by zero (no such games → None, not 0 — "no data" and "converts nothing" are very different coaching facts).
 2. Evidence discipline starts here (Locked 8): every feature that can cite a moment carries evidence: list[(game_id, ply)] — e.g. opening_leak_rate keeps the 3 worst offending games; worst_phase keeps the 3 worst plies in that phase. Downstream copy is only as specific as the evidence collected now.
+2b. Color-split the weakness features (added 2026-07-25 amendment): compute results (W/L/D), blunder rate, ACPL, worst_phase, opening_leak_rate, and endgame_conversion BOTH overall AND split by games.player_color (white vs black), so a real color gap ("you leak far more as Black than White") is a first-class, reportable weakness rather than being averaged away. Sub-1800 win rates often differ sharply by color; games.player_color is already stored per game. Guard small per-color samples the same way as the trend guard (fewer than ~4 games of a color → the per-color number is low-signal; carry it but let the coach copy hedge). Appendix 2's report contract gains a per-color stats breakdown — spec the exact fields when this session is built. (Openings are already color-split — Appendix 4 recommends per color.)
 3. Debug endpoint GET /api/debug/features/{platform}/{username} dumping the object (dev-only; gated off in prod via ENV in S23).
 4. Tests against fixture evals with hand-computed expected numbers for at least one small game (yes, by hand with a calculator — the one time hand-checking the math pays for itself forever).
 
@@ -683,11 +684,11 @@ Definition of Done:
 ________________
 
 
-Session 13 — Features II: the five pattern detectors
+Session 13 — Features II: the six pattern detectors (5 original + turning-point)
 Est: 3–4 h · Prereq: S12
 
 
-Goal: The distinctive-insight layer — each detector returns {fired: bool, stats: dict, evidence: list}, and exactly these five, no more (Rule 4):
+Goal: The distinctive-insight layer — each detector returns {fired: bool, stats: dict, evidence: list}, and exactly these six, no more (Rule 4; was five, +turning-point per the 2026-07-25 amendment):
 
 
 Steps:
@@ -698,7 +699,8 @@ Steps:
 3. Opening repetition leak — group the player's games by ECO family (letter + first digit, e.g. B1x = Caro-Kann territory); any family with ≥ 5 games and average player-POV eval at ply 15 ≤ −40cp fires, carrying the family's name and per-game evidence. This powers the coach's best line: "your most-played opening is quietly losing you the opening."
 4. Overextension (explicitly heuristic — labeled confidence: low in its stats, and the coach copy hedges accordingly): a player pawn move to their 6th rank or beyond, followed within 6 plies by a player eval drop ≥ 150cp; fires at ≥ 3 occurrences.
 5. Time-class split — free and useful for prescriptions: compute blunder rate separately for blitz vs rapid; fires if blitz ≥ 1.8× rapid with ≥ 5 games of each (the "you don't have a chess problem, you have a clock problem" insight).
-6. Each detector is a pure function over stored move_evals + games — no engine calls (everything needed was stored in S8–S9; if a detector seems to need a new engine call, its design is wrong — raise it, don't call).
+6. Turning-point / point-of-no-return (added 2026-07-25 amendment) — per game, find the ply after which the player's own-POV eval never again recovers above a "still playable" threshold (e.g. -150cp): the move the game actually slipped away, which is often EARLIER than the biggest single cp_loss (a live probe confirmed this — a player's game was decided by a move-16 mistake + move-19 blunder that opened lines for a passed pawn, while the eye-catching "hung piece" at move 22 was already-lost noise, correctly scored ok). Reports the turning-point ply + the move there as evidence, distinct from "your single worst move." Pure function over stored move_evals; rule-based, no ML. Fires when a decisive turning point exists that is NOT the same move as the largest cp_loss (i.e. when the game was lost by a slide, not one blunder) — this is where it adds insight over the plain blunder list. NOTE this stays "which move" — the "WHY it was bad" (opened a file, allowed a passed pawn) is v2 phrasing (Part G).
+7. Each detector is a pure function over stored move_evals + games — no engine calls (everything needed was stored in S8–S9; if a detector seems to need a new engine call, its design is wrong — raise it, don't call).
 7. Calibration: run against the ground-truth games and the founder's account; founder sanity-reads every fired detector's evidence (open the cited moves on the platform and confirm the story is real).
 
 
@@ -708,9 +710,9 @@ Explain-to-me moment: precision beats recall throughout — a detector that stay
 Definition of Done:
 
 
-* All five tested against fixtures (construct at least one positive and one negative case per detector).
+* All six tested against fixtures (construct at least one positive and one negative case per detector).
 * Founder-verified evidence spot-check on their own account logged in STATE.md.
-* Commit: feat: five pattern detectors with evidence.
+* Commit: feat: six pattern detectors with evidence.
 
 
 ________________
@@ -1050,7 +1052,7 @@ During MVP sessions this list is a hard fence (Rule 4). Each entry notes the sea
 
 1. Manual PGN upload + OTB games — seat: NormalizedGame is source-agnostic; a PGN parser slots in beside the fetchers. Trigger: beta users who play over-the-board ask for it by name.
 2. User accounts + private reports — seat: players is already the identity spine; auth would hang off it. Trigger: someone actually objects to public reports (Locked 11 states the policy plainly meanwhile).
-3. LLM-phrased reports — templates stay the source of truth; an LLM could rephrase a generated report, never generate facts. Trigger: beta says the numbers land but the prose feels robotic.
+3. LLM-phrased reports — templates stay the source of truth; an LLM could rephrase a generated report, never generate facts. Trigger: beta says the numbers land but the prose feels robotic. (This is also the seat for positional "WHY" explanations — "16.dxc4 opened the c-file and let the passed pawn run" rather than just "16.dxc4, -130cp, best was X". v1 says WHICH move and HOW MUCH, and S13's turning-point detector says WHERE it slipped; explaining WHY in prose is this LLM layer, NOT a depth problem — a 2026-07-25 planning probe confirmed depth 12 already locates the right moves.)
 4. ML recommender — seat: every report + subsequent re-analysis delta is training data quietly accruing in reports. Trigger: hundreds of players with return visits — not before.
 5. 2000+ mode — a different product (prep, novelties, calculation depth). Trigger: a real cohort of strong users asks, and sub-1800 is already well served.
 6. In-app chessboard / move replay — the evidence deep-links outsource this to the platforms. Trigger: users demonstrably don't click through. (It will be tempting every single frontend session. The links are the feature.)
