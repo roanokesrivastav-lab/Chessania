@@ -75,6 +75,17 @@
   one per-player synthesis, not game-by-game). Founder chose to KEEP the intentional split:
   playstyle drives the opening repertoire, measured weaknesses drive study prescriptions
   (weakness-driven for specificity). No code/spec change — recorded here only.
+- 2026-07-25: Phase 0 worked through. P0-2 (manual API walk) — treated as done: both
+  public APIs were exercised extensively against real accounts during S5-S7 (chess.com
+  archives+month walk, lichess NDJSON), including error paths verified against the live
+  APIs and the opening=true/clocks=true discoveries; sample responses live as the S7
+  api/ fixtures. P0-4 (opening-table sanity) — reviewed Appendix 4's 12 mappings for
+  sub-1800 soundness: all pass the smell test (London/Colle for positional, Italian+Evans/
+  Scotch for tactical, Caro-Kann/Slav positional-black, Scandinavian's honest theory-load
+  caveat over the Sicilian is a good call). One soft flag: King's Indian (E60+) as the
+  tactical-black-vs-d4 alt is theory-heavy/strategically complex for club level — defensible
+  and popular, but worth the founder's eye at S16. Opening table = founder-approvable as-is.
+  P0-3 ground truth drafted (see GROUND TRUTH section), pending founder verification.
 - \_\_\_\_-\_\_: S17 report-quality gate → \_\_\_\_
 - \_\_\_\_-\_\_: S23 pre-deploy gate → \_\_\_\_
 
@@ -83,17 +94,48 @@
 - founder: (platform, username) = (chesscom, Eleven_14) — ~1760-1800 blitz. First PGN
   fixture committed S8: tests/fixtures/pgn/eleven14_blitz_loss.pgn
   (chess.com/game/live/170639309900, a Pirc where White's 27.Nxg5 knight sac lost).
-- low-rated: \_\_\_\_\_\_\_\_   mid-rated: \_\_\_\_\_\_\_\_  (still to pick for S11's fixture set)
+- other-platform workout: (lichess, DrNykterstein) used for live Lichess-fetcher
+  verification in S5-S7 — both fetchers proven on real accounts (P0-1's "both platforms"
+  goal met).
+- low-rated (~800-1100) + mid-rated (~1500-1700) dedicated fixture accounts: NOT yet
+  picked. Only needed for S11's varied-rating PGN fixtures, not for S9. Pick at S11
+  (founder to supply handles they know, or sample from public games then). Not fabricating
+  band-specific accounts I can't verify.
 
 ## GROUND TRUTH (P0-3)
 
-- game 1 (url): human-flagged bad moves = \_\_, \_\_ · worst phase = \_\_
-- game 2: ...   game 3: ...
+Annotator note: these are an AI (Claude) coach's-eye read of the moves — NOT from running
+our Stockfish pipeline, and NOT yet confirmed by the founder. **Founder to verify against
+the platform analysis board** (they're ~1780, it's their own play). Independent of the
+depth-12 pipeline, so S9's calibration against them is still a real check. Tag stays
+[founder-to-verify] until the founder signs off.
+
+- **Game 1 — clean win** (chess.com/game/live/169858238066, founder = White, Vienna C25):
+  founder bad moves = **none** (8-move attacking win; 4.Qg4 early-queen sortie is unusual
+  but not an error here). worst phase = n/a (opening only). Coach take: "Clean kingside
+  attack punishing Black's weak f7 — nothing to fix." → Pipeline should flag ~0 player
+  blunders (PRECISION test). [founder-to-verify]
+- **Game 2 — piece-drop loss** (chess.com/game/live/171401969338, founder = Black, London
+  D02): decisive bad move = **22...Nh3+?? (23.gxh3)** dropping a knight for a pawn with no
+  compensation; softer earlier error ~13...–15... letting White plant a protected passed
+  pawn on d6. worst phase = **middlegame** (piece dropped move 22; endgame was just
+  conversion). Coach take: "One move lost this — 22...Nh3 hung a knight; a 5-second 'is it
+  defended?' check saves it." → Pipeline MUST catch move 22 as a blunder (RECALL test;
+  also feeds S13 hung-pieces). [founder-to-verify]
+- **Game 3 — lost endgame** (chess.com/game/live/170685592218, founder = Black, Dragon
+  B76): reached a roughly balanced King+pawn endgame (~move 28) and **lost the pawn race**
+  — around **30...Kxe4** (pawn-grabbing instead of stopping/racing White's c-pawn), White
+  queened first (38.c8=Q) and mated. worst phase = **endgame**. Coach take: "You lost a
+  K+P race you might have held — endgame pawn races are tempo-counting; study king-and-pawn
+  endings." → Pipeline should locate the decisive error in the ENDGAME phase (phase-tag +
+  subtler-loss test). [founder-to-verify]
 - S9 calibration verdict: \_\_\_\_\_\_\_\_   S13 detector verdict: \_\_\_\_\_\_\_\_
 
 ## SESSION CHECKLIST
 
-Phase 0:  [ ] P0-1  [ ] P0-2  [ ] P0-3  [ ] P0-4
+Phase 0:  [~] P0-1  [x] P0-2  [~] P0-3  [x] P0-4   ([~] = done but pending founder sign-off:
+          P0-1 founder+lichess accounts logged, band accounts deferred to S11;
+          P0-3 ground truth AI-drafted, founder to verify against the analysis board)
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
 Phase 2:  [x] S8 [ ] S9 [ ] S10 [ ] S11 [ ] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
 Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
