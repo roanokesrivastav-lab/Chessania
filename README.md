@@ -41,15 +41,31 @@ npm install
 npm run dev                         # http://localhost:3000
 ```
 
-## Stockfish (needed from Session 4 on)
+## Stockfish
 
-- macOS: `brew install stockfish`
-- Debian/Ubuntu: `sudo apt install stockfish`
-- Or the official binary from stockfishchess.org
+Chess.com/Lichess evaluations are computed locally by a real Stockfish binary — install
+one before running anything in `app/analysis.py` or `scripts/engine_hello.py`:
 
-Set its path in `backend/.env` as `SF_PATH` (wired up in Session 3/4).
+- **macOS:** `brew install stockfish` → binary lands at `/opt/homebrew/bin/stockfish`
+  (Apple Silicon) or `/usr/local/bin/stockfish` (Intel)
+- **Debian/Ubuntu:** `sudo apt install stockfish` → `/usr/games/stockfish`
+- **Windows / other:** download the official binary from
+  [stockfishchess.org](https://stockfishchess.org/download/) and note its path
+
+Copy `backend/.env.example` to `backend/.env` and set `SF_PATH` to whatever `which
+stockfish` (or the equivalent) printed for you. Then sanity-check the install:
+
+```bash
+cd backend && source venv/bin/activate
+python scripts/engine_hello.py
+```
+
+Expect a small centipawn edge for White in the starting position, and a mate score
+(`Qh4#` found instantly) in the second position — that's Fool's Mate, the fastest
+checkmate in chess, used here because an engine that can't spot it in an instant isn't
+installed correctly.
 
 ## Status
 
-Session 1 complete — both apps scaffolded and verified. See `STATE.md` for the
-session log and what's next.
+Session 4 complete (engine smoke test verified) — see `STATE.md` for the full session
+log and what's next.

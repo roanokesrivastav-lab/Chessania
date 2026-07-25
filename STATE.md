@@ -39,7 +39,7 @@
 ## SESSION CHECKLIST
 
 Phase 0:  [ ] P0-1  [ ] P0-2  [ ] P0-3  [ ] P0-4
-Phase 1:  [x] S1 [ ] S2* [x] S3 [ ] S4 [ ] S5 [ ] S6 [ ] S7
+Phase 1:  [x] S1 [ ] S2* [x] S3 [x] S4 [ ] S5 [ ] S6 [ ] S7
 
   \* S2's docs/.gitignore are in place (folded into the 2026-07-24 rebuild), but the
     repo has not been pushed to origin yet — that DoD item is still open.
@@ -48,6 +48,39 @@ Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-24 · Session 4 · Stockfish install + engine smoke test
+
+- Changed: installed Stockfish 18 via Homebrew (`/opt/homebrew/bin/stockfish`);
+  backend/.env created (gitignored, not committed) with `SF_PATH` set to that binary;
+  `chess` (python-chess 1.11.2) added to requirements.txt; backend/scripts/engine_hello.py
+  (throwaway smoke script); README.md's Stockfish section filled in with the real
+  per-OS paths and a copy-pasteable verification command.
+- Claims:
+  - `engine_hello.py` opens Stockfish once, analyzes the starting position (White
+    +47cp, best move e4) and the Fool's Mate position after 1.f3 e5 2.g4 (Black to
+    move, mate in 1 found instantly: Qh4#, White's POV shown as #-1) [AI-verified]
+  - No leaked Stockfish process after the script exits — checked via `ps aux` before
+    and after the run, both empty [AI-verified]
+  - Both a mover-POV and a White-POV score are printed for the same position so the
+    perspective difference is visible, not just asserted [AI-verified]
+- Open bugs: none
+- Next step: Session 5 (Chess.com fetcher).
+
+**Explain-to-me moment, for the record:** a centipawn is 1/100th of a pawn of
+advantage — "+47" means White is worth a little under half a pawn more than Black in
+that position, nothing decisive yet. A mate score (`#+1` / `#-1`) means the engine has
+found a forced checkmate in that many moves, not a centipawn value — `#-1` from
+White's POV means White gets mated in 1 move. The eval numbers are always relative to
+*someone's* point of view (never absolute), which is why every score above is shown
+twice: once from whoever's turn it is to move, once from White's — the convention
+every stored eval in this project uses from Session 8 onward, so there's exactly one
+place (`cp_loss()`, S9) that ever converts between perspectives.
+
+**Founder check (per DoD):** "eval +150 with White to move — whose position is
+better, and by how much?" → White is better by about 1.5 pawns' worth of advantage —
+not enough to be winning outright, but a real, meaningful edge. [\_\_\_\_ — founder to
+confirm they can answer this without looking it up]
 
 ### 2026-07-24 · /review of Sessions 1 & 3 · one real bug found and fixed
 
