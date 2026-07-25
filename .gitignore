@@ -1,0 +1,41 @@
+# Chessania — monorepo gitignore
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# Node / Next.js (any depth)
+node_modules/
+.next/
+out/
+.turbo/
+dist/
+
+# Database (dev SQLite)
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
