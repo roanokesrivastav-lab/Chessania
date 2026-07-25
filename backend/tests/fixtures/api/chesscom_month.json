@@ -1,0 +1,49 @@
+{
+  "games": [
+    {
+      "url": "https://www.chess.com/game/live/1000000001",
+      "pgn": "1. e4 e5 2. Nf3 Nc6 1-0",
+      "time_class": "rapid",
+      "rules": "chess",
+      "end_time": 1719800000,
+      "white": {"username": "fixture_user", "rating": 1200, "result": "win"},
+      "black": {"username": "opponent_one", "rating": 1180, "result": "checkmated"}
+    },
+    {
+      "url": "https://www.chess.com/game/live/1000000002",
+      "pgn": "1. d4 d5 2. c4 e6 0-1",
+      "time_class": "blitz",
+      "rules": "chess",
+      "end_time": 1719800100,
+      "white": {"username": "opponent_two", "rating": 1250, "result": "win"},
+      "black": {"username": "fixture_user", "rating": 1205, "result": "checkmated"}
+    },
+    {
+      "url": "https://www.chess.com/game/live/1000000003",
+      "pgn": "1. e4 c5 1-0",
+      "time_class": "bullet",
+      "rules": "chess",
+      "end_time": 1719800200,
+      "white": {"username": "fixture_user", "rating": 1210, "result": "win"},
+      "black": {"username": "opponent_one", "rating": 1170, "result": "resigned"}
+    },
+    {
+      "url": "https://www.chess.com/game/live/1000000004",
+      "pgn": "1. e4 1-0",
+      "time_class": "rapid",
+      "rules": "chess960",
+      "end_time": 1719800300,
+      "white": {"username": "opponent_two", "rating": 1260, "result": "win"},
+      "black": {"username": "fixture_user", "rating": 1208, "result": "resigned"}
+    },
+    {
+      "url": "https://www.chess.com/game/live/1000000005",
+      "pgn": "1. e4 e5 2. Nf3 Nf6 1/2-1/2",
+      "time_class": "blitz",
+      "rules": "chess",
+      "end_time": 1719800400,
+      "white": {"username": "fixture_user", "rating": 1206, "result": "repetition"},
+      "black": {"username": "opponent_two", "rating": 1255, "result": "repetition"}
+    }
+  ]
+}

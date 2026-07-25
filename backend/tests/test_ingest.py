@@ -1,12 +1,16 @@
-"""Session 5 tests: the four typed error paths, plus a happy-path check of
-eligibility filtering, color detection, and result mapping.
+"""The ingestion layer, fully tested offline.
 
-respx intercepts httpx's outgoing requests and hands back a canned response
-— no real network call happens, so these tests are offline and deterministic
-(Rule 5) despite exercising real HTTP-calling code. Session 7 moves these
-canned responses into committed fixture files under tests/fixtures/api/ and
-formalizes this pattern for the whole ingestion suite; here they're kept
-inline since that's this session's scope, not this one's.
+respx intercepts the code's outgoing HTTP and hands back a recorded
+response — no real network call ever happens, so these tests check our
+logic, not Chess.com's or Lichess's uptime. That's what makes the whole
+suite fast, free, and honest: green here means the parsing/filtering/
+mapping code is right, not that some external server happened to be up
+when the test ran.
+
+Happy-path tests load real (scrubbed) recorded responses from
+tests/fixtures/api/ (Appendix 10's fixture system, formalized this
+session) — the error-path tests below don't need real fixture content,
+only a status code to react to, so they stay inline.
 """
 
 import httpx
@@ -29,6 +33,11 @@ from app.ingest import (
     upsert_player,
 )
 from app.models import Base, Game
+from tests.conftest import load_fixture, load_json_fixture
+
+# ---------------------------------------------------------------------------
+# Chess.com: error paths (no fixture content needed — just a status code)
+# ---------------------------------------------------------------------------
 
 
 @respx.mock
@@ -103,66 +112,61 @@ def test_no_eligible_games_when_everything_is_filtered_out():
         fetch_chesscom(username)
 
 
+# ---------------------------------------------------------------------------
+# Chess.com: happy path, from recorded fixtures (tests/fixtures/api/)
+# ---------------------------------------------------------------------------
+
+
 @respx.mock
-def test_happy_path_filters_eligibility_and_maps_color_and_result():
-    username = "testplayer"
-    respx.get(f"https://api.chess.com/pub/player/{username}/games/archives").mock(
-        return_value=httpx.Response(
-            200,
-            json={"archives": [f"https://api.chess.com/pub/player/{username}/games/2026/06"]},
-        )
+def test_chesscom_happy_path_from_fixture_filters_eligibility_maps_and_orders():
+    """Uses the recorded chesscom_archives.json / chesscom_month.json fixtures
+    (5 games: 3 eligible — win, loss, draw — plus a bullet and a chess960
+    game, both excluded). Also proves newest-first ordering: the month
+    fixture lists games oldest-first (as Chess.com really does), so a
+    correct result here means the reversal logic is right, not coincidental."""
+    archives = load_json_fixture("api", "chesscom_archives.json")
+    month = load_json_fixture("api", "chesscom_month.json")
+
+    respx.get("https://api.chess.com/pub/player/fixture_user/games/archives").mock(
+        return_value=httpx.Response(200, json=archives)
     )
-    respx.get(f"https://api.chess.com/pub/player/{username}/games/2026/06").mock(
-        return_value=httpx.Response(
-            200,
-            json={
-                "games": [
-                    {
-                        # eligible: rapid, standard chess, player is Black, wins
-                        "url": "https://www.chess.com/game/live/1",
-                        "pgn": "1. e4 e5",
-                        "time_class": "rapid",
-                        "rules": "chess",
-                        "end_time": 1717200000,
-                        "white": {"username": "opponent", "rating": 1100, "result": "checkmated"},
-                        "black": {"username": username, "rating": 1050, "result": "win"},
-                    },
-                    {
-                        # excluded: bullet
-                        "url": "https://www.chess.com/game/live/2",
-                        "pgn": "1. d4 d5",
-                        "time_class": "bullet",
-                        "rules": "chess",
-                        "end_time": 1717200100,
-                        "white": {"username": username, "rating": 1050, "result": "win"},
-                        "black": {"username": "opponent", "rating": 1100, "result": "resigned"},
-                    },
-                    {
-                        # excluded: variant, not standard chess
-                        "url": "https://www.chess.com/game/live/3",
-                        "pgn": "1. e4",
-                        "time_class": "rapid",
-                        "rules": "chess960",
-                        "end_time": 1717200200,
-                        "white": {"username": username, "rating": 1050, "result": "win"},
-                        "black": {"username": "opponent", "rating": 1100, "result": "resigned"},
-                    },
-                ]
-            },
-        )
+    respx.get("https://api.chess.com/pub/player/fixture_user/games/2026/06").mock(
+        return_value=httpx.Response(200, json=month)
     )
 
-    games = fetch_chesscom(username)
+    games = fetch_chesscom("fixture_user")
 
-    assert len(games) == 1
-    game = games[0]
-    assert game.platform == "chesscom"
-    assert game.platform_game_id == "https://www.chess.com/game/live/1"
-    assert game.time_class == "rapid"
-    assert game.player_color == "black"
-    assert game.result == "win"
-    assert game.player_rating == 1050
-    assert game.opponent_rating == 1100
+    assert len(games) == 3  # bullet and chess960 games excluded
+    assert [g.result for g in games] == ["draw", "loss", "win"]  # newest-first
+    assert [g.player_color for g in games] == ["white", "black", "white"]
+    assert games[0].platform == "chesscom"
+    assert games[0].platform_game_id == "https://www.chess.com/game/live/1000000005"
+
+
+@respx.mock
+def test_chesscom_month_walking_reaches_back_when_latest_month_is_thin(monkeypatch):
+    """Fixture with a thin latest month (1 eligible game) forces the fetcher
+    to walk back to the prior month to reach the requested count."""
+    monkeypatch.setattr("app.config.settings.MAX_GAMES", 3)
+
+    archives = load_json_fixture("api", "chesscom_archives_walktest.json")
+    latest_month = load_json_fixture("api", "chesscom_month_walktest_latest.json")
+    prior_month = load_json_fixture("api", "chesscom_month_walktest_prior.json")
+
+    respx.get("https://api.chess.com/pub/player/fixture_walker/games/archives").mock(
+        return_value=httpx.Response(200, json=archives)
+    )
+    prior_route = respx.get(
+        "https://api.chess.com/pub/player/fixture_walker/games/2026/05"
+    ).mock(return_value=httpx.Response(200, json=prior_month))
+    respx.get("https://api.chess.com/pub/player/fixture_walker/games/2026/06").mock(
+        return_value=httpx.Response(200, json=latest_month)
+    )
+
+    games = fetch_chesscom("fixture_walker")
+
+    assert prior_route.called  # proves the walk-back actually happened
+    assert len(games) == 3  # 1 from the thin latest month + 2 from the prior, capped at MAX_GAMES=3
 
 
 @respx.mock
@@ -198,27 +202,8 @@ def test_chesscom_draw_reasons_map_to_draw():
 
 
 # ---------------------------------------------------------------------------
-# Session 6: Lichess fetcher
+# Lichess: error paths
 # ---------------------------------------------------------------------------
-
-
-def _lichess_ndjson_line(**overrides) -> str:
-    import json as _json
-
-    base = {
-        "id": "abcd1234",
-        "speed": "rapid",
-        "winner": "black",
-        "players": {
-            "white": {"user": {"name": "opponent"}, "rating": 1100},
-            "black": {"user": {"name": "testplayer"}, "rating": 1050},
-        },
-        "pgn": "1. e4 e5",
-        "opening": {"eco": "C20", "name": "King's Pawn Game"},
-        "createdAt": 1717200000000,
-    }
-    base.update(overrides)
-    return _json.dumps(base)
 
 
 @respx.mock
@@ -239,54 +224,47 @@ def test_lichess_rate_limited():
         fetch_lichess("limiteduser")
 
 
+# ---------------------------------------------------------------------------
+# Lichess: happy path, from the recorded NDJSON fixture
+# ---------------------------------------------------------------------------
+
+
 @respx.mock
-def test_lichess_happy_path_maps_color_result_opening_and_ndjson_parsing():
-    ndjson_body = "\n".join(
-        [
-            _lichess_ndjson_line(id="game1", winner="black"),  # player (black) wins
-            _lichess_ndjson_line(  # excluded: not rapid/blitz
-                id="game2", speed="bullet", winner="white"
-            ),
-        ]
-    )
-    respx.get("https://lichess.org/api/games/user/testplayer").mock(
+def test_lichess_happy_path_from_fixture_filters_orders_and_maps_opening():
+    """Uses the recorded lichess_games.ndjson fixture (5 lines, newest-first
+    as Lichess really streams them: win, draw, an excluded bullet game,
+    loss, win). Proves eligibility filtering, color/result mapping,
+    opening.eco/name mapping, and that fetch_lichess preserves the API's
+    own newest-first order rather than needing to re-sort anything."""
+    ndjson_body = load_fixture("api", "lichess_games.ndjson")
+    respx.get("https://lichess.org/api/games/user/fixture_user").mock(
         return_value=httpx.Response(200, text=ndjson_body)
     )
 
-    games = fetch_lichess("testplayer")
+    games = fetch_lichess("fixture_user")
 
-    assert len(games) == 1
-    g = games[0]
-    assert g.platform == "lichess"
-    assert g.platform_game_id == "game1"
-    assert g.game_url == "https://lichess.org/game1"
-    assert g.time_class == "rapid"
-    assert g.player_color == "black"
-    assert g.result == "win"
-    assert g.player_rating == 1050
-    assert g.opponent_rating == 1100
-    assert g.opening_eco == "C20"
-    assert g.opening_name == "King's Pawn Game"
+    assert len(games) == 4  # the bullet line excluded
+    assert [g.result for g in games] == ["win", "draw", "loss", "win"]
+    assert [g.opening_eco for g in games] == ["C50", "B01", "A45", "C00"]
+    assert games[0].platform == "lichess"
+    assert games[0].platform_game_id == "fixture_game_5"
+    assert games[0].game_url == "https://lichess.org/fixture_game_5"
 
 
 @respx.mock
 def test_lichess_absent_winner_is_a_draw():
-    ndjson_body = _lichess_ndjson_line(id="drawgame", winner=None)
-    # Absent winner key entirely (not just null) is how Lichess represents a draw.
-    import json as _json
-
-    payload = _json.loads(ndjson_body)
-    del payload["winner"]
-    respx.get("https://lichess.org/api/games/user/testplayer").mock(
-        return_value=httpx.Response(200, text=_json.dumps(payload))
+    ndjson_body = load_fixture("api", "lichess_games.ndjson")
+    respx.get("https://lichess.org/api/games/user/fixture_user").mock(
+        return_value=httpx.Response(200, text=ndjson_body)
     )
-
-    games = fetch_lichess("testplayer")  # matches _lichess_ndjson_line()'s default black name
-    assert games[0].result == "draw"
+    games = fetch_lichess("fixture_user")
+    draw_games = [g for g in games if g.result == "draw"]
+    assert len(draw_games) == 1
+    assert draw_games[0].platform_game_id == "fixture_game_4"
 
 
 # ---------------------------------------------------------------------------
-# Session 6: fetch_games dispatcher
+# fetch_games dispatcher
 # ---------------------------------------------------------------------------
 
 
@@ -302,11 +280,10 @@ def test_fetch_games_dispatches_to_chesscom():
 
 @respx.mock
 def test_fetch_games_dispatches_to_lichess():
-    username = "testplayer"  # matches _lichess_ndjson_line()'s default black name
-    respx.get(f"https://lichess.org/api/games/user/{username}").mock(
-        return_value=httpx.Response(200, text=_lichess_ndjson_line())
+    respx.get("https://lichess.org/api/games/user/fixture_user").mock(
+        return_value=httpx.Response(200, text=load_fixture("api", "lichess_games.ndjson"))
     )
-    games = fetch_games("lichess", username)
+    games = fetch_games("lichess", "fixture_user")
     assert games[0].platform == "lichess"
 
 
@@ -316,7 +293,7 @@ def test_fetch_games_rejects_unknown_platform():
 
 
 # ---------------------------------------------------------------------------
-# Session 6: persistence + dedupe
+# Persistence + dedupe
 # ---------------------------------------------------------------------------
 
 
@@ -388,3 +365,28 @@ def test_persist_games_for_different_players_do_not_collide():
         assert session.query(Game).filter_by(player_id=chesscom_player.id).count() == 1
         assert session.query(Game).filter_by(player_id=lichess_player.id).count() == 1
         assert session.query(Game).count() == 2
+
+
+@respx.mock
+def test_ingest_same_fixture_twice_against_fresh_db_adds_zero_duplicates(db_session):
+    """The literal Session 7 DoD wording: 'dedupe (ingest same fixture twice
+    against a fresh in-memory SQLite, assert new: 0)' — this is the full
+    fetch -> persist pipeline, not just persist_games in isolation."""
+    archives = load_json_fixture("api", "chesscom_archives.json")
+    month = load_json_fixture("api", "chesscom_month.json")
+    respx.get("https://api.chess.com/pub/player/fixture_user/games/archives").mock(
+        return_value=httpx.Response(200, json=archives)
+    )
+    respx.get("https://api.chess.com/pub/player/fixture_user/games/2026/06").mock(
+        return_value=httpx.Response(200, json=month)
+    )
+
+    games = fetch_chesscom("fixture_user")
+    player = upsert_player(db_session, "chesscom", "fixture_user", games[0].player_rating)
+
+    first = persist_games(db_session, player, games)
+    assert first["new"] == 3
+
+    second = persist_games(db_session, player, games)
+    assert second["new"] == 0
+    assert second["already_known"] == 3

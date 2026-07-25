@@ -1,0 +1,31 @@
+{
+  "games": [
+    {
+      "url": "https://www.chess.com/game/live/2000000002",
+      "pgn": "1. d4 d5 1-0",
+      "time_class": "blitz",
+      "rules": "chess",
+      "end_time": 1719800000,
+      "white": {"username": "fixture_walker", "rating": 1280, "result": "win"},
+      "black": {"username": "opponent_two", "rating": 1270, "result": "resigned"}
+    },
+    {
+      "url": "https://www.chess.com/game/live/2000000003",
+      "pgn": "1. c4 c5 0-1",
+      "time_class": "rapid",
+      "rules": "chess",
+      "end_time": 1719800100,
+      "white": {"username": "opponent_two", "rating": 1275, "result": "win"},
+      "black": {"username": "fixture_walker", "rating": 1282, "result": "checkmated"}
+    },
+    {
+      "url": "https://www.chess.com/game/live/2000000004",
+      "pgn": "1. e4 c5 1-0",
+      "time_class": "blitz",
+      "rules": "chess",
+      "end_time": 1719800200,
+      "white": {"username": "fixture_walker", "rating": 1279, "result": "win"},
+      "black": {"username": "opponent_one", "rating": 1265, "result": "resigned"}
+    }
+  ]
+}

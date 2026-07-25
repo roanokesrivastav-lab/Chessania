@@ -76,12 +76,52 @@
 ## SESSION CHECKLIST
 
 Phase 0:  [ ] P0-1  [ ] P0-2  [ ] P0-3  [ ] P0-4
-Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [ ] S7
+Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
 Phase 2:  [ ] S8 [ ] S9 [ ] S10 [ ] S11 [ ] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
 Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-25 · Session 7 · Ingestion tests: the fixture system begins
+
+- Pre-session: full /review of Sessions 1-6 first (see entry below) — no new bugs found,
+  everything held up before starting Session 7's new work.
+- Changed: backend/tests/fixtures/api/ (chesscom_archives.json, chesscom_month.json —
+  5 games covering win/loss/draw + excluded bullet + excluded chess960, all usernames
+  scrubbed to fixture_user/opponent_one/opponent_two since no real founder fixture
+  account exists yet from Phase 0; chesscom_archives_walktest.json +
+  chesscom_month_walktest_{latest,prior}.json — a deliberately thin latest month to
+  prove the month-walking behavior; lichess_games.ndjson — 5 lines, newest-first,
+  covering win/draw/loss + an excluded bullet game); backend/tests/conftest.py
+  (`db_session` fixture — fresh in-memory SQLite per test; `load_fixture` /
+  `load_json_fixture` helpers); backend/tests/test_ingest.py (migrated the Chess.com and
+  Lichess happy-path tests to load from the fixture files instead of inline JSON; added
+  the month-walking test and a fixture-driven full fetch→persist dedupe test matching
+  the DoD's literal wording).
+- Claims:
+  - 21/21 tests pass in 0.10-0.20s — well under the 10s DoD ceiling [AI-verified]
+  - Genuinely offline: re-ran with a bogus HTTP_PROXY forcing any real network attempt
+    to fail loudly — still 21/21 green [AI-verified]
+  - The month-walking test proves the walk-back actually happened (asserts the prior
+    month's respx route was called, not just that the final count matched) — with
+    MAX_GAMES monkeypatched to 3 so a small, readable fixture (1 game in the thin
+    latest month) still forces a real walk to the prior month's 3 games
+    [AI-verified]
+  - **The break-it ritual itself, performed for real:** deliberately broke the
+    color-detection line in fetch_chesscom (forced every game's player_color to
+    "white" regardless of who actually played white), ran the suite, watched
+    `test_chesscom_happy_path_from_fixture_filters_eligibility_maps_and_orders` fail
+    with a clear diff (`['draw','win','win']` instead of `['draw','loss','win']`),
+    then reverted via a targeted edit and confirmed `git diff` showed zero drift from
+    the pre-break file before re-running to 21/21 green again [AI-verified — this is
+    the roadmap's "5-minute ritual," and the founder should still do it themselves at
+    least once to get the intended experience; I did it to prove the mechanism works]
+- Open bugs: none
+- 🏁 **Phase 1 exit reached**: schema live, engine proven, real games from both
+  platforms in the DB, all logic offline-tested.
+- Next step: Session 8 (PART D begins — the Evaluator + eval cache + single-game
+  analysis). Opus is the roadmap's preferred model for Sessions 8-17 (the pipeline core).
 
 ### 2026-07-25 · Session 6 · Lichess fetcher, persistence, dedupe
 

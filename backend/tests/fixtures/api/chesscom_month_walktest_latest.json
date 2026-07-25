@@ -1,0 +1,13 @@
+{
+  "games": [
+    {
+      "url": "https://www.chess.com/game/live/2000000001",
+      "pgn": "1. e4 e5 1-0",
+      "time_class": "rapid",
+      "rules": "chess",
+      "end_time": 1719900000,
+      "white": {"username": "fixture_walker", "rating": 1300, "result": "win"},
+      "black": {"username": "opponent_one", "rating": 1290, "result": "resigned"}
+    }
+  ]
+}
