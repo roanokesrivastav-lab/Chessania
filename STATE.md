@@ -22,6 +22,15 @@
   finding their Game row still present. Fixed in app/db.py (event listener on connect)
   and locked in with a regression test (see Session 3 log entry below). Everything else
   re-checked column-for-column against Appendix 1 and found to match exactly.
+- 2026-07-24: Full /review of Sessions 1, 3, 4 + the cascade fix, all commands re-run
+  live from scratch (not trusted from commit messages): Python 3.12.13 confirmed, fresh
+  `alembic upgrade head` builds all 5 tables + indexes, both reload behaviors re-proven
+  genuine, engine smoke test re-run clean (no leaked process), and — newly this pass —
+  directly exercised constraints Appendix 1 declares but nothing had explicitly tested
+  yet: move_evals' bigint/SQLite autoincrement, eval_cache's composite PK, the
+  unique(game_id, ply) constraint, and the classification CHECK constraint. All four
+  correctly enforced. requirements.txt confirmed to exactly match the installed
+  environment. No new bugs found — everything built so far holds up.
 - \_\_\_\_-\_\_: S17 report-quality gate → \_\_\_\_
 - \_\_\_\_-\_\_: S23 pre-deploy gate → \_\_\_\_
 
