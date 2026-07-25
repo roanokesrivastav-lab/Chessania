@@ -64,8 +64,10 @@
 
 ## FIXTURE REGISTRY (P0-1)
 
-- founder: (platform, username) = \_\_\_\_\_\_\_\_
-- low-rated: \_\_\_\_\_\_\_\_   mid-rated: \_\_\_\_\_\_\_\_
+- founder: (platform, username) = (chesscom, Eleven_14) — ~1760-1800 blitz. First PGN
+  fixture committed S8: tests/fixtures/pgn/eleven14_blitz_loss.pgn
+  (chess.com/game/live/170639309900, a Pirc where White's 27.Nxg5 knight sac lost).
+- low-rated: \_\_\_\_\_\_\_\_   mid-rated: \_\_\_\_\_\_\_\_  (still to pick for S11's fixture set)
 
 ## GROUND TRUTH (P0-3)
 
@@ -77,11 +79,50 @@
 
 Phase 0:  [ ] P0-1  [ ] P0-2  [ ] P0-3  [ ] P0-4
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
-Phase 2:  [ ] S8 [ ] S9 [ ] S10 [ ] S11 [ ] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
+Phase 2:  [x] S8 [ ] S9 [ ] S10 [ ] S11 [ ] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
 Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-25 · Session 8 · The Evaluator + eval cache + single-game analysis
+
+- Planned in plan mode first (founder request); two decisions locked via clarifying
+  questions: analysis target = founder's own account (chesscom/Eleven_14), and the
+  Session-9-owned NOT NULL columns (cp_loss/classification/phase) get safe provisional
+  placeholders in S8 that S9 overwrites.
+- Changed: backend/app/engine_eval.py (EvalResult dataclass; Evaluator Protocol;
+  StockfishEvaluator — opens engine once, White-POV eval clamped ±1000, write-through
+  eval_cache keyed by (fen, depth) with flush for intra-run reuse, cache_hits/misses
+  counters, close() in finally); backend/app/analysis.py (analyze_game — replays the
+  PGN mainline, one move_evals row per ply with raw evals + best_move_san from the
+  pre-move position, provisional placeholders for the 3 S9 columns, idempotent via
+  delete-existing-then-insert, stamps analyzed_at); backend/scripts/analyze_hello.py
+  (manual check + cache-hit proof); backend/tests/fixtures/pgn/eleven14_blitz_loss.pgn
+  (first PGN fixture — founder's own game, no scrubbing needed).
+- Claims:
+  - One real game → full move_evals set: 56 move_evals rows for the 56-ply fixture game,
+    one per ply, analyzed_at stamped — verified by querying a real file-backed SQLite DB
+    directly [AI-verified]
+  - Second run is cache-hot and fast: first run 57 engine calls (= the 57 distinct
+    positions in a 56-ply game) + 55 intra-run cache hits in ~1.2s; second run 112/112
+    cache hits, 0 engine calls, 0.02s [AI-verified]
+  - No leaked engine process: `ps aux | grep stockfish` == 0 both before and after the
+    run (try/finally around close()) [AI-verified]
+  - Idempotent re-analysis: running analyze_game twice keeps 56 rows, not 112 (delete-
+    then-insert) — matters because S9 re-analyzes [AI-verified]
+  - Existing suite still 21/21 green, fresh `alembic upgrade head` clean, no new deps
+    [AI-verified]
+  - **Big swings agree with chess.com's analysis board** — [\_\_\_\_ **unverified —
+    founder to confirm**]: open https://www.chess.com/game/live/170639309900 and compare.
+    The pipeline's clearest swing is ply 27, White's 27.Nxg5 knight sacrifice: eval goes
+    from +153 to -121 (White's POV), i.e. from a small edge to losing, with the engine
+    preferring Bxg7. That's the move that lost the game — confirm the shape matches what
+    chess.com shows (exact centipawns will differ; chess.com analyses deeper than depth 12).
+- Open bugs: none
+- Next step: Session 9 (classification, phases, and the cp_loss perspective helper) —
+  which will overwrite this session's placeholder cp_loss/classification/phase with real
+  values, and needs the founder's P0-3 ground-truth annotations for the calibration check.
 
 ### 2026-07-25 · Session 7 · Ingestion tests: the fixture system begins
 
