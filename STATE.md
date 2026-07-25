@@ -16,6 +16,12 @@
   the venv was on Python 3.14 instead of the locked 3.12. Both fixed same day: installed
   Python 3.12 via Homebrew, recreated backend/venv on it, re-verified reload behavior
   for real (see Session 1 log entry below).
+- 2026-07-24: /review of Session 1 + Session 3 found one real bug: SQLite silently
+  ignores `ON DELETE CASCADE` (every FK in Appendix 1 specifies it) unless
+  `PRAGMA foreign_keys=ON` is set per connection — confirmed by deleting a Player and
+  finding their Game row still present. Fixed in app/db.py (event listener on connect)
+  and locked in with a regression test (see Session 3 log entry below). Everything else
+  re-checked column-for-column against Appendix 1 and found to match exactly.
 - \_\_\_\_-\_\_: S17 report-quality gate → \_\_\_\_
 - \_\_\_\_-\_\_: S23 pre-deploy gate → \_\_\_\_
 
@@ -42,6 +48,40 @@ Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-24 · /review of Sessions 1 & 3 · one real bug found and fixed
+
+- Changed: backend/app/db.py (added `enable_sqlite_foreign_keys()`, wired to the
+  singleton engine when DATABASE_URL is SQLite); backend/tests/test_api.py (new
+  regression test).
+- What the review did (no PR existed — reviewed the local commits/working tree
+  directly, re-running every DoD command live rather than trusting the commit
+  messages):
+  - Re-ran `alembic upgrade head` from a freshly-deleted `chessania.sqlite3`,
+    `pytest`, and `curl /health` — all still genuinely green.
+  - Diffed every column in models.py / the applied SQLite schema against Appendix 1
+    line by line — exact match, no drift.
+  - Tested a behavior Appendix 1 implies but Session 3 never explicitly checked:
+    does `ON DELETE CASCADE` actually fire? It did not — SQLite ignores FK actions
+    entirely unless `PRAGMA foreign_keys=ON` is set per connection. Confirmed by
+    inserting a Player + Game, deleting the Player, and finding the Game row still
+    present.
+- Fix: added `enable_sqlite_foreign_keys(engine)` in db.py (an `event.listens_for`
+  connect hook), applied to the app's singleton engine when running on SQLite.
+  Exported so tests can attach the same behavior to their own throwaway engines.
+- Verifying the fix was real, not cosmetic: added
+  `test_deleting_a_player_cascades_to_their_games`, confirmed it **fails** with the
+  fix temporarily removed (1 orphaned row instead of 0), then confirmed it passes
+  once the fix is back.
+- Claims:
+  - Cascade delete now works on SQLite dev exactly as it will on Postgres prod
+    [AI-verified]
+  - Regression test genuinely catches the bug (proved by breaking it on purpose)
+    [AI-verified]
+  - Full suite (2 tests), fresh migration, and `/health` all still green after the
+    fix [AI-verified]
+- Open bugs: none
+- Next step: Session 4 (Stockfish install + engine smoke test).
 
 ### 2026-07-24 · Session 3 · Config + database + the schema migration
 
