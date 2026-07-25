@@ -50,6 +50,20 @@ def test_unexpected_status_raises_upstream_error():
 
 
 @respx.mock
+def test_network_failure_raises_upstream_error_not_a_raw_httpx_exception():
+    """Regression test found in review: a genuine connection failure (DNS,
+    refused connection, timeout) previously leaked a raw httpx.ConnectError
+    instead of being translated into one of the four typed exceptions —
+    which would have crashed the S10 job with an ugly traceback instead of
+    the friendly message it's designed to show."""
+    respx.get("https://api.chess.com/pub/player/networkfail/games/archives").mock(
+        side_effect=httpx.ConnectError("simulated network failure")
+    )
+    with pytest.raises(UpstreamError):
+        fetch_chesscom("networkfail")
+
+
+@respx.mock
 def test_no_eligible_games_when_everything_is_filtered_out():
     username = "onlybullet"
     respx.get(f"https://api.chess.com/pub/player/{username}/games/archives").mock(

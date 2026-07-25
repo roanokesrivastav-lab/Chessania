@@ -31,6 +31,18 @@
   unique(game_id, ply) constraint, and the classification CHECK constraint. All four
   correctly enforced. requirements.txt confirmed to exactly match the installed
   environment. No new bugs found — everything built so far holds up.
+- 2026-07-24: Full /review of Sessions 1-5, all commands re-run live again (backend
+  reload, frontend hot-reload, fresh migration, full test suite, requirements.txt vs
+  installed env, engine smoke test — all still genuinely green). Found one real bug in
+  ingest.py: a real network failure (DNS, connection refused, timeout) leaked a raw
+  `httpx.ConnectError` instead of being translated into one of the four typed
+  exceptions — confirmed by monkeypatching httpx.Client to force a ConnectError before
+  fixing, and again via a respx `side_effect` after. This mattered because the S10 job
+  wrapper only knows how to translate the four typed exceptions into a friendly
+  message; an uncaught transport error would have crashed the job with a raw
+  traceback. Fixed by wrapping the fetch in try/except httpx.RequestError -> raise
+  UpstreamError, verified the regression test genuinely catches it (broke the fix on
+  purpose, watched the test fail, restored it, watched it pass).
 - \_\_\_\_-\_\_: S17 report-quality gate → \_\_\_\_
 - \_\_\_\_-\_\_: S23 pre-deploy gate → \_\_\_\_
 
@@ -54,6 +66,40 @@ Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-24 · Full /review of Sessions 1-5 · one real bug found and fixed
+
+- Changed: backend/app/ingest.py (wrapped the fetch in try/except httpx.RequestError,
+  re-raising as UpstreamError); backend/tests/test_ingest.py (new regression test).
+- What the review did: re-ran every DoD command live across all five sessions —
+  Python version, fresh `alembic upgrade head`, full test suite, requirements.txt vs
+  installed env, both apps' reload/hot-reload behavior (live-edited a running server
+  each time, not killed-and-restarted), and the engine smoke test with a
+  before/after `ps aux` check. Also fresh-eyes re-read ingest.py end to end.
+- Bug found: a genuine network failure (simulated via a monkeypatched httpx.Client
+  raising ConnectError) was not caught by any of the four typed exceptions — it
+  propagated as a raw httpx.ConnectError. The stated error taxonomy (PlayerNotFound /
+  NoEligibleGames / UpstreamRateLimited / UpstreamError) only covered HTTP status
+  codes, not transport-level failures, which are common when calling a real external
+  API (timeouts, DNS blips, connection refused).
+- Fix: wrapped the whole fetch in try/except httpx.RequestError, re-raising as
+  UpstreamError. Verified genuinely: reproduced the leak first (monkeypatched
+  httpx.Client.get to raise ConnectError, confirmed it propagated uncaught), applied
+  the fix and confirmed it was now caught, added a respx-based regression test
+  (`test_network_failure_raises_upstream_error_not_a_raw_httpx_exception`), then
+  proved that test was real by temporarily removing the fix again and watching the
+  test fail before restoring it.
+- Claims:
+  - All 9 tests pass (was 8; +1 regression test) [AI-verified]
+  - The regression test genuinely catches the bug (proved by breaking it on purpose)
+    [AI-verified]
+  - Live happy-path re-run against the real `hikaru` account still works correctly
+    after the fix (no regression from adding the try/except) [AI-verified]
+  - Fresh migration, full suite, both reload behaviors, requirements.txt-vs-env, and
+    the engine smoke test all still genuinely green across every session built so far
+    [AI-verified]
+- Open bugs: none
+- Next step: Session 6 (Lichess fetcher, persistence, dedupe).
 
 ### 2026-07-24 · Session 5 · Chess.com fetcher
 
