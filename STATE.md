@@ -4,6 +4,19 @@
 
 - [ ] Production depth: hold 12 or drop to 11 for Railway speed? (S24)
 - [ ] Report retention: keep all reports forever, or cap per player? (beta)
+- [ ] **Blunder-count inflation in decided positions** (found in the 2026-07-25 full
+  review). The decided-position skip is per-move `|eval_before| > 800`, exactly as
+  Appendix/S9 spec — but in a hopelessly-lost position whose eval oscillates around the
+  800 line (e.g. queen-down with a passed-pawn racer evaluated ~+700 to +1000 as White
+  gives checks), alternating moves slip through as "blunders." Game 3 reports 3 blunders
+  when only 1 (27.Rxe4) is meaningful; the other 2 (moves 42, 44) are post-decision noise.
+  NOT a code bug (matches spec), but it inflates blunders_per_game (S12) and contradicts
+  the skip rule's STATED intent ("a blunder in a dead-lost position is noise"). Founder
+  flagged this exact class of issue for game 2. Candidate fix: a "point-of-no-return"
+  hysteresis — once the losing side's eval crosses the decided line and never recovers,
+  skip ALL later moves for that side (overlaps the S13 turning-point detector). Decide:
+  refine the skip now (better serves the spec's own intent) vs handle in S12 blunder_rate
+  vs leave as-is. Does not block S9 (calibration on the decisive errors passed).
 
 ## DECISION LOG
 
