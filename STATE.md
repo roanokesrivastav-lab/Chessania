@@ -150,7 +150,12 @@ depth-12 pipeline, so S9's calibration against them is still a real check. Tag s
   K+P race you might have held — endgame pawn races are tempo-counting; study king-and-pawn
   endings." → Pipeline should locate the decisive error in the ENDGAME phase (phase-tag +
   subtler-loss test). [founder-to-verify]
-- S9 calibration verdict: \_\_\_\_\_\_\_\_   S13 detector verdict: \_\_\_\_\_\_\_\_
+- S9 calibration verdict: **PASS (provisional, vs AI-drafted+corrected GT)** — game 1: 0
+  founder blunders (precision ✓); game 2: 16.dxc4 mistake + 19.Rd7 blunder flagged, 22.Nh3
+  correctly ok (recall ✓, matches corrected GT); game 3: decisive 27.Rxe4 blunder tagged
+  endgame (✓). No blunder-level disagreements. seconds_spent populated with sane values.
+  Founder still to verify the 3 games on the analysis board to promote to founder-verified.
+- S13 detector verdict: \_\_\_\_\_\_\_\_ (S13 not built yet)
 
 ## SESSION CHECKLIST
 
@@ -158,11 +163,45 @@ Phase 0:  [~] P0-1  [x] P0-2  [~] P0-3  [x] P0-4   ([~] = done but pending found
           P0-1 founder+lichess accounts logged, band accounts deferred to S11;
           P0-3 ground truth AI-drafted, founder to verify against the analysis board)
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
-Phase 2:  [x] S8 [ ] S9 [ ] S10 [ ] S11 [ ] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
+Phase 2:  [x] S8 [x] S9 [ ] S10 [ ] S11 [ ] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
 Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-25 · Session 9 · Classification, phases, perspective helper (+ seconds_spent)
+
+- Planned in plan mode; a depth-12/16 probe during planning reshaped things (see Decision
+  Log: kept depth 12, scheduled color-split S12 + turning-point S13, corrected my wrong
+  game-2 ground truth). Part A (roadmap amendment) committed separately (33cefef).
+- Changed: backend/app/analysis.py — four pure helpers (cp_loss the one perspective helper;
+  classify with the decided-position >800 skip; tag_phase; extract_move_times from [%clk]),
+  wired into analyze_game replacing the S8 placeholders and populating seconds_spent;
+  backend/tests/test_analysis.py (15 offline tests); backend/scripts/calibrate.py;
+  tests/fixtures/pgn/gt_{cleanwin,piecedrop,lostendgame}.pgn (the 3 GT games, pre-staging
+  S11's fixture set).
+- Claims:
+  - cp_loss quadrant tests + classify boundary tests (49/50, 99/100, 199/200) + decided-
+    position skip + phase + time-extraction all green: 15 new offline tests, full suite
+    36/36, genuinely offline (bogus-proxy) [AI-verified]
+  - Calibration on the 3 GT games (live engine) matches the corrected ground truth:
+    game1 = 0 founder blunders (precision); game2 = 16.dxc4 mistake + 19.Rd7 blunder,
+    22.Nh3 correctly ok (recall); game3 = 27.Rxe4 blunder tagged endgame. No blunder-level
+    disagreements to investigate [AI-verified]
+  - seconds_spent populated from real [%clk] data (107/107 plies on the piecedrop game,
+    0-36s, plausible); clockless PGN -> NULL (unit-tested) [AI-verified]
+  - Fresh alembic upgrade head clean; no leaked engine process (0 after calibrate) [AI-verified]
+  - Ground-truth agreement is against AI-drafted annotations — **founder to verify the 3
+    games on the analysis board** to promote the calibration verdict to founder-verified
+    [founder-to-verify]
+- Explain-to-me moment (per the roadmap), one real move: game 2, your 19...Rd7 — before it
+  the eval was about +129 for White (you're ~1.3 pawns worse); after it, +403 for White.
+  From your (Black) POV that's a 274-centipawn loss in one move -> classified a blunder ->
+  and the engine's better move is stored alongside it. That single move is where a
+  difficult game became a lost one.
+- Open bugs: none
+- Next step: Session 10 (the job system — async analyze endpoint + progress; deletes the
+  temporary /api/ingest route).
 
 ### 2026-07-25 · Full /review of Sessions 1-8 + amendment · one real bug found and fixed
 
