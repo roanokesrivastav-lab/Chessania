@@ -83,7 +83,12 @@ class StockfishEvaluator:
         self.cache_misses += 1
         info = self.engine.analyse(board, chess.engine.Limit(depth=self.depth))
         eval_cp = _clamp(info["score"].pov(chess.WHITE).score(mate_score=EVAL_CLAMP))
-        best_move_uci = info["pv"][0].uci()
+        # A terminal position (checkmate/stalemate) has no legal moves, so the
+        # engine returns no principal variation — best_move is empty then. The
+        # eval is still meaningful (mate/draw). analyze_game only ever reads the
+        # best move of the pre-move position (never terminal), so "" here is safe.
+        pv = info.get("pv")
+        best_move_uci = pv[0].uci() if pv else ""
 
         if self.cache_session is not None:
             self.cache_session.add(

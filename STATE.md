@@ -101,6 +101,31 @@ Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-07-25 · Full /review of Sessions 1-8 + amendment · one real bug found and fixed
+
+- Re-ran every DoD live across the whole project: Python 3.12.13; migration chain
+  0001->0002 from nothing; all 6 tables + move_evals.seconds_spent present; full suite
+  21/21 (genuinely offline via bogus-proxy); requirements match; engine smoke test
+  correct; analysis pipeline 56 plies + cache 112/112 on the second run; both fetchers
+  live (chesscom + lichess, both now carrying [%clk]).
+- Scare that wasn't a bug: a lingering stockfish process showed up mid-review, but a
+  fresh check showed 0 and a clean re-run of both engine scripts showed 0 before/0 after
+  each — it was a stale orphan from an earlier run this long session, not a code leak.
+- Real bug found by fresh-eyes read of the newest code (engine_eval.py): evaluate()
+  crashed with KeyError 'pv' on any TERMINAL position (checkmate/stalemate) — Stockfish
+  returns no principal variation with no legal moves. analyze_game evaluates the position
+  after every move including the last, so ANY game ending in checkmate/stalemate would
+  have crashed the whole analysis (would have blown up S10's 20-game job on the first
+  mate). The fixture game ended in resignation, so it never surfaced.
+- Fix (app/engine_eval.py): guard the pv access — best_move_uci = pv[0].uci() if pv else
+  "". The eval is still meaningful (mate=-/+1000); analyze_game only ever reads the
+  pre-move position's best move (never terminal), so "" is safe.
+- Verified: evaluate() on Fool's-mate final position returns eval_cp=-1000, best_move="";
+  a full 4-ply checkmate-ending game now analyzes to 4 rows cleanly (was a crash before);
+  fixture game still analyzes; suite still 21/21; no leaked process.
+- Follow-up parked: an OFFLINE regression test for the terminal-position case lands in
+  S11 (needs FixtureEvaluator + the engine pytest marks, which don't exist yet).
+
 ### 2026-07-25 · Session 8 · The Evaluator + eval cache + single-game analysis
 
 - Planned in plan mode first (founder request); two decisions locked via clarifying
