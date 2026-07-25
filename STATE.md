@@ -52,6 +52,13 @@
   verification script showed blank ECO columns for a real account. Added `opening: "true"`
   to fetch_lichess()'s params; confirmed against the real API that ECO codes now
   populate (see Session 6 log entry below).
+- 2026-07-25: Full /review of Sessions 1-6, all commands re-run live from scratch again:
+  Python 3.12.13, fresh `alembic upgrade head`, full test suite (19/19, genuinely offline
+  via bogus-proxy check), requirements.txt vs installed env, both apps' reload/hot-reload
+  behavior (live-edited, not restarted), engine smoke test (no leaked process), and the
+  full live end-to-end ingest dedupe check (repeat POST /api/ingest for a real Lichess
+  account, second call still correctly shows new:0). No new bugs found — everything
+  built in Sessions 1-6 holds up.
 - \_\_\_\_-\_\_: S17 report-quality gate → \_\_\_\_
 - \_\_\_\_-\_\_: S23 pre-deploy gate → \_\_\_\_
 
