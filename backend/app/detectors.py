@@ -314,6 +314,11 @@ def detect_opening_leak(games: list[Game], evals: dict[str, list[MoveEval]]) -> 
         return {"fired": False, "stats": {}, "evidence": []}
 
     entries = families[worst_family]
+    # game_count keeps the FULL family size (the coach's "across {k} games"
+    # copy), but evidence honors the module's up-to-3 contract — cite the 3
+    # WORST offenders (most-negative player-POV eval first), same as
+    # hung_pieces cites its 3 clearest hangs, not an arbitrary first three.
+    worst_first = sorted(entries, key=lambda gp: gp[1])
     return {
         "fired": True,
         "stats": {
@@ -321,7 +326,7 @@ def detect_opening_leak(games: list[Game], evals: dict[str, list[MoveEval]]) -> 
             "avg_cp": round(worst_avg, 1),
             "game_count": len(entries),
         },
-        "evidence": [(str(game.id), 15) for game, _pov in entries],
+        "evidence": [(str(game.id), 15) for game, _pov in worst_first[:3]],
     }
 
 

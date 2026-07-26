@@ -306,8 +306,8 @@ def test_detect_opening_leak_fires_for_a_consistently_leaking_eco_family(db_sess
     assert result["fired"] is True
     assert result["stats"]["family"] == "B0"
     assert result["stats"]["avg_cp"] == -100.0
-    assert result["stats"]["game_count"] == 5
-    assert len(result["evidence"]) == 5
+    assert result["stats"]["game_count"] == 5  # full family size, for the coach's "{k} games"
+    assert len(result["evidence"]) == 3  # but evidence honors the up-to-3 contract
 
 
 def test_detect_opening_leak_does_not_fire_when_family_is_only_mildly_worse(db_session):
