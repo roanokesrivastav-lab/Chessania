@@ -215,11 +215,39 @@ Phase 0:  [~] P0-1  [x] P0-2  [~] P0-3  [x] P0-4   ([~] = done but pending found
           P0-1 founder+lichess accounts logged, band accounts deferred to S11;
           P0-3 ground truth AI-drafted, founder to verify against the analysis board)
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
-Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [ ] S15 [ ] S16 [ ] S17
+Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [x] S14.5 (time-coaching detectors) [ ] S15 [ ] S16 [ ] S17
 Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-26 · Session 14.5 · Time-coaching detectors (7–9, promoted from Part G #11d)
+
+- Interstitial session from the 2026-07-26 research amendments: built the three time-coaching
+  detectors that the council promoted into v1. Kimi 2.7 coded + committed (`f70eb41`, no push);
+  Opus reviewed + ran the DoD live + pushed. NEW in `app/detectors.py`: `detect_rushed_blunders`
+  (blunders with < DET_TIME_RUSH_SECONDS remaining clock; LOCKED RULE intrinsic), `detect_time_
+  trouble_collapse` (error rate under < DET_TIME_TROUBLE_CLOCK vs above), `detect_dawdling`
+  (slow "ok" moves in low-complexity positions that precede time trouble — LOCKED RULE honored via
+  a legal-move-count complexity gate + confidence:"low"), plus a `_remaining_clock_by_ply` helper
+  that re-parses the PGN `[%clk]` (mirrors `analysis.py::extract_move_times`, same ply numbering).
+  9 `DET_TIME_*` thresholds in config; the three keys added to `run_detectors`. `features.py`
+  untouched — the detectors flow through the existing `detectors` dict to the S15 coach.
+- **AI-verified**: `pytest -q` → **117 passed, 3 deselected** (engine tests correctly skipped),
+  1.1s, OFFLINE — stockfish process count stayed flat (no engine spawned by the suite). The six
+  earlier detectors + `run_detectors`'s six original keys are byte-for-byte unchanged (`git diff`
+  is additions-only). New tests are real pos/neg pairs per detector (assert `fired is True/False`
+  on distinct conditions) + two direct `_remaining_clock_by_ply` unit tests. Roadmap Appendix-3
+  detector-9 spec synced with the complexity gate (Rule 3: law before code).
+- **Opus review: clean — no bugs found.** Kimi added one sound refinement beyond the spec: a
+  dawdle only counts if it occurred BEFORE the game's first time-trouble ply (causally: dawdle
+  early → short later). Scope cut for token budget: did NOT run the live `/api/debug/features` HTTP
+  check — the three keys serialize through the same detectors-dict path S13's six already serve, so
+  surfacing is structural, not a new risk. [founder-to-verify on a real analyze run when convenient.]
+- FYI (unchanged from S14): a stray `stockfish` process was already running on the machine before
+  the test run (count 1→1); it is NOT from pytest. Harmless leftover; kill it if you want a clean box.
+- Next: **Session 15** — the coach (rule engine → Report, Appendix 3), now consuming the fuller
+  `Issue` contract + all nine detectors including these three.
 
 ### 2026-07-26 · Session 14 · Playstyle index (Appendix 5)
 

@@ -1,18 +1,18 @@
 {
   "file_hashes": {
-    "CHESSANIA_ROADMAP.md": "40cb3c066e3884984ae04cd143fb3c781b6c7fe2b9956d18f12a0f0807fba800",
+    "CHESSANIA_ROADMAP.md": "0d07bede3fd28a42e3319f57426bf9f9cedb62d5038c014ea133a9ac8c5296d8",
     "CLAUDE.md": "e19cf69ef82fa7c3f7bbc0178026ca36c267593b8e06a98ea76350d31c91d3a1",
     "PRD.md": "fcf9711c1cb4a0108e30f5350b1f19b036e8f6ee97396fe20240876cd41ec7c9",
     "README.md": "d937de63ff631a4b05266942c32b9b8b9b06e3e2c8f4710003bf0a67957bddfb",
-    "STATE.md": "19236f295acd8e46f182557f8834974ec36018fb05ef5b6f76bef8224c6d1a8f",
+    "STATE.md": "b532d3a593e9bcbb525eeab1a318504cf2936eaecf9765b4d93e7f8237f8b9ab",
     "backend/alembic/env.py": "c52f6052851de8c559c02ea1801249cad11801d7efa45f41e986db9f94a56baa",
     "backend/alembic/versions/0001_initial_schema.py": "48298531f646e4deab10361f4e6733581e595a23133fbecfbd676cb9ae7456d1",
     "backend/alembic/versions/0002_add_move_evals_seconds_spent.py": "862462c57dcf1df26ecd15679c875804998f1af7ef42da7eb823db20f165ebf3",
     "backend/app/__init__.py": "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
     "backend/app/analysis.py": "a8034bf877291d9ab1c23bff506822df4c5d078a29b726f9af61b5d2f473df78",
-    "backend/app/config.py": "f77ae7f797bfb138d7a9fd95251c2dc73fb500a68cdc6e8dfbe4875be7669437",
+    "backend/app/config.py": "95290ed5984568b36182c1bfdb7b4ee593296141bdf5757a2d601216d0efa5de",
     "backend/app/db.py": "695e629029e8797fd36aedc1a346b75c14c85883425ad16d26a527fdb8b84660",
-    "backend/app/detectors.py": "1e2d29502dd2b6ba25cc3d2894b4d01b915d70d4bbfca17613df4807b7132a61",
+    "backend/app/detectors.py": "1a6a11d607667cf1929990ca0f7edbc5ce54ec5b4f696cf9d666942b93988837",
     "backend/app/engine_eval.py": "cfd878ec8d2661c15f0d96b6582e3fd23c45cc4b32ef1f10aa5d76cb66702106",
     "backend/app/features.py": "dfdb6b847686d609c5c3f551d2e2c2c16509400eac59a5c66d4b8a8f0098130c",
     "backend/app/ingest.py": "5e45a8a8f594c6574d1b8b7694bb37e4c17c363f1e71341c0762b46575507292",
@@ -31,7 +31,7 @@
     "backend/tests/test_analysis.py": "752367ef4c67337cfdb5faeffa993179d6c4c96816878cb51be0f7ca137a7700",
     "backend/tests/test_api.py": "868735eb69a480e5c56a40e43090820bfabeae42286c40f359522fa3fe2cfd9f",
     "backend/tests/test_debug_endpoint.py": "b08ce30ce873ddb09c835f35ada2fe077cba39cd632babaa26b528caa45b1ef5",
-    "backend/tests/test_detectors.py": "4cc1cc7a4ef8f554bdc16c805dd5374eec5a6b8683ec81c0610cdcc4730eb910",
+    "backend/tests/test_detectors.py": "5121bd20c64cc01ab508243795957322dfc694d83f701b03942e9b3d98a73fd7",
     "backend/tests/test_engine.py": "854b18b54b17ec72ab1d248d6c47c8811a4fbda61161ad386d12dee97eb3af2c",
     "backend/tests/test_features.py": "a2e98e67a5872530a2c65090cb7c412eb07ea9a3b8e15d5c27ea32f899a4e32c",
     "backend/tests/test_ingest.py": "22cc021e96ce7b3d120c234d7a0556483c3a185307083abb3eaf3297f604ba68",
@@ -46,13 +46,13 @@
     "frontend/next.config.ts": "cffa485cc39e35da1ff735d42c7a4e13fddb619d7d284a6ecced9e971a1e7f12",
     "frontend/postcss.config.mjs": "28a2e2028ed86bc42f1b4af4ea55278d0b89c5984c27c52fe738d8d0dd326085"
   },
-  "indexed_at_commit": "c6e80464b6d714999d58155f42d06568b8daeec6",
-  "indexed_at_timestamp": "2026-07-26T20:45:56.578223+00:00",
+  "indexed_at_commit": "f70eb41f89c6ef3dd75449827c70fe1879c43574",
+  "indexed_at_timestamp": "2026-07-26T21:11:27.069741+00:00",
   "schema_version": 3,
   "stats": {
-    "total_edges": 542,
+    "total_edges": 563,
     "total_files": 45,
-    "total_nodes": 370
+    "total_nodes": 386
   },
   "vexp_version": "2.3.1"
 }
