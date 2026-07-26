@@ -189,11 +189,58 @@ Phase 0:  [~] P0-1  [x] P0-2  [~] P0-3  [x] P0-4   ([~] = done but pending found
           P0-1 founder+lichess accounts logged, band accounts deferred to S11;
           P0-3 ground truth AI-drafted, founder to verify against the analysis board)
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
-Phase 2:  [x] S8 [x] S9 [ ] S10 [ ] S11 [ ] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
+Phase 2:  [x] S8 [x] S9 [x] S10 [ ] S11 [ ] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
 Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-26 · Session 10 · The job system: async analyze endpoint + progress
+
+- First session using the Opus-plan / Sonnet-code workflow: Opus planned + asked the
+  clarifying questions, a Sonnet subagent wrote the code from the approved plan verbatim,
+  then Opus reviewed the output and ran the full DoD live. Founder decisions: add CORS now,
+  delete /api/ingest, verify both a quick (MAX_GAMES=3) and a full (20-game) run.
+- Changed: backend/app/jobs.py (NEW — JobStatus dataclass + to_dict; in-memory _registry +
+  _lock + Semaphore(MAX_CONCURRENT_JOBS); get_or_create_job with case-insensitive live-job
+  dedupe; get_job; run_job = semaphore-guarded fetch->persist->analyze-unanalyzed with
+  friendly typed-error messages, no traceback); backend/app/main.py (removed IngestRequest +
+  /api/ingest; added CORSMiddleware from settings.CORS_ORIGINS; POST /api/analyze with
+  per-platform username regex validation -> 400, dedupe, BackgroundTasks schedule; GET
+  /api/jobs/{id} -> status or friendly 404); backend/app/db.py (added PRAGMA busy_timeout=5000
+  for 2-concurrent-job SQLite safety); backend/tests/test_jobs.py (NEW — 6 offline tests:
+  registry create/dedupe/relive + endpoint validation/schedule/status/404 with run_job
+  monkeypatched to a no-op).
+- Opus review caught + fixed one real robustness bug in the Sonnet code: StockfishEvaluator
+  was opened OUTSIDE the try/except, so a failure to open the engine (bad SF_PATH) would
+  have left the job stuck "running" forever with a leaked session and an uncaught thread
+  exception. Restructured so session/evaluator are created inside the try (init to None,
+  guarded in finally) — engine-open failure now lands the job in state="error" like any
+  other error.
+- Claims:
+  - Offline suite 42/42 (36 -> 42; +6 job tests), genuinely offline (bogus-proxy) [AI-verified]
+  - POST /api/analyze returns a job_id in ~1.5ms (target <200ms); polling GET /api/jobs/{id}
+    shows live stage fetching->analyzing and current_game climbing 0->N to state=done
+    [AI-verified]
+  - Full run of the founder's real account (Eleven_14, 20 games): 30s end-to-end (ceiling
+    ~5 min); immediate re-run 1s (skip-analyzed + eval cache); 20 games analyzed, 1479
+    move_evals rows all with seconds_spent populated [AI-verified]
+  - Dedupe: two rapid POSTs for the same account return the identical job_id [AI-verified]
+  - Errors: bad-format username -> 400; nonexistent (valid-format) username -> job state
+    "error" with "We couldn't find that username on Chess.com — check the spelling?" (no
+    traceback) [AI-verified]
+  - CORS: access-control-allow-origin: http://localhost:3000 present on an OPTIONS preflight;
+    POST /api/ingest now 404 (removed) [AI-verified]
+  - No leaked Stockfish process after any run [AI-verified]
+- Explain-to-me moment (per the roadmap): why async — analyzing 20 games is ~30s locally but
+  1-4 min on a shared cloud CPU; an HTTP request that waits that long gets killed by proxies.
+  So POST returns a ticket (job_id) instantly and the browser polls GET /api/jobs/{id} — the
+  start->ticket->poll pattern every serious app uses for slow work.
+- Open bugs: none new (the blunder-count-in-decided-positions open question from the last
+  review is unrelated and still pending a founder decision).
+- Next step: Session 11 (FixtureEvaluator + offline analysis tests — lets the full
+  analyze/job path be tested with zero engine; also lands the deferred terminal-position
+  regression test).
 
 ### 2026-07-25 · Session 9 · Classification, phases, perspective helper (+ seconds_spent)
 

@@ -1,23 +1,33 @@
 """Chessania backend — FastAPI application entrypoint."""
 
+import re
 from typing import Literal
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 
-from app.db import get_session
-from app.ingest import (
-    NoEligibleGames,
-    PlayerNotFound,
-    UpstreamError,
-    UpstreamRateLimited,
-    fetch_games,
-    persist_games,
-    upsert_player,
-)
+from app.config import settings
+from app.jobs import get_job, get_or_create_job, run_job
 
 app = FastAPI(title="Chessania API", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in settings.CORS_ORIGINS.split(",")],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+_USERNAME_PATTERNS = {
+    "chesscom": r"[a-zA-Z0-9_-]{3,25}",
+    "lichess": r"[a-zA-Z0-9_-]{2,30}",
+}
+
+
+def _platform_label(platform: str) -> str:
+    return "Chess.com" if platform == "chesscom" else "Lichess"
 
 
 @app.get("/health")
@@ -31,37 +41,37 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-class IngestRequest(BaseModel):
+class AnalyzeRequest(BaseModel):
     platform: Literal["chesscom", "lichess"]
     username: str
 
 
-@app.post("/api/ingest")
-def ingest(payload: IngestRequest, session: Session = Depends(get_session)) -> dict[str, int]:
-    """Temporary Session 6 endpoint to manually verify fetch + persist +
-    dedupe end to end. Session 10 folds this into the async analyze job;
-    this route is deleted then — it exists only so the founder can curl
-    the same account twice and watch `new` drop to 0.
-    """
-    try:
-        games = fetch_games(payload.platform, payload.username)
-    except PlayerNotFound:
+@app.post("/api/analyze")
+def analyze(payload: AnalyzeRequest, background_tasks: BackgroundTasks) -> dict[str, str]:
+    """Kick off (or join) an analysis job for (platform, username) and
+    return its job_id immediately. Progress is then polled via
+    GET /api/jobs/{job_id} — this route never blocks on the fetch/analyze
+    work itself."""
+    platform_label = _platform_label(payload.platform)
+    if not re.fullmatch(_USERNAME_PATTERNS[payload.platform], payload.username):
         raise HTTPException(
-            status_code=404, detail=f"No such {payload.platform} account: {payload.username}"
+            status_code=400,
+            detail=f"That doesn't look like a valid {platform_label} username.",
         )
-    except NoEligibleGames:
+
+    job, deduped = get_or_create_job(payload.platform, payload.username)
+    if not deduped:
+        background_tasks.add_task(run_job, job.job_id)
+
+    return {"job_id": job.job_id}
+
+
+@app.get("/api/jobs/{job_id}")
+def job_status(job_id: str) -> dict:
+    job = get_job(job_id)
+    if job is None:
         raise HTTPException(
             status_code=404,
-            detail=f"{payload.username} has no eligible rapid/blitz games in range.",
+            detail="That analysis expired or was never started — start a fresh one.",
         )
-    except UpstreamRateLimited:
-        raise HTTPException(
-            status_code=429, detail="Rate limited upstream — try again in a minute."
-        )
-    except UpstreamError as exc:
-        raise HTTPException(status_code=502, detail=str(exc))
-
-    player = upsert_player(
-        session, payload.platform, payload.username, games[0].player_rating if games else None
-    )
-    return persist_games(session, player, games)
+    return job.to_dict()

@@ -42,6 +42,11 @@ def enable_sqlite_foreign_keys(target_engine: Engine) -> None:
     def _on_connect(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
+        # S10: two concurrent jobs can both write to this same SQLite file
+        # (dev only — Postgres has no such limitation). Without a busy
+        # timeout, the second writer gets an immediate "database is locked"
+        # error instead of simply waiting its turn.
+        cursor.execute("PRAGMA busy_timeout=5000")
         cursor.close()
 
 
