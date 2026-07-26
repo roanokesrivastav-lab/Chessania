@@ -171,11 +171,16 @@ def _opposite_castling(games: list[Game], evals: dict[str, list[MoveEval]]) -> f
         white_castle: str | None = None
         black_castle: str | None = None
         for row in evals.get(str(game.id), []):
-            if row.move_san in ("O-O", "O-O-O"):
+            # Strip check/mate/annotation suffixes: python-chess renders a
+            # castle that gives check as "O-O+" / "O-O-O+" (or "#"), and
+            # opposite-side castling games are exactly the sharp ones where
+            # that happens — an exact "O-O"/"O-O-O" match would silently miss them.
+            san = row.move_san.rstrip("+#!?")
+            if san in ("O-O", "O-O-O"):
                 if row.ply % 2 == 1:
-                    white_castle = row.move_san
+                    white_castle = san
                 else:
-                    black_castle = row.move_san
+                    black_castle = san
 
         if white_castle is not None and black_castle is not None:
             if (white_castle == "O-O" and black_castle == "O-O-O") or (

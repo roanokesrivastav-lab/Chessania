@@ -184,11 +184,47 @@ Phase 0:  [~] P0-1  [x] P0-2  [~] P0-3  [x] P0-4   ([~] = done but pending found
           P0-1 founder+lichess accounts logged, band accounts deferred to S11;
           P0-3 ground truth AI-drafted, founder to verify against the analysis board)
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
-Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
+Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [ ] S15 [ ] S16 [ ] S17
 Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-26 · Session 14 · Playstyle index (Appendix 5)
+
+- FIRST use of a new build workflow: Opus planned → founder handed a self-contained copy-paste
+  prompt to **Kimi 2.7** (external coding agent w/ repo access) → Kimi coded + committed (`68ea713`,
+  unpushed) → Opus reviewed the commit + ran the DoD live before pushing. (Replaces the Sonnet-
+  subagent step; see [[feedback-opus-plan-sonnet-code]] — that memory now covers "delegate coding,
+  Opus reviews," whether the coder is a Sonnet subagent or Kimi.)
+- Kimi built: NEW app/playstyle.py (Appendix 5 verbatim — `_COMPONENTS` bounds/weights table as a
+  documented module constant, not config, since it's a formula tuned via the appendix; `_normalize`
+  w/ inverted game_length support; 5 pure component fns; `Playstyle` dataclass matching Appendix 2;
+  `compute_playstyle` w/ ±0.25 label bands + top-2-|normalized| explanation + empty-input guard);
+  wired `playstyle` into PlayerFeatures/build_features (additive, incl. empty path); NEW
+  tests/test_playstyle.py (19 tests: _normalize incl. inverted bounds, each component, 3 label
+  bands, explanation, empty).
+- Opus review: faithful to Appendix 5; found + FIXED one real bug — `_opposite_castling` matched
+  move_san EXACTLY against ("O-O","O-O-O"), missing castling-with-check which python-chess renders
+  "O-O+"/"O-O-O+"/"#" (confirmed live). Opposite-castling games are exactly the sharp ones where a
+  castle gives check, and the component carries weight 0.20. Fixed by stripping "+#!?" before the
+  compare (Opus commit). Tests only used unsuffixed castles, so no test broke.
+- Claims:
+  - Suite 90 -> 109 (+19 playstyle), green in 1.03s (<15s), offline (bogus-proxy) + no stockfish
+    (pgrep); `pytest -m engine` 3 passed [AI-verified]
+  - Debug endpoint (`GET /api/debug/features/...`) now surfaces a populated `playstyle` block over
+    HTTP (200); serializes via dataclasses.asdict [AI-verified]
+  - On the 4 sharp fixture games the label is "tactical" (score 0.29), driven by eval_volatility
+    (clamped to +1) + opposite_castling 50% — sensible for decisive games; a real 20-game sample
+    would be more representative [AI-verified]
+- Repo-hygiene FYI (NOT touched): Kimi's commit also carries a `.vexp/manifest.json` churn — that
+  file is a local index-tool artifact already tracked in origin/main (pre-existing), so it's left
+  as-is; consider gitignoring `.vexp/` later.
+- Still [founder-to-verify]: the DoD's "founder reads their OWN label + explanation and gives a
+  verdict" — needs a real analyze run of Eleven_14; if the label feels wrong the fix is to tune
+  Appendix 5's bounds FIRST, then playstyle.py (never silent drift). Demonstrated on fixtures only.
+- Next step: Session 15 (The coach: rule engine → Report, Appendix 3) — the first session that turns
+  features+detectors+playstyle into actual coaching copy.
 
 ### 2026-07-26 · Session 13 · Features II: six pattern detectors (+ a critical S12 fix + review-gap tests)
 

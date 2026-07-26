@@ -4,7 +4,7 @@
     "CLAUDE.md": "e19cf69ef82fa7c3f7bbc0178026ca36c267593b8e06a98ea76350d31c91d3a1",
     "PRD.md": "ffa960c7f42ffa39356000c6e915e3799d45084837252076ff050e43c8633a34",
     "README.md": "d937de63ff631a4b05266942c32b9b8b9b06e3e2c8f4710003bf0a67957bddfb",
-    "STATE.md": "2e6c55b88271c5164f4d7a65fa157b866fbf9b84e1e3da432f60bb4e1acd115b",
+    "STATE.md": "5e441092558dcf40478f26b191aa327a9d88d6bb86bc3a7793690ef690c92c89",
     "backend/alembic/env.py": "c52f6052851de8c559c02ea1801249cad11801d7efa45f41e986db9f94a56baa",
     "backend/alembic/versions/0001_initial_schema.py": "48298531f646e4deab10361f4e6733581e595a23133fbecfbd676cb9ae7456d1",
     "backend/alembic/versions/0002_add_move_evals_seconds_spent.py": "862462c57dcf1df26ecd15679c875804998f1af7ef42da7eb823db20f165ebf3",
@@ -19,7 +19,7 @@
     "backend/app/jobs.py": "86eb553847ed0ce9592a35b8779679d5d9e1e65fcb48228ce2f8ed0396c63e0e",
     "backend/app/main.py": "acf05a3fde03cb216170f734f9f0467e7eeea3f6716f22d266429c73fc0f4d15",
     "backend/app/models.py": "6e577dde1a4d2ebf111e682f3c43e6102a91b9a3c83b7b9134fefe59484e2b51",
-    "backend/app/playstyle.py": "995c5f3ed817d4e062ed5cf73788b8cc98f5e75c73db9dd4cb36567723aa4b37",
+    "backend/app/playstyle.py": "4d9e458c64a815e68bf9b2c9656705fa755997f2edf35d34b0dc5fae4c04e2b7",
     "backend/scripts/analyze_hello.py": "29896377cb3a987022c4a7e7fdd6e37a27557965a04ce88d855fccddad9751c8",
     "backend/scripts/calibrate.py": "6578726ca57a59d474f34fc08fc8876620ce07ef7424c899dc33d55d8367cb0f",
     "backend/scripts/engine_hello.py": "a24e662c3e0cc665bcd5a26947b67f1db68440e29eb0e612ccc9a5361c4ff8fd",
@@ -46,13 +46,13 @@
     "frontend/next.config.ts": "cffa485cc39e35da1ff735d42c7a4e13fddb619d7d284a6ecced9e971a1e7f12",
     "frontend/postcss.config.mjs": "28a2e2028ed86bc42f1b4af4ea55278d0b89c5984c27c52fe738d8d0dd326085"
   },
-  "indexed_at_commit": "0eb6cd21aa8fdf7410ab7be921aef1903c8e21ae",
-  "indexed_at_timestamp": "2026-07-26T19:51:10.719521+00:00",
+  "indexed_at_commit": "68ea7138c730e108f3e61f4cc1d5cc29696a787c",
+  "indexed_at_timestamp": "2026-07-26T20:01:24.563199+00:00",
   "schema_version": 3,
   "stats": {
-    "total_edges": 529,
+    "total_edges": 530,
     "total_files": 45,
-    "total_nodes": 357
+    "total_nodes": 358
   },
   "vexp_version": "2.3.1"
 }
