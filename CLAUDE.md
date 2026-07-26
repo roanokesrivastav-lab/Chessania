@@ -45,4 +45,12 @@ cd frontend && npm run dev
 ## Key paths
 
 app/config.py (all tunables) · app/engine_eval.py (Evaluator seam) ·
-app/coach.py + app/data/openings.json · tests/fixtures/ · alembic/
+app/analysis.py (cp_loss/classify/tag_phase — the S9 perspective helpers) ·
+app/ingest.py (both fetchers + persistence/dedupe) · app/coach.py +
+app/data/openings.json (not yet built) · tests/fixtures/ · alembic/
+(migrations 0001 schema, 0002 seconds_spent)
+
+## Progress
+
+Phase 1 done (S1-7). Phase 2: S8 (raw evals) + S9 (classification) done.
+Next: S10 (async job). Full model/status: STATE.md.
