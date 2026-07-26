@@ -61,5 +61,17 @@ class Settings(BaseSettings):
     DET_TIMECLASS_MIN_GAMES: int = 5  # time_class_split: min games of EACH time class
     DET_PLAYABLE_CP: int = 150  # turning_point: "still playable" player-POV eval floor
 
+    # Time-coaching detectors (Session 13+ extension). All thresholds are
+    # read from stored PGN clock stamps and seconds_spent — no engine/network.
+    DET_TIME_RUSH_SECONDS: int = 15  # rushed_blunders: "low remaining clock" threshold (s)
+    DET_TIME_RUSH_MIN_SHARE: float = 0.40  # rushed_blunders: share of blunders at low clock to fire
+    DET_TIME_RUSH_MIN_BLUNDERS: int = 4  # rushed_blunders: min clocked player blunders to judge
+    DET_TIME_TROUBLE_CLOCK: int = 30  # time_trouble_collapse: "in time trouble" clock (s)
+    DET_TIME_TROUBLE_RATIO: float = 2.0  # time_trouble_collapse: low-clock error rate >= this x normal
+    DET_TIME_TROUBLE_MIN_GAMES: int = 5  # time_trouble_collapse: min games that reached time trouble
+    DET_TIME_DAWDLE_SECONDS: int = 20  # dawdling: seconds_spent on an ok move to count as dawdling
+    DET_TIME_DAWDLE_MIN_GAMES: int = 5  # dawdling: min games to fire
+    DET_TIME_DAWDLE_MAX_LEGAL: int = 8  # dawdling complexity gate: only ok-moves in positions with <= this many legal moves count (honors the LOCKED RULE)
+
 
 settings = Settings()

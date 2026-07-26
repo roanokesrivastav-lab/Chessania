@@ -6,7 +6,8 @@ diagnosis. This module is the diagnosis layer: six named pattern detectors,
 each pattern-matching over the SAME already-stored move_evals + games rows
 build_features already has in hand, looking for a specific, nameable
 weakness ("you hang pieces after you blunder", "you collapse late in
-games", "you leak the opening in your Pirc games").
+games", "you leak the opening in your Pirc games", "you blunder when
+your clock is low", "you dawdle in simple positions").
 
 Precision-first, deliberately. A rate that's slightly off just reads as an
 imprecise number; a DETECTOR that fires when it shouldn't reads as the
@@ -36,7 +37,7 @@ returns exactly:
 
     {"fired": bool, "stats": {...}, "evidence": [(game_id, ply), ...]}
 
-`run_detectors(games, evals)` calls all six and returns them keyed by name;
+`run_detectors(games, evals)` calls all nine and returns them keyed by name;
 that dict becomes `PlayerFeatures.detectors` verbatim.
 """
 
@@ -493,12 +494,241 @@ def detect_turning_point(games: list[Game], evals: dict[str, list[MoveEval]]) ->
 
 
 # ---------------------------------------------------------------------------
+# 7. rushed_blunders — blunders made with very little time left
+# ---------------------------------------------------------------------------
+
+
+def detect_rushed_blunders(games: list[Game], evals: dict[str, list[MoveEval]]) -> dict:
+    """Of the player's own blunders, how many were made with less than
+    DET_TIME_RUSH_SECONDS left on the clock? A high share of low-clock
+    blunders means the player is moving before they've finished looking.
+    The LOCKED RULE is satisfied intrinsically here: a blunder played with
+    < DET_TIME_RUSH_SECONDS remaining is by definition a rushed blunder,
+    not a slow one.
+    """
+    rushed: list[tuple[float, str, int]] = []  # (remaining_clock, game_id, ply)
+    clocked_blunders = 0
+
+    for game in games:
+        clocks = _remaining_clock_by_ply(game)
+        if not any(v is not None for v in clocks.values()):
+            continue  # clockless game — can't say anything about time
+        for row in evals.get(str(game.id), []):
+            if row.classification != "blunder" or not is_player_ply(row.ply, game.player_color):
+                continue
+            remaining = clocks.get(row.ply)
+            if remaining is None:
+                continue
+            clocked_blunders += 1
+            if remaining < settings.DET_TIME_RUSH_SECONDS:
+                rushed.append((remaining, str(game.id), row.ply))
+
+    if clocked_blunders == 0:
+        return {
+            "fired": False,
+            "stats": {
+                "rushed": 0,
+                "clocked_blunders": 0,
+                "share": 0.0,
+                "rush_seconds": settings.DET_TIME_RUSH_SECONDS,
+            },
+            "evidence": [],
+        }
+
+    rushed_count = len(rushed)
+    share = rushed_count / clocked_blunders
+    fired = (
+        clocked_blunders >= settings.DET_TIME_RUSH_MIN_BLUNDERS
+        and share >= settings.DET_TIME_RUSH_MIN_SHARE
+    )
+
+    # Cite the rushed blunders with the LOWEST remaining clock — the clearest.
+    top = sorted(rushed, key=lambda r: r[0])[:3]
+    return {
+        "fired": fired,
+        "stats": {
+            "rushed": rushed_count,
+            "clocked_blunders": clocked_blunders,
+            "share": round(share, 3),
+            "rush_seconds": settings.DET_TIME_RUSH_SECONDS,
+        },
+        "evidence": [(gid, ply) for _rem, gid, ply in top],
+    }
+
+
+# ---------------------------------------------------------------------------
+# 8. time_trouble_collapse — error rate spikes once the clock runs low
+# ---------------------------------------------------------------------------
+
+
+def detect_time_trouble_collapse(games: list[Game], evals: dict[str, list[MoveEval]]) -> dict:
+    """Does the player's error rate spike once their remaining clock drops
+    below DET_TIME_TROUBLE_CLOCK? Compares error rate (mistakes + blunders
+    per move) in time trouble vs at normal clock, requiring enough games to
+    have actually reached time trouble before saying anything.
+    """
+    low_moves = low_errors = 0
+    normal_moves = normal_errors = 0
+    low_evidence: list[tuple[float, str, int]] = []  # (remaining_clock, game_id, ply)
+    games_in_trouble = 0
+
+    for game in games:
+        clocks = _remaining_clock_by_ply(game)
+        if not any(v is not None for v in clocks.values()):
+            continue  # clockless game — can't say anything about time
+        saw_low = False
+        for row in evals.get(str(game.id), []):
+            if not is_player_ply(row.ply, game.player_color):
+                continue
+            remaining = clocks.get(row.ply)
+            if remaining is None:
+                continue
+            if remaining < settings.DET_TIME_TROUBLE_CLOCK:
+                saw_low = True
+                low_moves += 1
+                if row.classification in ("mistake", "blunder"):
+                    low_errors += 1
+                    low_evidence.append((remaining, str(game.id), row.ply))
+            else:
+                normal_moves += 1
+                if row.classification in ("mistake", "blunder"):
+                    normal_errors += 1
+        if saw_low:
+            games_in_trouble += 1
+
+    rate_low = low_errors / low_moves if low_moves else 0.0
+    rate_normal = normal_errors / normal_moves if normal_moves else 0.0
+
+    fired = (
+        games_in_trouble >= settings.DET_TIME_TROUBLE_MIN_GAMES
+        and normal_moves > 0
+        and rate_low >= settings.DET_TIME_TROUBLE_RATIO * rate_normal
+    )
+
+    # Cite the low-clock errors with the lowest remaining clock.
+    top = sorted(low_evidence, key=lambda r: r[0])[:3]
+    return {
+        "fired": fired,
+        "stats": {
+            "rate_low": round(rate_low, 3),
+            "rate_normal": round(rate_normal, 3),
+            "games_in_trouble": games_in_trouble,
+            "low_clock": settings.DET_TIME_TROUBLE_CLOCK,
+        },
+        "evidence": [(gid, ply) for _rem, gid, ply in top],
+    }
+
+
+# ---------------------------------------------------------------------------
+# 9. dawdling — slow moves in simple positions that later cost time
+# ---------------------------------------------------------------------------
+
+
+def detect_dawdling(games: list[Game], evals: dict[str, list[MoveEval]]) -> dict:
+    """Does the player burn DET_TIME_DAWDLE_SECONDS or more on low-cost
+    ("ok") moves in simple positions, then later land in time trouble?
+    The complexity gate (<= DET_TIME_DAWDLE_MAX_LEGAL legal moves) honors
+    the LOCKED RULE: time spent thinking on genuinely hard positions is
+    good judgment, not a flaw, and is never counted here.
+    """
+    dawdles: list[tuple[int, str, int]] = []  # (seconds_spent, game_id, ply)
+    qualifying_games: set[str] = set()
+
+    for game in games:
+        clocks = _remaining_clock_by_ply(game)
+        if not any(v is not None for v in clocks.values()):
+            continue  # clockless game — can't say anything about time
+
+        # Find the FIRST player ply that reached time trouble, if any.
+        # A dawdle only counts if it happened *before* that point.
+        trouble_ply: int | None = None
+        for ply, remaining in clocks.items():
+            if (
+                remaining is not None
+                and remaining < settings.DET_TIME_TROUBLE_CLOCK
+                and is_player_ply(ply, game.player_color)
+            ):
+                trouble_ply = ply
+                break
+        if trouble_ply is None:
+            continue
+
+        game_dawdled = False
+        for row in evals.get(str(game.id), []):
+            if not is_player_ply(row.ply, game.player_color):
+                continue
+            if row.ply >= trouble_ply:
+                continue
+            if row.classification != "ok" or row.seconds_spent is None:
+                continue
+            if row.seconds_spent < settings.DET_TIME_DAWDLE_SECONDS:
+                continue
+            try:
+                board = chess.Board(row.fen_before)
+                if board.legal_moves.count() > settings.DET_TIME_DAWDLE_MAX_LEGAL:
+                    continue
+            except ValueError:
+                continue
+            dawdles.append((row.seconds_spent, str(game.id), row.ply))
+            game_dawdled = True
+
+        if game_dawdled:
+            qualifying_games.add(str(game.id))
+
+    fired = len(qualifying_games) >= settings.DET_TIME_DAWDLE_MIN_GAMES
+
+    avg_seconds = 0.0
+    if dawdles:
+        avg_seconds = round(sum(s for s, _, _ in dawdles) / len(dawdles), 1)
+
+    # Cite the 3 longest dawdled moves.
+    top = sorted(dawdles, key=lambda r: -r[0])[:3]
+    return {
+        "fired": fired,
+        "stats": {
+            "confidence": "low",
+            "avg_dawdle_seconds": avg_seconds,
+            "game_count": len(qualifying_games),
+            "dawdle_seconds": settings.DET_TIME_DAWDLE_SECONDS,
+        },
+        "evidence": [(gid, ply) for _sec, gid, ply in top],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Shared helper: remaining clock per ply, parsed from the PGN
+# ---------------------------------------------------------------------------
+
+
+def _remaining_clock_by_ply(game: Game) -> dict[int, float | None]:
+    """Return the remaining clock (seconds) after each ply, as recorded in
+    the PGN's [%clk] comments. This mirrors `extract_move_times`
+    (analysis.py) exactly: same 1-based ply numbering, same walk over the
+    mainline, same None when a move has no clock stamp. If every value is
+    None the game was clockless; callers use that as a signal to skip it.
+    """
+    parsed = chess.pgn.read_game(io.StringIO(game.pgn))
+    if parsed is None:
+        return {}
+
+    clocks: dict[int, float | None] = {}
+    ply = 0
+    node = parsed
+    while node.variations:
+        node = node.variation(0)
+        ply += 1
+        clocks[ply] = node.clock()
+
+    return clocks
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 
 def run_detectors(games: list[Game], evals: dict[str, list[MoveEval]]) -> dict[str, dict]:
-    """Run every S13 detector over the same (games, evals) shapes
+    """Run every detector over the same (games, evals) shapes
     `build_features` already has, keyed by name. This dict becomes
     `PlayerFeatures.detectors` verbatim."""
     return {
@@ -508,4 +738,7 @@ def run_detectors(games: list[Game], evals: dict[str, list[MoveEval]]) -> dict[s
         "overextension": detect_overextension(games, evals),
         "time_class_split": detect_time_class_split(games, evals),
         "turning_point": detect_turning_point(games, evals),
+        "rushed_blunders": detect_rushed_blunders(games, evals),
+        "time_trouble_collapse": detect_time_trouble_collapse(games, evals),
+        "dawdling": detect_dawdling(games, evals),
     }

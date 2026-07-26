@@ -18,12 +18,16 @@ import pytest
 from app.config import settings
 from app.detectors import (
     _game_eco,
+    _remaining_clock_by_ply,
     _see,
+    detect_dawdling,
     detect_hung_pieces,
     detect_late_collapse,
     detect_opening_leak,
     detect_overextension,
+    detect_rushed_blunders,
     detect_time_class_split,
+    detect_time_trouble_collapse,
     detect_turning_point,
     run_detectors,
 )
@@ -63,6 +67,105 @@ def test_see_winning_the_exchange_rook_for_bishop():
 
 
 # ---------------------------------------------------------------------------
+# _remaining_clock_by_ply
+# ---------------------------------------------------------------------------
+
+
+def _fmt_hms(seconds: int) -> str:
+    """Format seconds as H:MM:SS for PGN [%clk] comments."""
+    return f"{seconds // 3600}:{(seconds % 3600) // 60:02d}:{seconds % 60:02d}"
+
+
+def _build_pgn_with_clocks(moves: list[str], clocks: list[int | None]) -> str:
+    """A legal PGN whose mainline is `moves` and whose clock comments are
+    taken from `clocks` (remaining seconds after each move)."""
+    parts: list[str] = []
+    for i, (san, clk) in enumerate(zip(moves, clocks), start=1):
+        clk_str = _fmt_hms(clk) if clk is not None else "0:00:00"
+        if i % 2 == 1:
+            parts.append(f"{(i + 1) // 2}. {san} {{[%clk {clk_str}]}}")
+        else:
+            parts.append(f"{san} {{[%clk {clk_str}]}}")
+    return (
+        '[Event "Test"]\n'
+        '[Site "?"]\n'
+        '[Date "2026.07.26"]\n'
+        '[Round "?"]\n'
+        '[White "White"]\n'
+        '[Black "Black"]\n'
+        '[Result "*"]\n\n'
+        f'{" ".join(parts)} *'
+    )
+
+
+def _make_clocked_game(
+    db_session,
+    player,
+    *,
+    moves: list[str],
+    clocks: list[int | None],
+    row_specs: list[dict] | None = None,
+    time_class: str = "blitz",
+    player_color: str = "white",
+    played_at=None,
+    i: int = 0,
+) -> Game:
+    """Insert a Game with a real PGN carrying [%clk] comments, plus matching
+    MoveEval rows. `row_specs` controls classification, seconds_spent, and any
+    per-row overrides (fen_before, move_san, cp_loss)."""
+    pgn = _build_pgn_with_clocks(moves, clocks)
+    game = Game(
+        player_id=player.id,
+        platform_game_id=str(uuid.uuid4()),
+        game_url="https://example.com/g",
+        pgn=pgn,
+        time_class=time_class,
+        player_color=player_color,
+        result="loss",
+        played_at=played_at or (_BASE_TIME + dt.timedelta(minutes=i)),
+    )
+    db_session.add(game)
+    db_session.commit()
+
+    # Replay the moves to get the real fen_before for each ply.
+    board = chess.Board()
+    computed_fens: list[str] = []
+    for san in moves:
+        computed_fens.append(board.fen())
+        board.push_san(san)
+
+    if row_specs is None:
+        row_specs = [{"classification": "ok", "seconds_spent": 0} for _ in moves]
+
+    for idx, spec in enumerate(row_specs):
+        ply = spec.get("ply", idx + 1)
+        move_san = spec.get("move_san", moves[idx])
+        fen_before = spec.get("fen_before", computed_fens[idx])
+        classification = spec["classification"]
+        cp_loss_val = spec.get(
+            "cp_loss",
+            300 if classification == "blunder" else (100 if classification == "mistake" else 0),
+        )
+        db_session.add(
+            MoveEval(
+                game_id=game.id,
+                ply=ply,
+                move_san=move_san,
+                fen_before=fen_before,
+                eval_cp_before=spec.get("eval_cp_before", 0),
+                eval_cp_after=spec.get("eval_cp_after", 0),
+                cp_loss=cp_loss_val,
+                best_move_san=spec.get("best_move_san", move_san),
+                classification=classification,
+                phase=spec.get("phase", "opening"),
+                seconds_spent=spec.get("seconds_spent"),
+            )
+        )
+    db_session.commit()
+    return game
+
+
+# ---------------------------------------------------------------------------
 # _game_eco
 # ---------------------------------------------------------------------------
 
@@ -81,11 +184,11 @@ def test_game_eco_reads_from_pgn_tag_when_opening_eco_column_is_none():
 
 
 # ---------------------------------------------------------------------------
-# run_detectors — shape sanity (all six keys, safe on zero games)
+# run_detectors — shape sanity (all nine keys, safe on zero games)
 # ---------------------------------------------------------------------------
 
 
-def test_run_detectors_returns_all_six_keys_and_is_safe_on_empty_input():
+def test_run_detectors_returns_all_nine_keys_and_is_safe_on_empty_input():
     result = run_detectors([], {})
     assert set(result) == {
         "hung_pieces",
@@ -94,6 +197,9 @@ def test_run_detectors_returns_all_six_keys_and_is_safe_on_empty_input():
         "overextension",
         "time_class_split",
         "turning_point",
+        "rushed_blunders",
+        "time_trouble_collapse",
+        "dawdling",
     }
     for detector in result.values():
         assert detector["fired"] is False
@@ -574,3 +680,246 @@ def test_meaningful_blunders_per_game_excludes_blunders_after_the_ponr(db_sessio
     assert features.detectors["turning_point"]["stats"]["ponr_by_game"][str(game.id)] == 4
     assert features.blunders_per_game == 2.0
     assert features.meaningful_blunders_per_game == 1.0
+
+
+# ---------------------------------------------------------------------------
+# 7. rushed_blunders
+# ---------------------------------------------------------------------------
+
+
+def test_detect_rushed_blunders_fires_when_most_blunders_are_low_clock(db_session):
+    player = Player(platform="chesscom", username="rushed_pos")
+    db_session.add(player)
+    db_session.commit()
+
+    # 5 games, each with one player blunder at a low remaining clock.
+    # clocked_blunders = 5 (>= DET_TIME_RUSH_MIN_BLUNDERS=4) and share = 1.0.
+    games = []
+    for i in range(5):
+        g = _make_clocked_game(
+            db_session,
+            player,
+            moves=["e4", "e5", "Nf3", "Nc6"],
+            clocks=[10, 180, 170, 160],  # ply 1 is the player's blunder, 10s left
+            row_specs=[
+                {"classification": "blunder", "seconds_spent": 2},
+                {"classification": "ok", "seconds_spent": 3},
+                {"classification": "ok", "seconds_spent": 3},
+                {"classification": "ok", "seconds_spent": 3},
+            ],
+            i=i,
+        )
+        games.append(g)
+
+    result = detect_rushed_blunders(games, _evals_for(db_session, *games))
+    assert result["fired"] is True
+    assert result["stats"]["clocked_blunders"] == 5
+    assert result["stats"]["rushed"] == 5
+    assert result["stats"]["share"] == 1.0
+    assert len(result["evidence"]) == 3
+
+
+def test_detect_rushed_blunders_does_not_fire_when_share_below_threshold(db_session):
+    player = Player(platform="chesscom", username="rushed_neg")
+    db_session.add(player)
+    db_session.commit()
+
+    # 5 blunders, all with plenty of time — share 0 < DET_TIME_RUSH_MIN_SHARE (0.40).
+    games = []
+    for i in range(5):
+        g = _make_clocked_game(
+            db_session,
+            player,
+            moves=["e4", "e5", "Nf3", "Nc6"],
+            clocks=[60, 180, 170, 160],
+            row_specs=[
+                {"classification": "blunder", "seconds_spent": 20},
+                {"classification": "ok", "seconds_spent": 3},
+                {"classification": "ok", "seconds_spent": 3},
+                {"classification": "ok", "seconds_spent": 3},
+            ],
+            i=i,
+        )
+        games.append(g)
+
+    result = detect_rushed_blunders(games, _evals_for(db_session, *games))
+    assert result["fired"] is False
+    assert result["stats"]["clocked_blunders"] == 5
+    assert result["stats"]["rushed"] == 0
+    assert result["stats"]["share"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# 8. time_trouble_collapse
+# ---------------------------------------------------------------------------
+
+
+def test_detect_time_trouble_collapse_fires_when_low_clock_errors_spike(db_session):
+    player = Player(platform="chesscom", username="trouble_pos")
+    db_session.add(player)
+    db_session.commit()
+
+    # 5 games: normal player ply is clean (120s), low-clock player ply is a blunder (10s).
+    games = []
+    for i in range(5):
+        g = _make_clocked_game(
+            db_session,
+            player,
+            moves=["e4", "e5", "Nf3", "Nc6"],
+            clocks=[120, 180, 10, 160],
+            row_specs=[
+                {"classification": "ok", "seconds_spent": 5},        # ply 1: normal, clean
+                {"classification": "ok", "seconds_spent": 3},
+                {"classification": "blunder", "seconds_spent": 2},   # ply 3: low-clock, error
+                {"classification": "ok", "seconds_spent": 3},
+            ],
+            i=i,
+        )
+        games.append(g)
+
+    result = detect_time_trouble_collapse(games, _evals_for(db_session, *games))
+    assert result["fired"] is True
+    assert result["stats"]["games_in_trouble"] == 5
+    assert result["stats"]["rate_low"] == 1.0
+    assert result["stats"]["rate_normal"] == 0.0
+    assert len(result["evidence"]) == 3
+
+
+def test_detect_time_trouble_collapse_does_not_fire_when_rates_are_equal(db_session):
+    player = Player(platform="chesscom", username="trouble_neg")
+    db_session.add(player)
+    db_session.commit()
+
+    # 5 games: an error at both normal and low clock, so rates are equal (1.0 each).
+    games = []
+    for i in range(5):
+        g = _make_clocked_game(
+            db_session,
+            player,
+            moves=["e4", "e5", "Nf3", "Nc6"],
+            clocks=[120, 180, 10, 160],
+            row_specs=[
+                {"classification": "mistake", "seconds_spent": 5},    # normal, error
+                {"classification": "ok", "seconds_spent": 3},
+                {"classification": "mistake", "seconds_spent": 2},   # low, error
+                {"classification": "ok", "seconds_spent": 3},
+            ],
+            i=i,
+        )
+        games.append(g)
+
+    result = detect_time_trouble_collapse(games, _evals_for(db_session, *games))
+    assert result["fired"] is False
+    assert result["stats"]["rate_low"] == 1.0
+    assert result["stats"]["rate_normal"] == 1.0
+
+
+# ---------------------------------------------------------------------------
+# 9. dawdling
+# ---------------------------------------------------------------------------
+
+# A position with only one legal king move — well under the complexity gate.
+_DAWDLE_FEN = "8/8/8/8/8/8/5k2/7K w - - 0 1"
+
+
+def test_detect_dawdling_fires_when_ok_moves_waste_time_before_trouble(db_session):
+    player = Player(platform="chesscom", username="dawdle_pos")
+    db_session.add(player)
+    db_session.commit()
+
+    # 5 games: a long think on a simple position (20 legal moves gate not needed,
+    # this position has 1), then later the player drops under 30s.
+    games = []
+    for i in range(5):
+        g = _make_clocked_game(
+            db_session,
+            player,
+            moves=["e4", "e5", "Nf3", "Nc6"],
+            clocks=[120, 180, 20, 160],  # ply 3 is the low-clock player ply
+            row_specs=[
+                {
+                    "classification": "ok",
+                    "seconds_spent": 25,  # dawdled
+                    "move_san": "Kh2",
+                    "fen_before": _DAWDLE_FEN,
+                },
+                {"classification": "ok", "seconds_spent": 3},
+                {"classification": "ok", "seconds_spent": 2},  # time-trouble ply
+                {"classification": "ok", "seconds_spent": 3},
+            ],
+            i=i,
+        )
+        games.append(g)
+
+    result = detect_dawdling(games, _evals_for(db_session, *games))
+    assert result["fired"] is True
+    assert result["stats"]["game_count"] == 5
+    assert result["stats"]["avg_dawdle_seconds"] == 25.0
+    assert len(result["evidence"]) == 3
+
+
+def test_detect_dawdling_does_not_fire_without_later_time_trouble(db_session):
+    player = Player(platform="chesscom", username="dawdle_neg")
+    db_session.add(player)
+    db_session.commit()
+
+    # 5 games with a long think on a simple position, but the clock never drops low.
+    games = []
+    for i in range(5):
+        g = _make_clocked_game(
+            db_session,
+            player,
+            moves=["e4", "e5", "Nf3", "Nc6"],
+            clocks=[120, 180, 120, 160],  # every ply stays above 30s
+            row_specs=[
+                {
+                    "classification": "ok",
+                    "seconds_spent": 25,
+                    "move_san": "Kh2",
+                    "fen_before": _DAWDLE_FEN,
+                },
+                {"classification": "ok", "seconds_spent": 3},
+                {"classification": "ok", "seconds_spent": 3},
+                {"classification": "ok", "seconds_spent": 3},
+            ],
+            i=i,
+        )
+        games.append(g)
+
+    result = detect_dawdling(games, _evals_for(db_session, *games))
+    assert result["fired"] is False
+    assert result["stats"]["game_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# _remaining_clock_by_ply direct tests
+# ---------------------------------------------------------------------------
+
+
+def test_remaining_clock_by_ply_reads_pgn_clock_comments():
+    player = Player(platform="chesscom", username="clock_reader")
+    # No DB needed for this pure helper.
+    game = Game(
+        player_id=player.id,
+        platform_game_id="x",
+        game_url="u",
+        pgn='[Event "Test"]\n\n1. e4 {[%clk 0:02:00]} e5 {[%clk 0:02:00]}',
+        time_class="blitz",
+        player_color="white",
+        result="loss",
+    )
+    assert _remaining_clock_by_ply(game) == {1: 120, 2: 120}
+
+
+def test_remaining_clock_by_ply_returns_none_when_no_clocks():
+    player = Player(platform="chesscom", username="clockless")
+    game = Game(
+        player_id=player.id,
+        platform_game_id="x",
+        game_url="u",
+        pgn="1. e4 e5",
+        time_class="blitz",
+        player_color="white",
+        result="loss",
+    )
+    assert _remaining_clock_by_ply(game) == {1: None, 2: None}
