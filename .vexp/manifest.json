@@ -14,11 +14,12 @@
     "backend/app/db.py": "695e629029e8797fd36aedc1a346b75c14c85883425ad16d26a527fdb8b84660",
     "backend/app/detectors.py": "1e2d29502dd2b6ba25cc3d2894b4d01b915d70d4bbfca17613df4807b7132a61",
     "backend/app/engine_eval.py": "cfd878ec8d2661c15f0d96b6582e3fd23c45cc4b32ef1f10aa5d76cb66702106",
-    "backend/app/features.py": "a83af32c850458cc031870c1f3a8f32629322fb2dee8823c02931a32f5c7d56b",
+    "backend/app/features.py": "dfdb6b847686d609c5c3f551d2e2c2c16509400eac59a5c66d4b8a8f0098130c",
     "backend/app/ingest.py": "5e45a8a8f594c6574d1b8b7694bb37e4c17c363f1e71341c0762b46575507292",
     "backend/app/jobs.py": "86eb553847ed0ce9592a35b8779679d5d9e1e65fcb48228ce2f8ed0396c63e0e",
     "backend/app/main.py": "acf05a3fde03cb216170f734f9f0467e7eeea3f6716f22d266429c73fc0f4d15",
     "backend/app/models.py": "6e577dde1a4d2ebf111e682f3c43e6102a91b9a3c83b7b9134fefe59484e2b51",
+    "backend/app/playstyle.py": "995c5f3ed817d4e062ed5cf73788b8cc98f5e75c73db9dd4cb36567723aa4b37",
     "backend/scripts/analyze_hello.py": "29896377cb3a987022c4a7e7fdd6e37a27557965a04ce88d855fccddad9751c8",
     "backend/scripts/calibrate.py": "6578726ca57a59d474f34fc08fc8876620ce07ef7424c899dc33d55d8367cb0f",
     "backend/scripts/engine_hello.py": "a24e662c3e0cc665bcd5a26947b67f1db68440e29eb0e612ccc9a5361c4ff8fd",
@@ -35,6 +36,7 @@
     "backend/tests/test_features.py": "a2e98e67a5872530a2c65090cb7c412eb07ea9a3b8e15d5c27ea32f899a4e32c",
     "backend/tests/test_ingest.py": "22cc021e96ce7b3d120c234d7a0556483c3a185307083abb3eaf3297f604ba68",
     "backend/tests/test_jobs.py": "89ddc3ff183be1976053d50b44311a31001ea4244cbb69ee752dc6176f8e9aa4",
+    "backend/tests/test_playstyle.py": "a9fc883f1d5f5f0d538890731d56b6d769c0bb48a2af63e00da59eb36312bdc9",
     "frontend/AGENTS.md": "40200c832b35906667f936dfcf13760d9237a813441951495ab5ff4c5ee9d9b8",
     "frontend/CLAUDE.md": "eb5f48bc10e0c22ebc0d90b72401142f812ff998d8107c18dc572adc562fde08",
     "frontend/README.md": "516b4567b54983fef95143c2886d6e208838827596bab651a8bdabdfd1abb325",
@@ -44,13 +46,13 @@
     "frontend/next.config.ts": "cffa485cc39e35da1ff735d42c7a4e13fddb619d7d284a6ecced9e971a1e7f12",
     "frontend/postcss.config.mjs": "28a2e2028ed86bc42f1b4af4ea55278d0b89c5984c27c52fe738d8d0dd326085"
   },
-  "indexed_at_commit": "4a1bcb7016927f34851c9231626490bae2a7d901",
-  "indexed_at_timestamp": "2026-07-26T18:32:51.192008+00:00",
+  "indexed_at_commit": "0eb6cd21aa8fdf7410ab7be921aef1903c8e21ae",
+  "indexed_at_timestamp": "2026-07-26T19:51:10.719521+00:00",
   "schema_version": 3,
   "stats": {
-    "total_edges": 431,
-    "total_files": 43,
-    "total_nodes": 319
+    "total_edges": 529,
+    "total_files": 45,
+    "total_nodes": 357
   },
   "vexp_version": "2.3.1"
 }

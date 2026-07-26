@@ -43,6 +43,7 @@ from app.analysis import is_player_ply, player_pov_eval
 from app.config import settings
 from app.detectors import run_detectors
 from app.models import Game, MoveEval, Player
+from app.playstyle import Playstyle, compute_playstyle
 
 _PHASES = ("opening", "middlegame", "endgame")
 
@@ -132,6 +133,7 @@ class PlayerFeatures:
     by_color: dict[str, ColorStats] = field(default_factory=dict)  # only colors actually played
 
     detectors: dict | None = None  # S13: pattern-matched named weaknesses (see app/detectors.py)
+    playstyle: Playstyle | None = None  # S14: tactical/positional/balanced index (see app/playstyle.py)
 
 
 # ---------------------------------------------------------------------------
@@ -465,6 +467,7 @@ def build_features(
             endgame_conversion_evidence=[],
             meaningful_blunders_per_game=0.0,
             by_color={},
+            playstyle=compute_playstyle([], {}),
         )
 
     # move_evals stores a row for EVERY ply of a game — both the player's
@@ -515,6 +518,7 @@ def build_features(
             by_color[color] = _color_stats(color_games, evals)
 
     detectors = run_detectors(games_sorted, evals)
+    playstyle = compute_playstyle(games_sorted, evals)
     meaningful_blunders_per_game = _meaningful_blunders_per_game(
         games_sorted, player_evals, detectors
     )
@@ -541,6 +545,7 @@ def build_features(
         meaningful_blunders_per_game=meaningful_blunders_per_game,
         by_color=by_color,
         detectors=detectors,
+        playstyle=playstyle,
     )
 
 
