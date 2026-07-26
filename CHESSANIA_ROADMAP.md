@@ -1417,6 +1417,42 @@ class PhaseStats(BaseModel):
     opening: float; middlegame: float; endgame: float   # ACPL per phase
 
 
+class WLD(BaseModel):                  # win/loss/draw tally (2026-07-25 amendment)
+
+
+    win: int; loss: int; draw: int
+
+
+class ColorStats(BaseModel):          # per-color weakness breakdown (2026-07-25 amendment)
+
+
+    games: int
+
+
+    results: WLD                      # {win, loss, draw} for this color
+
+
+    blunders_per_game: float
+
+
+    acpl_overall: float | None        # None = no non-skipped moves of this color
+
+
+    acpl_by_phase: PhaseStats
+
+
+    worst_phase: Literal["opening","middlegame","endgame"] | None
+
+
+    opening_leak_rate: float
+
+
+    endgame_conversion: float | None  # None = no qualifying games of this color
+
+
+    low_signal: bool                  # < 4 games of this color → coach copy must hedge
+
+
 class StatsBlock(BaseModel):
 
 
@@ -1439,6 +1475,12 @@ class StatsBlock(BaseModel):
 
 
     per_game_acpl: list[float]           # chronological, for any future sparkline
+
+
+    by_color: dict[str, ColorStats] | None   # keys "white"/"black" (2026-07-25 amendment); only
+                                             # colors actually played appear; None = not computed.
+                                             # Surfaces a real white-vs-black gap as a first-class
+                                             # weakness instead of averaging it away.
 
 
 class Delta(BaseModel):

@@ -1,6 +1,6 @@
 {
   "file_hashes": {
-    "CHESSANIA_ROADMAP.md": "21eda79c0104fee50cc962ec11e7a3e47fe856cc0b19a52c58f92842a7c86188",
+    "CHESSANIA_ROADMAP.md": "5c0be807b9012c17613121f7259cd83057726301086cc5f5640692da7e2614fa",
     "CLAUDE.md": "e19cf69ef82fa7c3f7bbc0178026ca36c267593b8e06a98ea76350d31c91d3a1",
     "PRD.md": "ffa960c7f42ffa39356000c6e915e3799d45084837252076ff050e43c8633a34",
     "README.md": "d937de63ff631a4b05266942c32b9b8b9b06e3e2c8f4710003bf0a67957bddfb",
@@ -39,13 +39,13 @@
     "frontend/next.config.ts": "cffa485cc39e35da1ff735d42c7a4e13fddb619d7d284a6ecced9e971a1e7f12",
     "frontend/postcss.config.mjs": "28a2e2028ed86bc42f1b4af4ea55278d0b89c5984c27c52fe738d8d0dd326085"
   },
-  "indexed_at_commit": "76e049f51989d51d4f125297068daa0ac3d480e5",
-  "indexed_at_timestamp": "2026-07-26T10:30:28.415429+00:00",
+  "indexed_at_commit": "6556c0d0f7f100f1092902027973145a327fb8d8",
+  "indexed_at_timestamp": "2026-07-26T10:39:58.001182+00:00",
   "schema_version": 3,
   "stats": {
-    "total_edges": 236,
+    "total_edges": 239,
     "total_files": 38,
-    "total_nodes": 226
+    "total_nodes": 229
   },
   "vexp_version": "2.3.1"
 }
