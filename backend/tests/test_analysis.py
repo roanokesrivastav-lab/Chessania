@@ -1,11 +1,24 @@
 """Session 9 offline tests for the pure analysis helpers — no engine, no network,
 no DB. cp_loss / classify / tag_phase / extract_move_times are deliberately pure
 so their math can be pinned down here with hand-computed numbers (roadmap S9:
-"the one perspective helper, tested to death")."""
+"the one perspective helper, tested to death").
+
+Session 11 adds whole-game tests below: analyze_game run end-to-end against
+FixtureEvaluator (recorded real-Stockfish answers, replayed from disk — see
+app/engine_eval.py and scripts/record_fixtures.py) over the four committed
+PGN fixtures. Still fully offline: FixtureEvaluator never launches an engine."""
+
+import io
+from collections import Counter
 
 import chess
+import chess.pgn
+import pytest
 
-from app.analysis import classify, cp_loss, extract_move_times, tag_phase
+from app.analysis import analyze_game, classify, cp_loss, extract_move_times, tag_phase
+from app.engine_eval import FixtureEvaluator, FixtureMissError
+from app.models import EvalCache, Game, Player
+from tests.conftest import load_fixture
 
 # ---------------------------------------------------------------------------
 # cp_loss — all four quadrants, hand-computed, White's-POV inputs
@@ -145,3 +158,120 @@ def test_extract_move_times_clockless_returns_none():
 def test_extract_move_times_unparseable_time_control():
     pgn = '[TimeControl "-"]\n\n1. e4 {[%clk 0:02:59]} *\n'
     assert extract_move_times(pgn)[1] is None
+
+
+# ---------------------------------------------------------------------------
+# analyze_game — whole-game integration, offline via FixtureEvaluator
+# ---------------------------------------------------------------------------
+# The numbers below are NOT guesses: they were derived by running
+# scripts/record_fixtures.py (real Stockfish, depth 12) and then a throwaway
+# probe script that ran analyze_game over each fixture and printed the
+# resulting classification/phase counts. They pin down the pipeline's actual
+# depth-12 output for these four committed games.
+
+_EXPECTED_CLASSIFICATION_COUNTS = {
+    "gt_cleanwin": {"ok": 12, "inaccuracy": 1, "mistake": 0, "blunder": 1, "skipped": 1},
+    "gt_piecedrop": {"ok": 63, "inaccuracy": 14, "mistake": 8, "blunder": 2, "skipped": 20},
+    "gt_lostendgame": {"ok": 70, "inaccuracy": 7, "mistake": 3, "blunder": 3, "skipped": 14},
+    "eleven14_blitz_loss": {"ok": 43, "inaccuracy": 8, "mistake": 2, "blunder": 3, "skipped": 0},
+}
+
+
+def _build_game(db_session, stem: str) -> Game:
+    """Insert a throwaway Player + Game for a fixture PGN, the way
+    scripts/calibrate.py does, but against the db_session fixture instead of
+    a hand-rolled in-memory engine. player_color/result are fixed values —
+    they don't affect which positions get evaluated (analyze_game walks
+    every ply's before/after regardless of whose move it is), only which
+    fixture file (by `stem`) FixtureEvaluator replays."""
+    pgn = load_fixture("pgn", f"{stem}.pgn")
+    headers = chess.pgn.read_game(io.StringIO(pgn)).headers
+    player = Player(platform="chesscom", username=headers.get("White", "u").lower())
+    db_session.add(player)
+    db_session.commit()
+    game = Game(
+        player_id=player.id,
+        platform_game_id=headers.get("Link", stem),
+        game_url=headers.get("Link", ""),
+        pgn=pgn,
+        time_class="blitz",
+        player_color="white",
+        result="win",
+    )
+    db_session.add(game)
+    db_session.commit()
+    return game
+
+
+@pytest.mark.parametrize("stem", sorted(_EXPECTED_CLASSIFICATION_COUNTS))
+def test_analyze_game_classification_counts_match_recorded_evals(db_session, stem):
+    game = _build_game(db_session, stem)
+    rows = analyze_game(game, FixtureEvaluator(stem, cache_session=db_session), db_session)
+
+    counts = Counter(r.classification for r in rows)
+    expected = _EXPECTED_CLASSIFICATION_COUNTS[stem]
+    for classification, expected_count in expected.items():
+        assert counts.get(classification, 0) == expected_count, (
+            f"{stem}: expected {expected_count} '{classification}' rows, "
+            f"got {counts.get(classification, 0)} (all counts: {dict(counts)})"
+        )
+    assert sum(expected.values()) == len(rows)
+
+
+@pytest.mark.parametrize("stem", sorted(_EXPECTED_CLASSIFICATION_COUNTS))
+def test_analyze_game_ply_one_is_opening(db_session, stem):
+    game = _build_game(db_session, stem)
+    rows = analyze_game(game, FixtureEvaluator(stem, cache_session=db_session), db_session)
+    assert rows[0].ply == 1
+    assert rows[0].phase == "opening"
+
+
+def test_analyze_game_lostendgame_reaches_endgame_phase(db_session):
+    # Derived from the same probe run: gt_lostendgame's endgame phase begins
+    # at ply 38 and its middlegame includes ply 21 (first ply after the
+    # opening's ply<=20 cutoff).
+    game = _build_game(db_session, "gt_lostendgame")
+    rows = analyze_game(
+        game, FixtureEvaluator("gt_lostendgame", cache_session=db_session), db_session
+    )
+    by_ply = {r.ply: r for r in rows}
+    assert by_ply[38].phase == "endgame"
+    assert by_ply[21].phase == "middlegame"
+
+
+def test_analyze_game_lostendgame_has_skipped_rows_in_decided_stretch(db_session):
+    game = _build_game(db_session, "gt_lostendgame")
+    rows = analyze_game(
+        game, FixtureEvaluator("gt_lostendgame", cache_session=db_session), db_session
+    )
+    skipped = [r for r in rows if r.classification == "skipped"]
+    assert len(skipped) >= 1
+
+
+def test_analyze_game_cache_write_through_and_reuse(db_session):
+    """First run writes eval_cache rows through FixtureEvaluator (which shares
+    CachingEvaluator's cache logic with StockfishEvaluator). A second run,
+    with a fresh FixtureEvaluator instance over the same game, should find
+    every position already cached — all hits, no misses. analyze_game is
+    idempotent (deletes+reinserts move_evals per run), so re-running is safe."""
+    stem = "gt_cleanwin"
+    game = _build_game(db_session, stem)
+
+    analyze_game(game, FixtureEvaluator(stem, cache_session=db_session), db_session)
+    assert db_session.query(EvalCache).count() > 0
+
+    second_evaluator = FixtureEvaluator(stem, cache_session=db_session)
+    analyze_game(game, second_evaluator, db_session)
+    assert second_evaluator.cache_hits > 0
+    assert second_evaluator.cache_misses == 0
+
+
+def test_fixture_evaluator_raises_loudly_on_unrecorded_position():
+    """A fixture miss means the caller reached a position that was never
+    recorded — a real bug (stale fixture, or analyzing the wrong game), never
+    something to paper over with a default eval."""
+    evaluator = FixtureEvaluator("gt_cleanwin")
+    board = chess.Board()
+    board.push_san("a4")  # gt_cleanwin's actual mainline opens 1.e4 — never recorded
+    with pytest.raises(FixtureMissError):
+        evaluator.evaluate(board)

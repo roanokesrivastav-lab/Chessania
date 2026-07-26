@@ -189,11 +189,61 @@ Phase 0:  [~] P0-1  [x] P0-2  [~] P0-3  [x] P0-4   ([~] = done but pending found
           P0-1 founder+lichess accounts logged, band accounts deferred to S11;
           P0-3 ground truth AI-drafted, founder to verify against the analysis board)
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
-Phase 2:  [x] S8 [x] S9 [x] S10 [ ] S11 [ ] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
+Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [ ] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
 Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-26 · Session 11 · FixtureEvaluator + offline analysis tests
+
+- Second use of the Opus-plan / Sonnet-code workflow: Opus planned + asked the clarifying
+  questions, a Sonnet subagent (Sonnet 5 — "Sonnet 4.6" isn't selectable via the Agent tool
+  in this env; founder was told) wrote the code from the approved plan, then Opus reviewed and
+  ran the full DoD live. Founder decisions: use the 4 existing fixture PGNs (no network — S11
+  stays 100% offline end-to-end), and share the eval_cache logic via a base class (not
+  duplication).
+- Changed: backend/app/engine_eval.py (extracted CachingEvaluator base owning the eval_cache
+  lookup + write-through + hit/miss counters; StockfishEvaluator now subclasses it with
+  _compute() holding the unchanged engine path — same clamp, same terminal-safe pv guard;
+  added FixtureEvaluator + FixtureMissError, a disk-replay drop-in that raises loudly on an
+  unrecorded position; removed a dead `from sqlalchemy import select` import). NEW:
+  backend/scripts/record_fixtures.py (one-time real-engine recorder — runs analyze_game over
+  each committed PGN, dumps that DB's eval_cache to tests/fixtures/evals/{stem}.json with a
+  _meta engine+depth header); backend/pytest.ini (registers `engine`/`live_api` markers,
+  addopts excludes them so plain pytest is offline-by-default, `pytest -m engine` overrides);
+  backend/tests/test_engine.py (@pytest.mark.engine — real-engine start-pos sanity + the
+  deferred terminal-position regression: checkmate & stalemate -> no crash, best_move_uci "");
+  backend/tests/fixtures/evals/*.json (4 recorded fixtures, committed). Extended
+  backend/tests/test_analysis.py (kept all pure-function tests; added whole-game analyze_game
+  runs against FixtureEvaluator: classification counts, phase tags, decided-`skipped` stretch,
+  cache write-through+reuse, loud-miss). app/analysis.py untouched (confirmed via git diff).
+- Opus review: no bugs this round — the Sonnet output was clean (imports correct,
+  StockfishEvaluator behavior genuinely preserved, hardcoded classification counts are real
+  depth-12 numbers, not guesses). Only note: FixtureMissError subclasses KeyError (so a bare
+  `except KeyError` still catches it) — intentional, documented.
+- Recorded classification counts (depth 12, Stockfish 18), pinned in the tests:
+  gt_cleanwin ok12/inacc1/mist0/blun1/skip1 (15 plies); gt_piecedrop 63/14/8/2/20 (107);
+  gt_lostendgame 70/7/3/3/14 (97); eleven14_blitz_loss 43/8/2/3/0 (56).
+- Claims:
+  - Default `pytest` 54 passed / 3 deselected in 0.90s (< 15s DoD ceiling), genuinely offline
+    (re-run under a bogus HTTP(S)_PROXY still 54 passed) [AI-verified]
+  - No real Stockfish process spawns during the default run (pgrep -f found none; the "2 hits"
+    from `ps | grep stockfish` were just /bin/zsh command lines mentioning the word)
+    [AI-verified]
+  - `pytest -m engine` 3 passed / 54 deselected (real path still works; Stockfish 18)
+    [AI-verified]
+  - Loud miss proven live: hiding a fixture JSON makes its test FAIL, restoring makes it green;
+    the dedicated FixtureMissError test covers the missing-*position* case [AI-verified]
+  - 4 tests/fixtures/evals/*.json written, each with a `_meta` {engine, depth} header
+    (reproducible re-record) [AI-verified]
+- Test count 42 -> 57 (54 offline + 3 engine).
+- Not done (deferred per roadmap): player features (S12), the six detectors (S13), report
+  gen (S15). No new fixture PGNs fetched (founder chose the existing 4). The blunder-count
+  inflation OPEN QUESTION (decided-position oscillation) is untouched — still awaiting a
+  founder decision, likely folded into S12's blunder_rate feature.
+- Next step: Session 12 (Features I — rates, phase ACPL, trend, conversion; the debug
+  features endpoint; note the S12 color-split amendment + the hand-computed test game).
 
 ### 2026-07-26 · Session 10 · The job system: async analyze endpoint + progress
 

@@ -1,0 +1,70 @@
+{
+  "_meta": {
+    "engine": "Stockfish 18",
+    "depth": 12
+  },
+  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1": {
+    "eval_cp": 47,
+    "best_move_uci": "e2e4"
+  },
+  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1": {
+    "eval_cp": 42,
+    "best_move_uci": "e7e6"
+  },
+  "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2": {
+    "eval_cp": 50,
+    "best_move_uci": "g1f3"
+  },
+  "rnbqkbnr/pppp1ppp/8/4p3/4P3/2N5/PPPP1PPP/R1BQKBNR b KQkq - 1 2": {
+    "eval_cp": 30,
+    "best_move_uci": "b8c6"
+  },
+  "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 3": {
+    "eval_cp": 25,
+    "best_move_uci": "g1f3"
+  },
+  "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/2N5/PPPP1PPP/R1BQK1NR b KQkq - 3 3": {
+    "eval_cp": -8,
+    "best_move_uci": "g8f6"
+  },
+  "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/2N5/PPPP1PPP/R1BQK1NR w KQkq - 4 4": {
+    "eval_cp": 44,
+    "best_move_uci": "d1h5"
+  },
+  "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P1Q1/2N5/PPPP1PPP/R1B1K1NR b KQkq - 5 4": {
+    "eval_cp": 42,
+    "best_move_uci": "g7g6"
+  },
+  "r1bqk1nr/pppp1p1p/2n3p1/2b1p3/2B1P1Q1/2N5/PPPP1PPP/R1B1K1NR w KQkq - 0 5": {
+    "eval_cp": 47,
+    "best_move_uci": "g4f3"
+  },
+  "r1bqk1nr/pppp1p1p/2n3p1/2b1p3/2B1P3/2N2Q2/PPPP1PPP/R1B1K1NR b KQkq - 1 5": {
+    "eval_cp": 57,
+    "best_move_uci": "g8f6"
+  },
+  "r1bqk2r/pppp1p1p/2n2np1/2b1p3/2B1P3/2N2Q2/PPPP1PPP/R1B1K1NR w KQkq - 2 6": {
+    "eval_cp": 45,
+    "best_move_uci": "g1e2"
+  },
+  "r1bqk2r/pppp1p1p/2n2np1/2bNp3/2B1P3/5Q2/PPPP1PPP/R1B1K1NR b KQkq - 3 6": {
+    "eval_cp": 21,
+    "best_move_uci": "f6d5"
+  },
+  "r1bqk2r/pppp1p1p/2n3p1/2bnp3/2B1P3/5Q2/PPPP1PPP/R1B1K1NR w KQkq - 0 7": {
+    "eval_cp": 43,
+    "best_move_uci": "c4d5"
+  },
+  "r1bqk2r/pppp1p1p/2n3p1/2bBp3/4P3/5Q2/PPPP1PPP/R1B1K1NR b KQkq - 0 7": {
+    "eval_cp": 24,
+    "best_move_uci": "h8f8"
+  },
+  "r1bq1k1r/pppp1p1p/2n3p1/2bBp3/4P3/5Q2/PPPP1PPP/R1B1K1NR w KQ - 1 8": {
+    "eval_cp": 999,
+    "best_move_uci": "f3f7"
+  },
+  "r1bq1k1r/pppp1Q1p/2n3p1/2bBp3/4P3/8/PPPP1PPP/R1B1K1NR b KQ - 0 8": {
+    "eval_cp": 1000,
+    "best_move_uci": ""
+  }
+}
