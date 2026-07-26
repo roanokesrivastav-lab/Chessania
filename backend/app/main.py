@@ -1,5 +1,6 @@
 """Chessania backend — FastAPI application entrypoint."""
 
+import dataclasses
 import re
 from typing import Literal
 
@@ -8,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.config import settings
+from app.db import SessionLocal
+from app.features import load_features
 from app.jobs import get_job, get_or_create_job, run_job
 
 app = FastAPI(title="Chessania API", version="0.1.0")
@@ -75,3 +78,30 @@ def job_status(job_id: str) -> dict:
             detail="That analysis expired or was never started — start a fresh one.",
         )
     return job.to_dict()
+
+
+@app.get("/api/debug/features/{platform}/{username}")
+def debug_features(platform: str, username: str) -> dict:
+    """Dev-only peek at Session 12's aggregated PlayerFeatures for an already-
+    analyzed account — lets the founder eyeball the numbers a coaching report
+    will eventually speak in, before there's a report endpoint to read them
+    from. Formal prod gating (returning 404 whenever ENV != "dev") lands for
+    real in Session 23; until then this plain check keeps the route from
+    ever answering in production."""
+    if settings.ENV != "dev":
+        raise HTTPException(status_code=404, detail="Not found.")
+    if platform not in _USERNAME_PATTERNS:
+        raise HTTPException(status_code=404, detail="Not found.")
+
+    session = SessionLocal()
+    try:
+        features = load_features(session, platform, username)
+    finally:
+        session.close()
+
+    if features is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No analyzed games for that account yet — run POST /api/analyze first.",
+        )
+    return dataclasses.asdict(features)

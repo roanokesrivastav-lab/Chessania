@@ -58,6 +58,16 @@ def cp_loss(eval_before_white_pov: int, eval_after_white_pov: int, mover: chess.
     return max(0, loss)
 
 
+def player_pov_eval(eval_white_pov: int, color: str) -> int:
+    """A stored eval (always White's POV) seen from the given player's side.
+    White reads it as-is; Black negates it. This is the ONLY other sanctioned
+    perspective conversion besides cp_loss() (Cardinal Rule 7) — features that
+    need 'how good is this position FOR the player' (opening leak, endgame
+    conversion) call this instead of scattering sign-flips at call sites.
+    `color` is 'white' or 'black' (games.player_color)."""
+    return eval_white_pov if color == "white" else -eval_white_pov
+
+
 def classify(cp_loss_value: int, eval_before_white_pov: int) -> str:
     """Label a move from its cp_loss, with the decided-position guard first.
 

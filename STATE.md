@@ -189,11 +189,58 @@ Phase 0:  [~] P0-1  [x] P0-2  [~] P0-3  [x] P0-4   ([~] = done but pending found
           P0-1 founder+lichess accounts logged, band accounts deferred to S11;
           P0-3 ground truth AI-drafted, founder to verify against the analysis board)
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
-Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [ ] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
+Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
 Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-26 · Session 12 · Features I: rates, phase ACPL, trend, conversion
+
+- Third use of the Opus-plan / Sonnet-code workflow. Founder decisions: DEFER the
+  blunder-count-inflation open question to S13 (count 'blunder' rows as-is now — the
+  point-of-no-return fix belongs with S13's turning-point detector, not a pre-built heuristic);
+  NEST `by_color` under StatsBlock in the report contract.
+- Appendix-first (Rule 3): amended CHESSANIA_ROADMAP.md Appendix 2 in its OWN commit (`ecc2feb`)
+  — added a `WLD` model + `ColorStats` model, nested as `StatsBlock.by_color = {white, black}`.
+  Doc/law only; schemas.py builds it in S16.
+- Changed: backend/app/analysis.py (added `player_pov_eval(eval_white_pov, color)` beside
+  `cp_loss` — the ONLY other sanctioned perspective conversion, Cardinal Rule 7; cp_loss/
+  classify/tag_phase/analyze_game untouched, confirmed via diff); backend/app/config.py (5 named
+  feature thresholds — no bare literals: opening-leak 150cp, endgame-ahead 200cp, trend min 8
+  games / 10% band, color min 4 games); backend/app/main.py (dev-only GET
+  /api/debug/features/{platform}/{username} — 404 when ENV!=dev, friendly 404 when no analyzed
+  games, else dataclasses.asdict(features)). NEW: backend/app/features.py (PlayerFeatures + WLD +
+  PhaseACPL + ColorStats dataclasses, full shape now with detectors=None for S13; pure
+  build_features over stored move_evals — blunder/mistake/inaccuracy per game, ACPL overall +
+  per phase, worst_phase self-referenced vs the player's OWN overall, accuracy_trend with the
+  8-game guard, opening_leak_rate, endgame_conversion None-when-no-qualifying, evidence lists,
+  and the 6 color-split stats with low_signal<4; thin load_features DB wrapper); NEW
+  backend/tests/test_features.py (12 offline hand-computed tests).
+- Opus review: clean — no bugs. player_pov_eval placed correctly (Rule 7 honored); skipped rows
+  excluded from ACPL denominators; None (not 0.0) guards on conversion/ACPL; rounding consistent
+  (rates/ACPL 1dp, ratios 2dp). Sonnet also added a `_worst_phase_evidence` helper (top-3
+  highest-cp_loss non-skipped moves in the worst phase) — unspecified in the brief but sensible.
+- Claims:
+  - Offline suite 57 -> 66 (+9 net; test_features.py adds 12), green in 0.78s (<15s), offline
+    (bogus-proxy re-run still 66) and no stockfish process (pgrep) [AI-verified]
+  - Hand-computed exact numbers pass: single game ACPL 80.0, skipped-excluded stays 80.0,
+    worst_phase margin 120.0, all 4 trend verdicts, conversion 0.5 vs None, opening-leak 0.67
+    (incl. a black game exercising the player_pov sign flip), color-split low_signal + 0.7 overall
+    distinct from per-color [AI-verified]
+  - Debug endpoint live over HTTP: seeded ONE analyzed fixture game (gt_lostendgame, offline via
+    FixtureEvaluator) into the dev DB, curled GET /api/debug/features/chesscom/<seed> → fully
+    populated PlayerFeatures (by_color.black present, detectors null, endgame_conversion null);
+    numbers cross-check the S11 recorded counts (3 blunders/3 mistakes/7 inaccuracies). Seed row
+    then deleted. ENV=prod → 404 confirmed [AI-verified]
+  - The blunders_per_game 3.0 on that seed is a LIVE example of the deferred inflation (only 1 of
+    the 3 blunders is meaningful) — S13's turning-point detector is where it gets addressed
+- Still [founder-to-verify]: the DoD's "founder reads their OWN account's features and confirms
+  the numbers feel truthful" — needs a real analyze run of Eleven_14 (network+engine); the dev DB
+  here had no analyzed Eleven_14 data, so I demonstrated the populated path with a seeded fixture
+  instead.
+- Next step: Session 13 (Features II — the six pattern detectors incl. the turning-point / PONR
+  detector; this is also where the blunder-inflation open question gets resolved).
 
 ### 2026-07-26 · Session 11 · FixtureEvaluator + offline analysis tests
 

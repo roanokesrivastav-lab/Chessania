@@ -36,5 +36,12 @@ class Settings(BaseSettings):
     # dev | prod — gates things like debug endpoints (Session 12+).
     ENV: str = "dev"
 
+    # Features (Session 12+).
+    FEATURE_OPENING_LEAK_CP: int = 150
+    FEATURE_ENDGAME_AHEAD_CP: int = 200
+    FEATURE_TREND_MIN_GAMES: int = 8
+    FEATURE_TREND_BAND: float = 0.10  # relative first-half vs second-half band
+    FEATURE_COLOR_MIN_GAMES: int = 4  # below this, per-color numbers are low-signal
+
 
 settings = Settings()
