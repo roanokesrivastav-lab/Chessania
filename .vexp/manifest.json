@@ -44,8 +44,8 @@
     "frontend/next.config.ts": "cffa485cc39e35da1ff735d42c7a4e13fddb619d7d284a6ecced9e971a1e7f12",
     "frontend/postcss.config.mjs": "28a2e2028ed86bc42f1b4af4ea55278d0b89c5984c27c52fe738d8d0dd326085"
   },
-  "indexed_at_commit": "72443b8471e8cbfcbb2c27977d2568b5fcc31d0e",
-  "indexed_at_timestamp": "2026-07-26T11:32:35.384071+00:00",
+  "indexed_at_commit": "8c9fe701bcb1083e777b9f1bf82ddce90e23d638",
+  "indexed_at_timestamp": "2026-07-26T11:32:35.447874+00:00",
   "schema_version": 3,
   "stats": {
     "total_edges": 414,

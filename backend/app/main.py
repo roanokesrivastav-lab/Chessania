@@ -4,12 +4,13 @@ import dataclasses
 import re
 from typing import Literal
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db import SessionLocal
+from app.db import get_session
 from app.features import load_features
 from app.jobs import get_job, get_or_create_job, run_job
 
@@ -81,23 +82,27 @@ def job_status(job_id: str) -> dict:
 
 
 @app.get("/api/debug/features/{platform}/{username}")
-def debug_features(platform: str, username: str) -> dict:
+def debug_features(
+    platform: str, username: str, session: Session = Depends(get_session)
+) -> dict:
     """Dev-only peek at Session 12's aggregated PlayerFeatures for an already-
     analyzed account — lets the founder eyeball the numbers a coaching report
     will eventually speak in, before there's a report endpoint to read them
     from. Formal prod gating (returning 404 whenever ENV != "dev") lands for
     real in Session 23; until then this plain check keeps the route from
-    ever answering in production."""
+    ever answering in production.
+
+    Session via `Depends(get_session)` (S13) rather than calling
+    SessionLocal() directly — same DB session plumbing every other route
+    dependency uses, and what lets a test override it with
+    `app.dependency_overrides[get_session]` instead of touching the real
+    dev database."""
     if settings.ENV != "dev":
         raise HTTPException(status_code=404, detail="Not found.")
     if platform not in _USERNAME_PATTERNS:
         raise HTTPException(status_code=404, detail="Not found.")
 
-    session = SessionLocal()
-    try:
-        features = load_features(session, platform, username)
-    finally:
-        session.close()
+    features = load_features(session, platform, username)
 
     if features is None:
         raise HTTPException(

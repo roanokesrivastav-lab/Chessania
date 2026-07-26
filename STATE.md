@@ -4,19 +4,14 @@
 
 - [ ] Production depth: hold 12 or drop to 11 for Railway speed? (S24)
 - [ ] Report retention: keep all reports forever, or cap per player? (beta)
-- [ ] **Blunder-count inflation in decided positions** (found in the 2026-07-25 full
-  review). The decided-position skip is per-move `|eval_before| > 800`, exactly as
-  Appendix/S9 spec — but in a hopelessly-lost position whose eval oscillates around the
-  800 line (e.g. queen-down with a passed-pawn racer evaluated ~+700 to +1000 as White
-  gives checks), alternating moves slip through as "blunders." Game 3 reports 3 blunders
-  when only 1 (27.Rxe4) is meaningful; the other 2 (moves 42, 44) are post-decision noise.
-  NOT a code bug (matches spec), but it inflates blunders_per_game (S12) and contradicts
-  the skip rule's STATED intent ("a blunder in a dead-lost position is noise"). Founder
-  flagged this exact class of issue for game 2. Candidate fix: a "point-of-no-return"
-  hysteresis — once the losing side's eval crosses the decided line and never recovers,
-  skip ALL later moves for that side (overlaps the S13 turning-point detector). Decide:
-  refine the skip now (better serves the spec's own intent) vs handle in S12 blunder_rate
-  vs leave as-is. Does not block S9 (calibration on the decisive errors passed).
+- [x] **RESOLVED in S13** — Blunder-count inflation in decided positions. Founder chose
+  (2026-07-26) the "meaningful-blunder count + evidence filter" resolution: S13's turning-point
+  detector computes each game's point-of-no-return (PONR = first ply of the final unbroken
+  doomed stretch, player-POV eval never again > -150cp), and features gained an additive
+  `meaningful_blunders_per_game` = player blunders at ply ≤ PONR (all of them if no PONR).
+  Raw `blunders_per_game` is left spec-faithful; the S15 coach will prefer the meaningful count
+  and cite only pre-PONR blunders. PROVEN live: gt_lostendgame reports 3 raw blunders (plies
+  54/84/88, PONR 54) but meaningful=1 — the founder's exact 3-vs-1 example.
 
 ## DECISION LOG
 
@@ -189,11 +184,56 @@ Phase 0:  [~] P0-1  [x] P0-2  [~] P0-3  [x] P0-4   ([~] = done but pending found
           P0-1 founder+lichess accounts logged, band accounts deferred to S11;
           P0-3 ground truth AI-drafted, founder to verify against the analysis board)
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
-Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [ ] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
+Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [ ] S14 [ ] S15 [ ] S16 [ ] S17
 Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-26 · Session 13 · Features II: six pattern detectors (+ a critical S12 fix + review-gap tests)
+
+- Preceded by a whole-project /review that found a **critical correctness bug in shipped S12**:
+  `analyze_game` stores a move_evals row for EVERY ply (both colors), `calibrate.py` (S9) filters
+  to the player's own moves, but `features.py` (S12) did NOT — so all rates/ACPL aggregated over
+  BOTH players. Proven: gt_cleanwin (a clean win) reported ACPL 83.2 / 1 blunder; the player's
+  true numbers are 14.7 / 0 (the blunder was the OPPONENT's). [AI-verified, now fixed]
+- Fourth use of the Opus-plan / Sonnet-code workflow. Founder decisions: lightweight hand-rolled
+  SEE (python-chess 1.11.2 has none); read ECO from the PGN (chess.com opening_eco is None but
+  the PGN carries [ECO]); meaningful-blunder count + PONR-filtered evidence for the inflation fix.
+- Phase 1 FIX: analysis.py `is_player_ply(ply, player_color)` (DRYs calibrate.py's open-coded
+  test); features.py filters to the player's own rows for every per-mover aggregation (counts,
+  ACPL, phases, per-game, color splits) while leaving position-based features (opening_leak@ply20,
+  endgame_conversion entry) reading all rows; test_features.py corrected + an opponent-blunder
+  regression test.
+- Phase 2 FEAT: NEW app/detectors.py — six pure detectors (hung_pieces w/ a hand-rolled `_see`
+  SEE helper, late_collapse, opening_leak w/ `_game_eco` PGN reader, overextension, time_class_split,
+  turning_point/PONR), `run_detectors`; 13 named DET_* thresholds in config; build_features wires
+  `detectors` + the additive `meaningful_blunders_per_game`; test_detectors.py (18 tests: 3 _see,
+  _game_eco, 2×6 pos/neg, meaningful-blunders); calibrate.py gained a detector calibration dump.
+- Phase 3 TEST (closes the two /review findings): main.py debug_features now uses
+  Depends(get_session); test_jobs.py gained 2 offline run_job integration tests (respx-mocked fetch
+  + a StubEvaluator → done, and a 404 → error with the friendly message); NEW test_debug_endpoint.py
+  (populated / no-games 404 / ENV=prod 404 via dependency + settings override).
+- Opus review: clean — no bugs. Verified `_see` by hand (free knight 300, equal trade 0,
+  rook-for-bishop 200); confirmed analysis.py diff is ONLY is_player_ply; features wiring correct
+  (player-filtered aggregations, position-based unfiltered); turning-point reinterpretation of the
+  roadmap's ambiguous "LAST ply P" as the first ply of the doomed stretch is the only sensible read.
+- Claims:
+  - Full suite 66 -> 90 (+24: 18 detector, 3 debug-endpoint, 2 run_job, 1 net features), green in
+    0.95s (<15s), offline (bogus-proxy) + no stockfish (pgrep); `pytest -m engine` 3 passed
+    [AI-verified]
+  - S12 bug fixed live: gt_cleanwin now ACPL 14.7 / 0 blunders (was 83.2 / 1) [AI-verified]
+  - Blunder-inflation RESOLVED live: gt_lostendgame 3 raw blunders but meaningful=1 (PONR ply 54)
+    — the founder's exact 3-vs-1 case [AI-verified]
+  - Detectors precision-first on the 4-fixture sample: only turning_point fires; hung_pieces 25%
+    (<30%), overextension 2 (<3), time_class_split 0 rapid games — all correctly quiet
+    [AI-verified]
+- The two /review test-coverage findings (run_job body, debug endpoint) are now CLOSED with
+  offline tests. calibrate.py runs the detector dump offline.
+- Still [founder-to-verify]: the DoD's founder spot-check of fired detectors on their REAL account
+  (needs a network+engine analyze run of Eleven_14); demonstrated instead on the committed fixtures.
+- Next step: Session 14 (Playstyle index — Appendix 5: one number in [-1,+1], label, component
+  breakdown; separate playstyle.py, prereq S12).
 
 ### 2026-07-26 · Session 12 · Features I: rates, phase ACPL, trend, conversion
 
