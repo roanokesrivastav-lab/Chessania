@@ -43,5 +43,23 @@ class Settings(BaseSettings):
     FEATURE_TREND_BAND: float = 0.10  # relative first-half vs second-half band
     FEATURE_COLOR_MIN_GAMES: int = 4  # below this, per-color numbers are low-signal
 
+    # Detectors (Session 13). Six precision-first pattern detectors over
+    # already-stored move_evals — see app/detectors.py's module docstring for
+    # why "precision-first" matters (a wrongly-firing detector reads as a
+    # horoscope, not a coach).
+    DET_HUNG_MIN_SHARE: float = 0.30  # hung_pieces: share of blunders that hang material
+    DET_SEE_MINOR_CP: int = 300  # hung_pieces: min SEE value to count as "hung"
+    DET_LATE_PLY: int = 30  # late_collapse: early/late boundary
+    DET_LATE_RATIO: float = 2.0  # late_collapse: late rate must be >= this x early rate
+    DET_LATE_MIN_BLUNDERS: int = 4  # late_collapse: min late player-blunder count to fire
+    DET_OPENING_FAMILY_MIN_GAMES: int = 5  # opening_leak: min games in an ECO family
+    DET_OPENING_LEAK_CP: int = 40  # opening_leak: avg ply-15 player-POV eval threshold
+    DET_OVEREXT_DROP_CP: int = 150  # overextension: eval drop within the window
+    DET_OVEREXT_WINDOW: int = 6  # overextension: plies after the pawn push to check
+    DET_OVEREXT_MIN: int = 3  # overextension: min occurrences across games to fire
+    DET_BLITZ_RATIO: float = 1.8  # time_class_split: blitz rate must be >= this x rapid rate
+    DET_TIMECLASS_MIN_GAMES: int = 5  # time_class_split: min games of EACH time class
+    DET_PLAYABLE_CP: int = 150  # turning_point: "still playable" player-POV eval floor
+
 
 settings = Settings()

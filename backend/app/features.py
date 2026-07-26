@@ -39,8 +39,9 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.analysis import player_pov_eval
+from app.analysis import is_player_ply, player_pov_eval
 from app.config import settings
+from app.detectors import run_detectors
 from app.models import Game, MoveEval, Player
 
 _PHASES = ("opening", "middlegame", "endgame")
@@ -119,9 +120,18 @@ class PlayerFeatures:
     endgame_conversion: float | None
     endgame_conversion_evidence: list[tuple[str, int]]
 
+    # S13: the blunder-inflation resolution. blunders_per_game (above) counts
+    # every player blunder in every game, including ones played after a lost
+    # game's point-of-no-return (PONR) — moves in an already-decided game that
+    # are noise, not a real accuracy signal. This counts only PLAYER blunders
+    # at or before that game's PONR (turning_point detector's ponr_by_game);
+    # games with no PONR count all their player blunders. blunders_per_game
+    # itself is left unchanged so nothing that already reads it drifts.
+    meaningful_blunders_per_game: float = 0.0
+
     by_color: dict[str, ColorStats] = field(default_factory=dict)  # only colors actually played
 
-    detectors: dict | None = None  # S13 placeholder — pattern-matched named weaknesses
+    detectors: dict | None = None  # S13: pattern-matched named weaknesses (see app/detectors.py)
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +224,12 @@ def _worst_phase_evidence(
     """Up to 3 (game_id, ply) citations backing up 'worst_phase' — the
     individual moves with the highest cp_loss inside that phase, across every
     analyzed game. This is what lets a coaching sentence about the worst
-    phase point at real moves instead of just naming a phase."""
+    phase point at real moves instead of just naming a phase.
+
+    `evals` here is expected to already be player-filtered (build_features
+    passes `player_evals`, not the raw evals dict) — worst_phase itself is
+    now a PER-MOVER stat (S13), so its evidence must cite the player's own
+    moves, never the opponent's."""
     if worst_phase is None:
         return []
 
@@ -350,11 +365,23 @@ def _color_stats(
     """A full ColorStats for one color's games, reusing every helper above
     exactly as the overall (color-blind) computation does — so a per-color
     number and the overall number can never drift apart from having separate
-    math."""
-    rows = [row for g in color_games for row in evals.get(str(g.id), [])]
-    class_counts = _class_counts(rows)
-    acpl_overall = _round1(_acpl(rows))
-    acpl_by_phase = _acpl_by_phase(rows)
+    math.
+
+    Per-mover stats (class_counts, ACPL, worst_phase) are computed over just
+    the PLAYER's own plies in these games (is_player_ply) — every game in
+    `color_games` shares the same player_color, so filtering per-game and
+    concatenating is equivalent to filtering the concatenated rows. Leak rate
+    and endgame conversion stay position-based and read every row via the
+    unfiltered `evals` dict, same as the overall computation."""
+    player_rows = [
+        row
+        for g in color_games
+        for row in evals.get(str(g.id), [])
+        if is_player_ply(row.ply, g.player_color)
+    ]
+    class_counts = _class_counts(player_rows)
+    acpl_overall = _round1(_acpl(player_rows))
+    acpl_by_phase = _acpl_by_phase(player_rows)
     worst_phase, _margin = _worst_phase(acpl_by_phase, acpl_overall)
     leak_rate, _leak_evidence = _opening_leak_stats(color_games, evals)
     conversion, _conversion_evidence = _endgame_conversion(color_games, evals)
@@ -370,6 +397,40 @@ def _color_stats(
         endgame_conversion=conversion,
         low_signal=len(color_games) < settings.FEATURE_COLOR_MIN_GAMES,
     )
+
+
+def _meaningful_blunders_per_game(
+    games: list[Game],
+    player_evals: dict[str, list[MoveEval]],
+    detectors: dict,
+) -> float:
+    """The blunder-inflation resolution (S13): blunders_per_game counts every
+    player blunder, including ones played after a lost game's
+    point-of-no-return (PONR) — moves in an already-decided game that are
+    noise, not signal (see PlayerFeatures.meaningful_blunders_per_game).
+
+    Uses `detect_turning_point`'s `ponr_by_game` (game_id -> ply): a game
+    with a PONR only counts player blunders at or before that ply; a game
+    with no PONR (never conclusively lost from the player's POV) counts all
+    of its player blunders, same as blunders_per_game would."""
+    if not games:
+        return 0.0
+
+    ponr_by_game: dict[str, int] = detectors.get("turning_point", {}).get("stats", {}).get(
+        "ponr_by_game", {}
+    )
+
+    total = 0
+    for g in games:
+        gid = str(g.id)
+        ponr = ponr_by_game.get(gid)
+        for row in player_evals.get(gid, []):
+            if row.classification != "blunder":
+                continue
+            if ponr is None or row.ply <= ponr:
+                total += 1
+
+    return round(total / len(games), 1)
 
 
 def build_features(
@@ -402,28 +463,44 @@ def build_features(
             opening_leak_evidence=[],
             endgame_conversion=None,
             endgame_conversion_evidence=[],
+            meaningful_blunders_per_game=0.0,
             by_color={},
         )
 
-    all_rows = [row for g in games_sorted for row in evals.get(str(g.id), [])]
+    # move_evals stores a row for EVERY ply of a game — both the player's
+    # moves and the opponent's. Every PER-MOVER aggregation below (blunder/
+    # mistake/inaccuracy rates, ACPL overall and by phase, per-game ACPL, the
+    # color split) must count only the plies the PLAYER actually moved on —
+    # a coach reports YOUR blunders, never your opponent's (S13 fix; S12
+    # shipped this counting both colors, a real bug). `_opening_leak_*` and
+    # `_endgame_conversion` are deliberately NOT filtered: they read a
+    # POSITION eval (via player_pov_eval) at a specific ply, not a mover's
+    # cp_loss, so they still need every row regardless of whose move it was.
+    player_evals: dict[str, list[MoveEval]] = {
+        str(g.id): [
+            row for row in evals.get(str(g.id), []) if is_player_ply(row.ply, g.player_color)
+        ]
+        for g in games_sorted
+    }
+    all_player_rows = [row for g in games_sorted for row in player_evals[str(g.id)]]
 
     time_class_mix: dict[str, int] = {}
     for g in games_sorted:
         time_class_mix[g.time_class] = time_class_mix.get(g.time_class, 0) + 1
 
-    class_counts = _class_counts(all_rows)
+    class_counts = _class_counts(all_player_rows)
     blunders_per_game = round(class_counts.get("blunder", 0) / games_analyzed, 1)
     mistakes_per_game = round(class_counts.get("mistake", 0) / games_analyzed, 1)
     inaccuracies_per_game = round(class_counts.get("inaccuracy", 0) / games_analyzed, 1)
 
-    acpl_overall = _round1(_acpl(all_rows))
-    acpl_by_phase = _acpl_by_phase(all_rows)
+    acpl_overall = _round1(_acpl(all_player_rows))
+    acpl_by_phase = _acpl_by_phase(all_player_rows)
     worst_phase, worst_phase_margin = _worst_phase(acpl_by_phase, acpl_overall)
-    worst_phase_evidence = _worst_phase_evidence(games_sorted, evals, worst_phase)
+    worst_phase_evidence = _worst_phase_evidence(games_sorted, player_evals, worst_phase)
 
     per_game_acpl: list[float] = []
     for g in games_sorted:
-        value = _acpl(evals.get(str(g.id), []))
+        value = _acpl(player_evals[str(g.id)])
         if value is not None:
             per_game_acpl.append(round(value, 1))
     accuracy_trend = _accuracy_trend(per_game_acpl)
@@ -436,6 +513,11 @@ def build_features(
         color_games = [g for g in games_sorted if g.player_color == color]
         if color_games:
             by_color[color] = _color_stats(color_games, evals)
+
+    detectors = run_detectors(games_sorted, evals)
+    meaningful_blunders_per_game = _meaningful_blunders_per_game(
+        games_sorted, player_evals, detectors
+    )
 
     return PlayerFeatures(
         games_analyzed=games_analyzed,
@@ -456,7 +538,9 @@ def build_features(
         opening_leak_evidence=opening_leak_evidence,
         endgame_conversion=endgame_conversion,
         endgame_conversion_evidence=endgame_conversion_evidence,
+        meaningful_blunders_per_game=meaningful_blunders_per_game,
         by_color=by_color,
+        detectors=detectors,
     )
 
 

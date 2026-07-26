@@ -103,24 +103,33 @@ def _evals_for(db_session, *games: Game) -> dict[str, list[MoveEval]]:
 
 
 def test_single_game_hand_computed_rates(db_session):
+    """S13: move_evals stores a row for EVERY ply (both colors) — a
+    player_color='white' game has the PLAYER on odd plies (1,3,5,7) and the
+    OPPONENT on even plies (2,4,6). Every number below is hand-computed over
+    the PLAYER's rows only; the three opponent 'blunder' rows (cp_loss 999,
+    on even plies) are a built-in regression check that they contribute
+    ZERO — the S12 bug this session fixes counted both colors."""
     game = _insert_player_and_game(db_session, played_at=_BASE_TIME)
     _insert_rows(
         db_session,
         game,
         [
-            {"cp_loss": 0, "classification": "ok"},
-            {"cp_loss": 60, "classification": "inaccuracy"},
-            {"cp_loss": 250, "classification": "blunder"},
-            {"cp_loss": 10, "classification": "ok"},
+            {"ply": 1, "cp_loss": 0, "classification": "ok"},  # player
+            {"ply": 2, "cp_loss": 999, "classification": "blunder"},  # opponent — must NOT count
+            {"ply": 3, "cp_loss": 60, "classification": "inaccuracy"},  # player
+            {"ply": 4, "cp_loss": 999, "classification": "blunder"},  # opponent — must NOT count
+            {"ply": 5, "cp_loss": 250, "classification": "blunder"},  # player
+            {"ply": 6, "cp_loss": 999, "classification": "blunder"},  # opponent — must NOT count
+            {"ply": 7, "cp_loss": 10, "classification": "ok"},  # player
         ],
     )
     features = build_features([game], _evals_for(db_session, game), rating_snapshot=1500)
 
     assert features.games_analyzed == 1
-    assert features.blunders_per_game == 1.0  # 1 blunder / 1 game
+    assert features.blunders_per_game == 1.0  # 1 PLAYER blunder (ply 5) / 1 game
     assert features.mistakes_per_game == 0.0
-    assert features.inaccuracies_per_game == 1.0  # 1 inaccuracy / 1 game
-    assert features.acpl_overall == 80.0  # (0 + 60 + 250 + 10) / 4 = 80.0
+    assert features.inaccuracies_per_game == 1.0  # 1 PLAYER inaccuracy (ply 3) / 1 game
+    assert features.acpl_overall == 80.0  # PLAYER rows only: (0 + 60 + 250 + 10) / 4 = 80.0
 
 
 # ---------------------------------------------------------------------------
@@ -134,18 +143,40 @@ def test_skipped_rows_excluded_from_acpl(db_session):
         db_session,
         game,
         [
-            {"cp_loss": 0, "classification": "ok"},
-            {"cp_loss": 60, "classification": "inaccuracy"},
-            {"cp_loss": 250, "classification": "blunder"},
-            {"cp_loss": 10, "classification": "ok"},
-            # A huge cp_loss in an already-decided position — must NOT move
-            # acpl_overall at all (denominator excludes 'skipped' rows).
-            {"cp_loss": 900, "classification": "skipped"},
+            {"ply": 1, "cp_loss": 0, "classification": "ok"},  # player
+            {"ply": 2, "cp_loss": 999, "classification": "blunder"},  # opponent — must NOT count
+            {"ply": 3, "cp_loss": 60, "classification": "inaccuracy"},  # player
+            {"ply": 4, "cp_loss": 999, "classification": "blunder"},  # opponent — must NOT count
+            {"ply": 5, "cp_loss": 250, "classification": "blunder"},  # player
+            {"ply": 6, "cp_loss": 999, "classification": "blunder"},  # opponent — must NOT count
+            {"ply": 7, "cp_loss": 10, "classification": "ok"},  # player
+            # A huge cp_loss in an already-decided position, on a PLAYER ply —
+            # must NOT move acpl_overall at all (denominator excludes
+            # 'skipped' rows regardless of whose move it was).
+            {"ply": 9, "cp_loss": 900, "classification": "skipped"},  # player
         ],
     )
     features = build_features([game], _evals_for(db_session, game), rating_snapshot=None)
 
-    assert features.acpl_overall == 80.0  # unchanged from the non-skipped test above
+    assert features.acpl_overall == 80.0  # unchanged from the player-only test above
+
+
+def test_opponent_blunder_does_not_count_toward_player_blunders(db_session):
+    """Dedicated regression test for the S12 bug S13 fixes: move_evals
+    stores a row for EVERY ply (both colors) — an opponent 'blunder' row
+    must contribute ZERO to the player's blunders_per_game, even though it
+    lives in the very same game's rows."""
+    game = _insert_player_and_game(db_session, played_at=_BASE_TIME)  # white
+    _insert_rows(
+        db_session,
+        game,
+        [
+            {"ply": 1, "cp_loss": 0, "classification": "ok"},  # player — no blunders at all
+            {"ply": 2, "cp_loss": 500, "classification": "blunder"},  # OPPONENT blunder
+        ],
+    )
+    features = build_features([game], _evals_for(db_session, game), rating_snapshot=None)
+    assert features.blunders_per_game == 0.0
 
 
 # ---------------------------------------------------------------------------

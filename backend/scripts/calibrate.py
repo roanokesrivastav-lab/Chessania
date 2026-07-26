@@ -20,7 +20,8 @@ from sqlalchemy.orm import Session
 
 from app.analysis import analyze_game
 from app.db import enable_sqlite_foreign_keys
-from app.engine_eval import StockfishEvaluator
+from app.detectors import run_detectors
+from app.engine_eval import FixtureEvaluator, StockfishEvaluator
 from app.models import Base, Game, MoveEval, Player
 
 PGN_DIR = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "pgn"
@@ -34,9 +35,18 @@ GROUND_TRUTH = [
 
 def _load(session: Session, pgn: str, color: str) -> Game:
     headers = chess.pgn.read_game(io.StringIO(pgn)).headers
-    p = Player(platform="chesscom", username=headers.get(color.capitalize(), "u").lower())
-    session.add(p)
-    session.commit()
+    username = headers.get(color.capitalize(), "u").lower()
+    # Reuse an existing player row rather than inserting a fresh one every
+    # call: main() gives each fixture its own throwaway in-memory engine (no
+    # collision possible), but calibrate_detectors() below shares ONE
+    # session across all 3 GT fixtures, two of which are the same founder
+    # account ("Eleven_14") — a second unconditional insert would trip the
+    # (platform, username) unique constraint.
+    p = session.query(Player).filter_by(platform="chesscom", username=username).first()
+    if p is None:
+        p = Player(platform="chesscom", username=username)
+        session.add(p)
+        session.commit()
     g = Game(
         player_id=p.id,
         platform_game_id=headers.get("Link", "cal"),
@@ -93,5 +103,39 @@ def main() -> None:
             print(f"  -> {len(flagged)} flagged ({len(blunders)} blunders)")
 
 
+def calibrate_detectors() -> None:
+    """Session 13 sibling to main(): run the six S13 detectors over the same
+    3 ground-truth fixture games, so the founder can spot-check whether a
+    detector firing (or staying quiet) matches what they remember about
+    these games. Uses FixtureEvaluator (recorded evals, replayed from disk)
+    rather than main()'s real StockfishEvaluator — no engine, no network,
+    same discipline as the test suite (Rule 6)."""
+    engine = create_engine("sqlite:///:memory:")
+    enable_sqlite_foreign_keys(engine)
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        games: list[Game] = []
+        evals: dict[str, list[MoveEval]] = {}
+        for fname, color, _expectation in GROUND_TRUTH:
+            stem = fname.removesuffix(".pgn")
+            pgn = (PGN_DIR / fname).read_text()
+            game = _load(session, pgn, color)
+            rows = analyze_game(game, FixtureEvaluator(stem, cache_session=session), session)
+            games.append(game)
+            evals[str(game.id)] = rows
+
+        results = run_detectors(games, evals)
+
+        print("\n===== Session 13 detector calibration (3 GT fixtures) =====")
+        for key, result in results.items():
+            marker = "FIRED" if result["fired"] else "quiet"
+            print(f"\n  [{marker}] {key}")
+            if result["fired"]:
+                print(f"    stats:    {result['stats']}")
+                print(f"    evidence: {result['evidence']}")
+
+
 if __name__ == "__main__":
     main()
+    calibrate_detectors()

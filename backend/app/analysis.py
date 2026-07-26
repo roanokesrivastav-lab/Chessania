@@ -58,6 +58,16 @@ def cp_loss(eval_before_white_pov: int, eval_after_white_pov: int, mover: chess.
     return max(0, loss)
 
 
+def is_player_ply(ply: int, player_color: str) -> bool:
+    """True if the PLAYER (not the opponent) made the move at this ply.
+    move_evals stores a row for every half-move of the game; ply 1,3,5,... are
+    White's moves and 2,4,6,... are Black's. So the player moved at this ply iff
+    (this is a White ply) matches (the player played White). Features and
+    detectors filter to the player's own moves with this — a coach counts YOUR
+    blunders, never your opponent's (calibrate.py open-codes this same test)."""
+    return (ply % 2 == 1) == (player_color == "white")
+
+
 def player_pov_eval(eval_white_pov: int, color: str) -> int:
     """A stored eval (always White's POV) seen from the given player's side.
     White reads it as-is; Black negates it. This is the ONLY other sanctioned
