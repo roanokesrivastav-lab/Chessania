@@ -1,10 +1,10 @@
 {
   "file_hashes": {
-    "CHESSANIA_ROADMAP.md": "5c0be807b9012c17613121f7259cd83057726301086cc5f5640692da7e2614fa",
+    "CHESSANIA_ROADMAP.md": "40cb3c066e3884984ae04cd143fb3c781b6c7fe2b9956d18f12a0f0807fba800",
     "CLAUDE.md": "e19cf69ef82fa7c3f7bbc0178026ca36c267593b8e06a98ea76350d31c91d3a1",
-    "PRD.md": "ffa960c7f42ffa39356000c6e915e3799d45084837252076ff050e43c8633a34",
+    "PRD.md": "fcf9711c1cb4a0108e30f5350b1f19b036e8f6ee97396fe20240876cd41ec7c9",
     "README.md": "d937de63ff631a4b05266942c32b9b8b9b06e3e2c8f4710003bf0a67957bddfb",
-    "STATE.md": "5e441092558dcf40478f26b191aa327a9d88d6bb86bc3a7793690ef690c92c89",
+    "STATE.md": "19236f295acd8e46f182557f8834974ec36018fb05ef5b6f76bef8224c6d1a8f",
     "backend/alembic/env.py": "c52f6052851de8c559c02ea1801249cad11801d7efa45f41e986db9f94a56baa",
     "backend/alembic/versions/0001_initial_schema.py": "48298531f646e4deab10361f4e6733581e595a23133fbecfbd676cb9ae7456d1",
     "backend/alembic/versions/0002_add_move_evals_seconds_spent.py": "862462c57dcf1df26ecd15679c875804998f1af7ef42da7eb823db20f165ebf3",
@@ -46,13 +46,13 @@
     "frontend/next.config.ts": "cffa485cc39e35da1ff735d42c7a4e13fddb619d7d284a6ecced9e971a1e7f12",
     "frontend/postcss.config.mjs": "28a2e2028ed86bc42f1b4af4ea55278d0b89c5984c27c52fe738d8d0dd326085"
   },
-  "indexed_at_commit": "68ea7138c730e108f3e61f4cc1d5cc29696a787c",
-  "indexed_at_timestamp": "2026-07-26T20:01:24.563199+00:00",
+  "indexed_at_commit": "c6e80464b6d714999d58155f42d06568b8daeec6",
+  "indexed_at_timestamp": "2026-07-26T20:45:56.578223+00:00",
   "schema_version": 3,
   "stats": {
-    "total_edges": 530,
+    "total_edges": 542,
     "total_files": 45,
-    "total_nodes": 358
+    "total_nodes": 370
   },
   "vexp_version": "2.3.1"
 }

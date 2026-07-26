@@ -22,7 +22,7 @@ Players under ~1800. At this level, the bottleneck is usually concrete tactical/
 
 Instead of "here are the top 10 openings," Chessania looks at a player's actual games and tells them:
 
-- What they're doing wrong, concretely (e.g. "you're stuck at 1100 because you blunder after calculating only one move ahead")
+- What they're doing wrong, concretely and backed by their own numbers (e.g. "you hung a piece in 9 of your last 20 games, and 72% of those blunders came with under 45 seconds on your clock") — the recurring pattern shown with evidence plus a testable fix, NOT a confident guess at *why* you chose a move (eval-drops measure what went wrong, not the internal calculation behind it — 2026-07-26 research amendment)
 - What opening repertoire actually fits their level and demonstrated playstyle — not a generic list
 - Where to go next (specific study resources, puzzle practice, etc.) — Chessania doesn't try to replace tactics trainers or opening courses, it redirects players to the right ones for their specific gaps
 
@@ -79,4 +79,4 @@ _(Full deferral list with reserved "seats": roadmap Part G.)_
 
 ## What "success" looks like
 
-Not the tech stack — the insight quality. The tool needs to be able to say something like: "You're stuck at 1100 because you blunder after calculating only one move ahead," not "You should study tactics." **Specificity is the whole product.**
+Not the tech stack — the insight quality. The tool needs to say something specific *and true* — e.g. "you hung a piece in 9 of your last 20 games, most often in time trouble; here's the one habit to fix it and how to measure the change" — not "You should study tactics." What it must NOT do is guess at the internal *why* (eval-drops measure what went wrong, not how many moves ahead you calculated — see the 2026-07-26 research council, which flagged the old "calculating only one move ahead" phrasing as an unsupportable causal claim). **Specificity — specific and true, never specific and guessed — is the whole product.**

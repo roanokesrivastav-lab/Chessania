@@ -12,6 +12,21 @@
   Raw `blunders_per_game` is left spec-faithful; the S15 coach will prefer the meaningful count
   and cite only pre-PONR blunders. PROVEN live: gt_lostendgame reports 3 raw blunders (plies
   54/84/88, PONR 54) but meaningful=1 — the founder's exact 3-vs-1 example.
+- [ ] **Chess.com §D / API-revocation tail-risk** (surfaced 2026-07-26 by the research council).
+  Chess.com owns Aimchess (our closest competitor); its User Agreement §D prohibits automated
+  access "for the development or enhancement of… competing products," and it already BLOCKED a
+  third-party tool ("Chessiro") under this clause in April 2026 — a clause that plausibly names
+  Chessania. Lichess's ToS explicitly permits commercial reuse (lower-risk platform). DECISION
+  (2026-07-26): keep the locked decisions AS-IS — username-only auto-pull, platform-neutral
+  (Chess.com + Lichess co-equal), PGN upload stays deferred (Part G #1). We only LOG the risk;
+  we do NOT unlock PGN upload or reposition Lichess-first yet. Revisit triggers: Chess.com
+  actually blocks/denies our access, OR we near a high-volume launch (then seek written consent
+  and consider the PGN escape hatch, whose seat already exists — NormalizedGame is source-agnostic).
+- [ ] **Indie-sustainability vs. acquisition-target** (strategic, surfaced 2026-07-26). The council's
+  clearest business finding: "good product, weak business" — viable as a lean indie tool or an
+  acquisition play (Aimchess's own trajectory), not a venture-scale standalone. The two paths pull
+  v1 scope differently (viral-report growth vs. defensible data assets). Not a build blocker; parked
+  as a founder decision to make deliberately, not by default.
 
 ## DECISION LOG
 
@@ -123,6 +138,22 @@
   founder's own piece-drop game, using only stored eval_cp_before + cp_loss + player_color,
   surfaced his exact example (move 19 Rd7, -1.3 and fighting, 274cp collapse). Recorded as
   the expanded Part G #11 "v2 Coaching Layer". No schema/code change; v1 continues at S10.
+- 2026-07-26: **Research-council roadmap amendments** (deliberate Rule 3/4 edits, founder-approved
+  in plan mode after reviewing the Obsidian vault research — 3-model council + competitor deep-dive
+  at `Research/Chessania/`). The research VALIDATED the build (rule-based cross-game diagnosis is
+  the real gap; compute is a non-issue; depth-12 fine; shareable report = growth loop). Three
+  amendments made — all doc-only, since schemas.py/coach.py don't exist yet (S15 builds them):
+  (1) **Appendix 2** — `Issue` gains success_metric, counter_evidence, rating_impact
+  ("high"/"medium"/"low" bucket — NEVER a fabricated rating-point integer), refresh_after; issues[]
+  now ordered by rating_impact then priority. This is the council's #1 fix: observation→hypothesis
+  →experiment, not confident mind-reading. (2) **Time-coaching promoted to v1** — Part G #11d's three
+  flags (rushed_blunders, dawdling, time_trouble_collapse) are now Appendix-3 rules + detectors 7-9
+  (detector cap 6→9, still hard; DET_TIME_* thresholds); they read the already-captured seconds_spent
+  (line-573 note flipped from "capture-only"), zero migration. (3) **PRD** — the "you calculate only
+  one move ahead" flagship line softened to an evidence-backed, non-causal promise (all 3 models
+  flagged it as unsupportable). NOT changed (logged above in OPEN QUESTIONS): PGN upload stays
+  deferred, platform stays neutral. Resequencing: a new time-coaching-detector session lands BEFORE
+  S15; S15 then builds schemas.py + coach.py consuming the fuller `Issue`.
 - \_\_\_\_-\_\_: S17 report-quality gate → \_\_\_\_
 - \_\_\_\_-\_\_: S23 pre-deploy gate → \_\_\_\_
 

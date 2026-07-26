@@ -490,7 +490,7 @@ ________________
 
 
 PART D — Phase 2: The Analysis & Coaching Pipeline (Sessions 8–17)
-The heart of the product. Order matters tightly here: evals → classification → jobs → tests → features → playstyle → coach → openings → quality gate. Opus is preferred for this phase. Standing guardrail: Part G is in force — in particular, no ML scaffolding, no LLM report phrasing, no "while we're here" extra detectors beyond the six specified (was five; a sixth, turning-point, added by the 2026-07-25 founder-approved amendment — still a hard cap, Rule 4).
+The heart of the product. Order matters tightly here: evals → classification → jobs → tests → features → playstyle → coach → openings → quality gate. Opus is preferred for this phase. Standing guardrail: Part G is in force — in particular, no ML scaffolding, no LLM report phrasing, no "while we're here" extra detectors beyond the nine specified (was five; a sixth, turning-point, added by the 2026-07-25 amendment; then three time-coaching detectors — rushed_blunders, dawdling, time_trouble_collapse — promoted from Part G #11d by the 2026-07-26 research amendment and specced in Appendix 3 — still a hard cap, Rule 4).
 
 
 ________________
@@ -570,7 +570,7 @@ From the mover's perspective: loss = (before − after) if mover is White, (afte
 2. Classification per Locked thresholds: 0–49 ok · 50–99 inaccuracy · 100–199 mistake · ≥200 blunder. Decided-position rule: if |eval_before| > 800 (from the mover's POV), classification = skipped — a "blunder" in a dead-lost position is noise, not signal, and counting it would poison every downstream rate.
 3. Phase tagging: opening = ply ≤ 20 · endgame = ≤ 6 non-king, non-pawn pieces remain on the board · middlegame = the rest. (Deliberately simple; a smarter boundary is a logged v2 nicety, not a v1 blocker.)
 4. Wire both into analyze_game; re-analyze the three ground-truth games (cache makes this cheap).
-5. Populate move_evals.seconds_spent (added by the 2026-07-25 amendment): for each of the player's moves, derive the clock time spent from the PGN's [%clk] comments — python-chess exposes the remaining clock per node via node.clock(); time_spent = (this player's previous remaining clock − current remaining clock) + increment (parsed from the TimeControl header, e.g. "180" = no increment, "180+2" = 2s), with the first move measured from the starting clock. Leave it null when the PGN has no clock data. This is CAPTURE ONLY — no v1 feature, detector, or rule reads it (Part G reserves the time-management coaching that will).
+5. Populate move_evals.seconds_spent (added by the 2026-07-25 amendment): for each of the player's moves, derive the clock time spent from the PGN's [%clk] comments — python-chess exposes the remaining clock per node via node.clock(); time_spent = (this player's previous remaining clock − current remaining clock) + increment (parsed from the TimeControl header, e.g. "180" = no increment, "180+2" = 2s), with the first move measured from the starting clock. Leave it null when the PGN has no clock data. As of the 2026-07-26 research amendment this is READ BY v1: the three time-coaching detectors/rules in Appendix 3 (rushed_blunders, dawdling, time_trouble_collapse) consume it — promoted from Part G #11d after the council found per-move clock correlation is the cheapest untapped specificity signal and no free competitor uses it. Rows with null seconds_spent are simply skipped by those detectors.
 6. The calibration check: compare the pipeline's blunder list per game against the founder's P0-3 annotations. Target: every human-flagged bad move is caught (recall), and nothing the founder considers fine is labeled a blunder (precision on the big label). Threshold disagreements at the inaccuracy/mistake border are acceptable; blunder-level disagreements are bugs — investigate, don't rationalize.
 
 
@@ -688,7 +688,7 @@ Session 13 — Features II: the six pattern detectors (5 original + turning-poin
 Est: 3–4 h · Prereq: S12
 
 
-Goal: The distinctive-insight layer — each detector returns {fired: bool, stats: dict, evidence: list}, and exactly these six, no more (Rule 4; was five, +turning-point per the 2026-07-25 amendment):
+Goal: The distinctive-insight layer — each detector returns {fired: bool, stats: dict, evidence: list}, and exactly these six, no more (Rule 4; was five, +turning-point per the 2026-07-25 amendment). [2026-07-26 amendment: three more detectors — the time-coaching trio rushed_blunders, dawdling, time_trouble_collapse — are promoted from Part G #11d and built in their OWN session (before S15), NOT here; they are specced in Appendix 3. S13's deliverable remains exactly these six; the global cap is now nine, still hard.]:
 
 
 Steps:
@@ -1064,8 +1064,8 @@ During MVP sessions this list is a hard fence (Rule 4). Each entry notes the sea
     - a. Missed saves — a worse-but-still-tenable position (your-POV eval_before ~ -50..-350) where a high cp_loss means a fighting move existed and you let it collapse. Teaches defense/resilience. Seat: move_evals (eval_cp_before + cp_loss + player_color).
     - b. Missed wins / tactics — a winning eval_before + high cp_loss = you were winning and let it go. Seat: same columns.
     - c. Tilt / compounding — a mistake/blunder immediately followed by another (the emotional spiral). Seat: consecutive move_evals.classification ordered by ply.
-    - d. Time coaching — three flags: (i) too-fast-then-blundered (low seconds_spent + blunder), (ii) dawdling/indecision (high seconds_spent burned on low-cp_loss moves, leaving you short), (iii) time-trouble collapse (error rate rising as the remaining clock falls — remaining clock reconstructable from seconds_spent + [%clk]). Seat: move_evals.seconds_spent + games.pgn. LOCKED RULE (founder insight): do NOT flag "thought long AND still blundered" as a weakness — spending time on a genuinely critical move is GOOD judgment (you picked the right place to invest), not a flaw; if anything it's a positive signal.
-    Trigger for the whole layer: the v1 eval-based coaching loop is shipped and trusted first. (Note: v1 reads NONE of this — capture/derivability only.)
+    - d. Time coaching — **PROMOTED TO v1 on 2026-07-26** (research council: cheapest untapped specificity signal, no free competitor uses it). Now specced in Appendix 3 as three v1 rules. Three flags: (i) too-fast-then-blundered (low seconds_spent + blunder), (ii) dawdling/indecision (high seconds_spent burned on low-cp_loss moves, leaving you short), (iii) time-trouble collapse (error rate rising as the remaining clock falls — remaining clock reconstructable from seconds_spent + [%clk]). Seat: move_evals.seconds_spent + games.pgn. LOCKED RULE (founder insight): do NOT flag "thought long AND still blundered" as a weakness — spending time on a genuinely critical move is GOOD judgment (you picked the right place to invest), not a flaw; if anything it's a positive signal.
+    Trigger for the rest of the layer (a/b/c — missed saves, missed wins, tilt): the v1 eval-based coaching loop is shipped and trusted first. (Note: v1 now reads seconds_spent for the time-coaching (d) rules; a/b/c remain v2 — capture/derivability only.)
 
 
 ________________
@@ -1360,6 +1360,30 @@ class Issue(BaseModel):
     prescription: str        # MUST be concrete and sized (counts, days, links)
 
 
+    success_metric: str      # measurable target tied to the prescription — the
+                             # "experiment" half of observation→hypothesis→experiment
+                             # (2026-07-26 research amendment). e.g. "get this from
+                             # {current}/game to under {target}/game over your next 10 games".
+                             # MUST contain the numbers the player will check themselves against.
+
+
+    counter_evidence: str | None    # honest hedge when the pattern isn't universal
+                                    # (2026-07-26): "but in 3 of these you were already lost,
+                                    # so it's costing you less than the raw count suggests".
+                                    # None when there is no meaningful counter-signal.
+
+
+    rating_impact: Literal["high","medium","low"]   # COARSE bucket, never a fabricated
+                             # "≈80 rating points" integer (that would itself be the kind of
+                             # unfalsifiable causal claim this whole product avoids). Derived
+                             # from this issue's share of total avoidable cp-loss. issues[] is
+                             # ordered by this bucket, then by the Appendix-3 priority integer.
+
+
+    refresh_after: str       # when this finding should be recomputed, in the player's terms
+                             # (2026-07-26): "re-check after 20 new games".
+
+
     links: list[Link]
 
 
@@ -1601,6 +1625,15 @@ key
 	overextension
 	detector 4 fired
 	8
+	rushed_blunders
+	detector 7 (rushed_blunders) fired
+	9
+	time_trouble_collapse
+	detector 8 (time_trouble_collapse) fired
+	10
+	dawdling
+	detector 9 (dawdling) fired
+	11
 	
 
 Copy templates (structural shapes — full strings live in code, matching these exactly in structure):
@@ -1614,6 +1647,16 @@ Copy templates (structural shapes — full strings live in code, matching these 
 * blitz_gap — H: "You don't have a chess problem — you have a blitz problem." D: "{blitz_bpg} blunders/game in blitz vs {rapid_bpg} in rapid." P: shift the ratio toward rapid for a month; blitz is testing, rapid is training.
 * opening_general — the softer variant when no single family is guilty: D cites {leak_rate}% of games worse by move 20; P: opening principles (development, king safety) — not lines — with one link.
 * overextension — hedged (low-confidence detector): "There are signs you push pawns past their support — in {k} spots a big advance preceded a slide within 3 moves…" P: before any pawn push past the 5th, ask who guards the square it leaves behind?
+* rushed_blunders (time-coaching, 2026-07-26) — H: "You don't have a blunder problem — you have a rushing problem." D: "{rushed_pct}% of your blunders came with under {rush_seconds}s on your clock — you're moving before you've finished looking." P: on every move where you still have time, before you touch a piece, name every check and capture your opponent has. M (success_metric): "cut rushed blunders from {rushed_pct}% to under {target_pct}% over your next 10 games." Counter_evidence when most of those rushed moves were already-decided positions. LOCKED RULE: a SLOW move that still blundered is never counted here — that's good judgment, not rushing.
+* time_trouble_collapse (time-coaching, 2026-07-26) — H: "Your clock, not the board, is losing these." D: "Your error rate climbs from {early_rate} to {late_rate} per move once you drop under {low_clock}s — the mistakes cluster in time trouble, not across the whole game." P: budget the clock — keep {reserve_pct}% for the last 15 moves, and play known opening lines faster to bank time for the moves that decide the game. M: "keep your under-{low_clock}s error rate within {target_ratio}× your normal rate over your next 10 games."
+* dawdling (time-coaching, 2026-07-26) — H: "You're spending your time in the wrong places." D: "You burned an average of {dawdle_avg}s on moves that didn't need it — low-loss, already-clear positions — across {k} games, then landed in time trouble." P: spend your think where the position is genuinely unclear (many checks, captures, candidate moves); play forced or obvious recaptures quickly. M: "reach move {move_target} with at least {clock_target}s left over your next 10 games." LOCKED RULE: time spent on a genuinely hard or critical move is good judgment and is NEVER flagged here — dawdling fires only on time burned on LOW-cp_loss, low-complexity moves.
+
+Note (2026-07-26 Appendix-2 amendment): EVERY Issue — the rules above included — now also carries success_metric, counter_evidence, rating_impact ("high"/"medium"/"low" bucket, never a fabricated rating-point integer), and refresh_after. The three time rules show their success_metric inline as M: above; the six earlier rules get theirs backfilled when S15 implements coach.py. issues[] is ordered by rating_impact bucket, then by the priority integer in the table above.
+
+Time-coaching detector specs (7–9) — promoted from Part G #11d, built in their own session before S15; pure functions over stored move_evals.seconds_spent + games.pgn [%clk], no engine calls, no new migration. Rows with null seconds_spent are skipped. Thresholds are named app.config.settings.DET_TIME_* (config is the tuning home; these values are the law):
+* 7. rushed_blunders — of the player's blunders, the share played with under DET_TIME_RUSH_SECONDS (default 15s) of clock remaining; fires when that share ≥ DET_TIME_RUSH_MIN_SHARE (default 0.40) with ≥ DET_TIME_RUSH_MIN_BLUNDERS (default 4) clocked blunders. Evidence: the 3 clearest rushed blunders. LOCKED RULE holds: a blunder played with ample clock is excluded.
+* 8. time_trouble_collapse — the player's error rate (mistakes+blunders per move) once remaining clock < DET_TIME_TROUBLE_CLOCK (default 30s) vs. their rate above it; fires when the low-clock rate ≥ DET_TIME_TROUBLE_RATIO (default 2.0)× the normal rate, with ≥ DET_TIME_TROUBLE_MIN_GAMES (default 5) games that actually reached time trouble. Remaining clock reconstructed from seconds_spent + [%clk]. Evidence: 3 time-trouble errors.
+* 9. dawdling — the player's average seconds_spent on LOW-cp_loss (≤ 49cp, i.e. "ok"), low-complexity moves; fires when that average ≥ DET_TIME_DAWDLE_SECONDS (default 20s) across ≥ DET_TIME_DAWDLE_MIN_GAMES (default 5) games AND those games later reached time trouble (< DET_TIME_TROUBLE_CLOCK). Evidence: 3 dawdled moves. LOCKED RULE holds: time on genuinely hard/critical moves is never counted.
 
 
 §S Strength selection (exactly one): best phase by ACPL margin → "Your {phase} is genuinely solid — {acpl} average loss, better than your other phases by {margin}"; else conversion ≥ 0.75 → the closer strength; else trend improving → the trajectory strength; else lowest-blunder time class. Never omit; never fake a number.
