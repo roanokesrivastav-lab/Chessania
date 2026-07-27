@@ -221,6 +221,44 @@ Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-07-26 · Session 16 · Opening recommendations (Appendix 4)
+
+- Fills the `opening_recs` the S15 coach left `[]`. Kimi 2.7 coded + committed (`2706324`, no push);
+  Opus reviewed + ran the DoD live + pushed. NEW `app/data/openings.json` (the 12 Appendix-4 entries
+  transcribed verbatim — bucket × color × primary/alt, each with eco_family / line / why_template /
+  a free Lichess study_url) and `app/openings.py` (`_eco_in_family` range matcher, `build_opening_recs`
+  → exactly 2 recs (white, black)). Additive `features.py`: new `top_eco_by_color` field +
+  `build_features` optional 4th arg (`load_features` computes each color's most-frequent `opening_eco`
+  via `Counter`). `coach.py`: one-line swap `opening_recs=[] → build_opening_recs(features)`.
+  `detectors.py` and `playstyle.py` UNTOUCHED.
+- Design (per the approved plan): one rec per color = the bucket's **primary**. If the player already
+  plays that family (`_eco_in_family(top_eco, family)`), `already_plays=True` and the `why` switches to
+  the Appendix-4 deepen-don't-switch copy + a mention of the **alt** as a second weapon (honors both
+  spec sentences). Bucket = `features.playstyle.label`, defaulting to `balanced` when playstyle absent.
+  Non-already-plays `why` = the entry template + the two largest playstyle components with their numbers.
+- **KNOWN LIMITATION (documented, not a bug): the already-plays check is Lichess-only.** `ingest.py`
+  sets `opening_eco=None` for every Chess.com game (their archive JSON carries no ECO field), so a
+  Chess.com player's `top_eco_by_color` is all-None → `already_plays` never fires → they always get the
+  primary rec. Honest degradation; a real fix needs a move-sequence→ECO classifier (out of scope).
+- **AI-verified**: `pytest -q` → **150 passed, 3 deselected** (was 126; +24 from `test_openings.py`),
+  1.15s, OFFLINE — stockfish count went 1→0 (nothing spawned by the run). `_eco_in_family` tested across
+  single / en-dash range / ASCII-hyphen range / open-ended `+` / None / empty / wrong-letter / malformed.
+  Recs forced for all 3 buckets; exactly-2; every `why` carries a digit; study_links are the Lichess URLs.
+  Opus also ran `build_opening_recs` live end-to-end (`import app.main` clean) and eyeballed the copy:
+  already-plays fired correctly for both a single-code family (London `D02`) and a range family
+  (Caro-Kann `B10–B19`).
+- **Opus review: clean — no blocking bugs.** Two notes deferred to the S17 quality gate (S16 DoD passes):
+  (1) in the deepen copy the digits are the opening's *move numbers*, not one of the *player's* numbers —
+  CLAUDE.md rule 7 wants a player number; honest fix ("played it in N of your last games") needs a small
+  features add, right work for S17. (2) S15 enforced digits per-sentence for Issues; S16 enforces
+  per-string for `why`, and the deepen copy's first sentence has no digit — if S17's grep goes
+  per-sentence on `opening_recs`, that copy needs a tweak.
+- **[founder-to-verify]** — S16 step 5 (chess judgment): founder reads their own white+black recs, confirms
+  they pass the sub-1800 smell test, and verifies all 12 Lichess study links are live.
+- Next: **Session 17** — DECISION GATE (report quality + golden files). No new features; proves quality
+  via 3 golden-file fixtures + the mechanical specificity/banned-phrase audit + the human swap test.
+  The two S16 notes above are the natural first items to resolve inside S17's Appendix-3 copy loop.
+
 ### 2026-07-26 · Session 15 · The coach: rule engine → Report (Appendix 2 + 3)
 
 - The product's actual product. Kimi 2.7 coded + committed (`dd107cb`, no push); Opus reviewed +
