@@ -215,11 +215,45 @@ Phase 0:  [~] P0-1  [x] P0-2  [~] P0-3  [x] P0-4   ([~] = done but pending found
           P0-1 founder+lichess accounts logged, band accounts deferred to S11;
           P0-3 ground truth AI-drafted, founder to verify against the analysis board)
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
-Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [x] S14.5 (time-coaching detectors) [ ] S15 [ ] S16 [ ] S17
+Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [x] S14.5 (time-coaching detectors) [x] S15 [ ] S16 [ ] S17
 Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-26 · Session 15 · The coach: rule engine → Report (Appendix 2 + 3)
+
+- The product's actual product. Kimi 2.7 coded + committed (`dd107cb`, no push); Opus reviewed +
+  ran the DoD live + pushed. NEW `app/schemas.py` (full Appendix-2 Report incl. the 2026-07-26 fuller
+  `Issue`: success_metric/counter_evidence/rating_impact/refresh_after) and `app/coach.py` (all 11
+  Appendix-3 rules — 8 original + the 3 time rules — each a `_Rule` with fires/render; `build_report`
+  orders fired rules by (rating_impact bucket, priority), top-3, exactly-one strength per §S, evidence
+  resolved to rich EvidenceRefs via a session lookup with graceful degradation when session/player are
+  absent). Wired a `coaching` stage into `run_job` (load_features → build_report → persist a `Report`
+  row → `report_ready=True`); added `GET /api/reports/{platform}/{username}` (real endpoint, NOT
+  dev-gated) + `scripts/print_report.py`. Scope per plan: `opening_recs=[]` (S16), `progress=None`
+  (first report), rating_impact = fixed per-rule bucket (pri 1–3 high / 4–7 medium / 8–11 low).
+  blunder_rate uses `meaningful_blunders_per_game` + pre-PONR evidence (S13 resolution). `features.py`
+  and `detectors.py` untouched.
+- **AI-verified**: `pytest -q` → **126 passed, 3 deselected**, 1.15s, OFFLINE — stockfish process
+  count flat (no engine spawned). Opus **hand-cross-checked every detector `stats` key the coach reads
+  against `detectors.py`'s actual emissions** (hang_pct/hung_count, family/avg_cp/game_count,
+  late_ratio/late_blunders, blitz_bpg/rapid_bpg, occurrences, turning_point.ponr_by_game, + the 3 time
+  detectors) — ALL match, so no KeyError-on-real-data risk (the class of bug synthetic tests hide).
+  Tests are substantive: per-rule render validity, ordering (high/high/medium), top-3 cap, clean player
+  → 0 issues + 1 strength (no padding), Pydantic round-trip, opening_general's AND-NOT condition.
+  Banned-phrase compliance holds (every diagnosis/prescription/success_metric carries a digit).
+- **Opus review: clean — no blocking bugs.** Two notes: (1) low-severity — `late_collapse` can emit
+  `late_ratio=None` (zero early blunders); coach coerces to 1.0, so copy reads slightly oddly in that
+  rare edge but never crashes — logged as a tuning follow-up, not fixed now. (2) Could NOT run the
+  real-data smoke (dev DB empty — no analyzed account), so `build_report` on genuine detector output is
+  covered by the manual key cross-check, not a live run.
+- **[founder-to-verify]** (the S15 DoD's real bar): run a live `POST /api/analyze` on a real account
+  (e.g. chesscom/Eleven_14), then `python scripts/print_report.py chesscom Eleven_14` (or GET
+  /api/reports/...) and read the top issue out loud — does at least one line clear "…that's true and I
+  hadn't seen it put that way"? If not, tune Appendix 3 copy/thresholds FIRST, then code.
+- Next: **Session 16** — opening recommendations (Appendix 4): build `openings.py` + `openings.json`,
+  fill the `opening_recs` the coach currently leaves `[]`.
 
 ### 2026-07-26 · Session 14.5 · Time-coaching detectors (7–9, promoted from Part G #11d)
 
