@@ -39,3 +39,6 @@ logs/
 *~
 .DS_Store
 Thumbs.db
+
+# Local vexp index-daemon working files (tooling, not project source)
+.vexp/

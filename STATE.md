@@ -229,6 +229,31 @@ Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-07-27 · Session 18 · Landing page + typed API client (Phase 3 begins)
+
+- First FRONTEND session — top of the funnel, one screen/one field. Kimi 2.7 coded + committed
+  (`1067968`, no push); Opus reviewed + ran `npm run build` live + pushed. NEW `frontend/lib/types.ts`
+  (hand-mirror of the full Appendix-2 `Report` tree + `Job`/`AnalyzeResponse`/`Platform`),
+  `frontend/lib/api.ts` (typed `analyze`/`getJob`/`getReport` off `NEXT_PUBLIC_API_URL`, throwing the
+  backend `detail` on non-2xx and a friendly "engine room napping" on network failure),
+  `frontend/app/page.tsx` (name + one-liner, platform toggle Chess.com-default, username field, "Coach
+  me", 3 below-fold honesty notes; client-side regex validation, loading/double-submit guard, submit →
+  `router.push('/analyzing/'+job_id)`), a minimal `frontend/app/analyzing/[jobId]/page.tsx` stub (S19
+  builds the real live screen), and `.env.example`. Backend UNTOUCHED (Phase-3 wall held).
+- **AI-verified**: `cd frontend && npm run build` → **compiled clean, TypeScript passed**, 3 routes
+  generated (`/`, `/analyzing/[jobId]`, `/_not-found`) on Next.js 16.2.11 + Turbopack. Opus cross-checked
+  `types.ts` field-by-field against `backend/app/schemas.py` (every field + nullability + literal union
+  matches) and confirmed the client regexes EXACTLY mirror `_USERNAME_PATTERNS` (chesscom {3,25}, lichess
+  {2,30}). The stub sidesteps Next 16's async-`params` breaking change by being a client component using
+  `useParams()` — good call flagged in `frontend/AGENTS.md`.
+- **Opus review: clean — no bugs.** git hygiene: added `.vexp/` (local index-daemon tooling) to
+  `.gitignore` and `git rm --cached`'d it — it had been silently riding along in S16/S17/S18 commits.
+- **[founder-to-verify] — the S18 DoD (real browser flow)**: run the backend (`uvicorn`), `cd frontend
+  && npm run dev`, type a username → "Coach me" should land on `/analyzing/{job_id}` with a live id;
+  check phone-width layout is clean and that Enter submits.
+- Next: **Session 19** — the live progress screen (`/analyzing/[jobId]`: poll `getJob()` every 2s, render
+  by stage, graceful error/expired copy). Prereq S18 ✓.
+
 ### 2026-07-26 · Session 17 · DECISION GATE: report quality + golden files
 
 - No new product features — this session proves report quality and locks it with golden files. Kimi 2.7
