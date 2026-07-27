@@ -221,6 +221,48 @@ Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-07-26 · Session 17 · DECISION GATE: report quality + golden files
+
+- No new product features — this session proves report quality and locks it with golden files. Kimi 2.7
+  coded + committed (`c51bb2e`, no push); Opus reviewed + ran the mechanical parts live, fixed one
+  blocking bug (`cf6980c`), + pushed. NEW `tests/fixtures/features/builders.py` (3 synthetic DB-seeded
+  profiles → `load_features` → `(features, player)`), 3 committed golden reports
+  (`tactical_blunderer.json` / `positional_leaker.json` / `endgame_loser.json`, each
+  `report.model_dump(mode="json")` minus `generated_at`), `tests/test_golden_reports.py` (byte-equality
+  + `REGEN_GOLDENS=1` regen switch + a determinism check), `tests/test_specificity.py` (two mechanical
+  audits: every issue diagnosis/prescription/success_metric + strength.detail + opening_rec.why must
+  carry a digit OR a game reference; the 4 Appendix-3 banned phrases only allowed with a digit in the
+  same sentence). Design per approved plan: seed real DB scenarios and run the SHIP path so evidence
+  resolves to rich EvidenceRefs (bare PlayerFeatures give empty evidence — useless for a gate).
+- **Blocking bug found in review + fixed (`cf6980c`)**: Kimi added a determinism sort to
+  `coach._pre_ponr_blunders` keyed on `Game.played_at`, which is NULLABLE (ingest leaves it None when
+  the platform omits the timestamp). A batch mixing null + non-null timestamps → `TypeError: '<' not
+  supported between NoneType and datetime` on the REAL `blunder_rate` report path. Invisible to the
+  suite because every seeded game has a non-null `played_at`. Reproduced the crash, fixed with a
+  null-first sort key (`(played_at is None, played_at, ply)`); goldens stayed byte-identical (all seeded
+  timestamps non-null), 156 tests still green. [AI-verified]
+- **AI-verified**: `pytest -q` → **156 passed, 3 deselected**, ~1.8s, OFFLINE — `pgrep -f stockfish`
+  flat (golden building never invokes the engine; features come straight from seeded MoveEval rows).
+  Goldens confirmed unchanged by the fix (`git status` on the fixtures dir empty). Both mechanical audits
+  pass for all three profiles — so the coach + opening copy already clears the specificity/banned-phrase
+  gate; NO fix-first copy edit to Appendix 3 was needed. The two S16 carry-over notes (deepen-copy
+  player-number / per-sentence digit) did NOT trip the audit as scoped (the deepen `why` only renders on
+  the already-plays path, which these profiles don't hit) — left as-is; revisit only if a future golden
+  exercises it.
+- **Other review notes (non-blocking, not changed)**: (1) Kimi's second product-code change —
+  `load_features` now sorts each game's move-evals by `ply` — is SAFE (`ply` is NOT NULL) and a genuine
+  determinism/ordering improvement; kept. (2) commit `c51bb2e` is mislabeled `test:` despite touching
+  product code, and swept `.vexp/manifest.json` (local tooling noise) into the commit — history left as
+  is; suggest gitignoring `.vexp/` later. (3) `test_build_report_is_deterministic` rebuilds from the
+  same session/rows so it can't catch cross-run DB-order flakiness — the golden byte-comparison across
+  runs is the real determinism guard.
+- **[founder-to-verify] — the S17 gate itself (items 3 + 4)**: read the three golden reports side by
+  side and run the **swap test** — confirm no paragraph could be moved to a different player unchanged.
+  Then log the **go / fix-first** verdict in the Decision Log above. Fix-first → Appendix-3 copy edits →
+  `REGEN_GOLDENS=1` → re-read. Do NOT start S20 (frontend report) on a fix-first verdict.
+- Next: pending the gate verdict — **go** → Session 18 (next roadmap session); **fix-first** → Appendix-3
+  copy loop + golden re-approval.
+
 ### 2026-07-26 · Session 16 · Opening recommendations (Appendix 4)
 
 - Fills the `opening_recs` the S15 coach left `[]`. Kimi 2.7 coded + committed (`2706324`, no push);

@@ -4,7 +4,7 @@
     "CLAUDE.md": "e19cf69ef82fa7c3f7bbc0178026ca36c267593b8e06a98ea76350d31c91d3a1",
     "PRD.md": "fcf9711c1cb4a0108e30f5350b1f19b036e8f6ee97396fe20240876cd41ec7c9",
     "README.md": "d937de63ff631a4b05266942c32b9b8b9b06e3e2c8f4710003bf0a67957bddfb",
-    "STATE.md": "a09b71b745d43623d9bf87ff89d7c8dcf9dc8bc080302461ce4b4cfac8dec02c",
+    "STATE.md": "7dae78e7657a4a4c4ad024871369235f28c1d6ba0a00703ab9f08e7b49f5a8b0",
     "backend/alembic/env.py": "c52f6052851de8c559c02ea1801249cad11801d7efa45f41e986db9f94a56baa",
     "backend/alembic/versions/0001_initial_schema.py": "48298531f646e4deab10361f4e6733581e595a23133fbecfbd676cb9ae7456d1",
     "backend/alembic/versions/0002_add_move_evals_seconds_spent.py": "862462c57dcf1df26ecd15679c875804998f1af7ef42da7eb823db20f165ebf3",
@@ -55,13 +55,13 @@
     "frontend/next.config.ts": "cffa485cc39e35da1ff735d42c7a4e13fddb619d7d284a6ecced9e971a1e7f12",
     "frontend/postcss.config.mjs": "28a2e2028ed86bc42f1b4af4ea55278d0b89c5984c27c52fe738d8d0dd326085"
   },
-  "indexed_at_commit": "c51bb2e38292f6fab5d25d3a70adbcbca5485781",
-  "indexed_at_timestamp": "2026-07-27T02:47:20.755287+00:00",
+  "indexed_at_commit": "cf6980c49f9c4feb75102a47a26532580cebedaf",
+  "indexed_at_timestamp": "2026-07-27T02:48:02.865554+00:00",
   "schema_version": 3,
   "stats": {
-    "total_edges": 716,
+    "total_edges": 717,
     "total_files": 54,
-    "total_nodes": 474
+    "total_nodes": 475
   },
   "vexp_version": "2.3.1"
 }
