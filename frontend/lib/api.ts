@@ -2,6 +2,16 @@ import type { AnalyzeResponse, Job, Platform, Report } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+export class ApiError extends Error {
+  status: number | null;
+
+  constructor(message: string, status: number | null) {
+    super(message);
+    this.status = status;
+    this.name = "ApiError";
+  }
+}
+
 function apiUrl(path: string): string {
   return `${API_BASE}${path}`;
 }
@@ -20,9 +30,16 @@ async function extractError(response: Response): Promise<string> {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    throw new Error(await extractError(response));
+    throw new ApiError(await extractError(response), response.status);
   }
   return (await response.json()) as T;
+}
+
+function throwNetworkError(): never {
+  throw new ApiError(
+    "Chessania's engine room is napping — try again in a minute.",
+    null
+  );
 }
 
 export async function analyze(
@@ -34,9 +51,7 @@ export async function analyze(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ platform, username }),
   }).catch(() => {
-    throw new Error(
-      "Chessania's engine room is napping — try again in a minute."
-    );
+    throwNetworkError();
   });
 
   return handleResponse<AnalyzeResponse>(response);
@@ -44,9 +59,7 @@ export async function analyze(
 
 export async function getJob(jobId: string): Promise<Job> {
   const response = await fetch(apiUrl(`/api/jobs/${jobId}`)).catch(() => {
-    throw new Error(
-      "Chessania's engine room is napping — try again in a minute."
-    );
+    throwNetworkError();
   });
 
   return handleResponse<Job>(response);
@@ -59,9 +72,7 @@ export async function getReport(
   const response = await fetch(
     apiUrl(`/api/reports/${platform}/${username}`)
   ).catch(() => {
-    throw new Error(
-      "Chessania's engine room is napping — try again in a minute."
-    );
+    throwNetworkError();
   });
 
   return handleResponse<Report>(response);
