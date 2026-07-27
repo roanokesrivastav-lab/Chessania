@@ -1,0 +1,231 @@
+{
+  "schema_version": 1,
+  "player_summary": {
+    "platform": "chesscom",
+    "username": "tactical_blunderer",
+    "rating": 920,
+    "games_analyzed": 13,
+    "date_range": "Jan 01 \u2013 Jan 01",
+    "time_class_mix": "8 blitz \u00b7 5 rapid"
+  },
+  "playstyle": {
+    "label": "tactical",
+    "score": 1.0,
+    "explanation": "you trade or take pieces on 94% of your moves and your games run about 35 plies long - that is the biggest driver of your style.",
+    "components": {
+      "capture_density": 1.0,
+      "game_length": 1.0,
+      "eval_volatility": 1.0,
+      "opposite_castling": 1.0,
+      "queen_keep": 1.0
+    }
+  },
+  "strengths": [
+    {
+      "headline": "Your accuracy is trending up.",
+      "detail": "Your average centipawn loss improved across the second half of your 13 games."
+    }
+  ],
+  "issues": [
+    {
+      "key": "blunder_rate",
+      "headline": "Blunders are your rating cap.",
+      "diagnosis": "You averaged 12.2 meaningful blunders per game across 13 games \u2014 at rating 920, that's the difference-maker in a 13-game sample; 25.2% came after move 25.",
+      "prescription": "Do 40 Lichess puzzles a day for 30 days, and before every move ask one question: what did their last move threaten?",
+      "success_metric": "Get your meaningful blunder rate from 12.2 to under 11.2 per game over your next 20 games.",
+      "counter_evidence": null,
+      "rating_impact": "high",
+      "refresh_after": "re-check after 20 new games",
+      "links": [
+        {
+          "label": "Lichess puzzles",
+          "url": "https://lichess.org/training/tactics"
+        }
+      ],
+      "evidence": [
+        {
+          "game_url": "https://www.chess.com/game/live/1000",
+          "played_at": "2026-01-01T00:00:00",
+          "opponent_rating": 1050,
+          "ply": 1,
+          "move_san": "Nxe4",
+          "detail": "blundered Nxe4 for 300 centipawns lost"
+        },
+        {
+          "game_url": "https://www.chess.com/game/live/1000",
+          "played_at": "2026-01-01T00:00:00",
+          "opponent_rating": 1050,
+          "ply": 3,
+          "move_san": "Nxe4",
+          "detail": "blundered Nxe4 for 300 centipawns lost"
+        },
+        {
+          "game_url": "https://www.chess.com/game/live/1000",
+          "played_at": "2026-01-01T00:00:00",
+          "opponent_rating": 1050,
+          "ply": 5,
+          "move_san": "Nxe4",
+          "detail": "blundered Nxe4 for 300 centipawns lost"
+        }
+      ]
+    },
+    {
+      "key": "hung_pieces",
+      "headline": "Free pieces are walking away.",
+      "diagnosis": "85.5% of your blunders left a piece where it could simply be taken \u2014 136 hung-piece blunders in this batch.",
+      "prescription": "Board-vision drill: before moving, scan every undefended piece of yours; train the Lichess 'hanging pieces' theme for 15 minutes a day.",
+      "success_metric": "Cut hung-piece blunders from 85.5% to under 42.8% over your next 20 games.",
+      "counter_evidence": "This counts only positions where the opponent's best reply actually wins material.",
+      "rating_impact": "high",
+      "refresh_after": "re-check after 20 new games",
+      "links": [
+        {
+          "label": "Lichess hanging pieces",
+          "url": "https://lichess.org/practice/intermediate-tactics/hanging-piece/"
+        }
+      ],
+      "evidence": [
+        {
+          "game_url": "https://www.chess.com/game/live/1000",
+          "played_at": "2026-01-01T00:00:00",
+          "opponent_rating": 1050,
+          "ply": 1,
+          "move_san": "Nxe4",
+          "detail": "blunder with Nxe4 at move 1"
+        },
+        {
+          "game_url": "https://www.chess.com/game/live/1000",
+          "played_at": "2026-01-01T00:00:00",
+          "opponent_rating": 1050,
+          "ply": 3,
+          "move_san": "Nxe4",
+          "detail": "blunder with Nxe4 at move 3"
+        },
+        {
+          "game_url": "https://www.chess.com/game/live/1000",
+          "played_at": "2026-01-01T00:00:00",
+          "opponent_rating": 1050,
+          "ply": 5,
+          "move_san": "Nxe4",
+          "detail": "blunder with Nxe4 at move 5"
+        }
+      ]
+    },
+    {
+      "key": "blitz_gap",
+      "headline": "You don't have a chess problem \u2014 you have a blitz problem.",
+      "diagnosis": "You don't have a chess problem \u2014 you have a blitz problem: 18.0 blunders per game in blitz vs 3.0 in rapid.",
+      "prescription": "Shift the ratio toward rapid for 30 days: play 3 rapid games for every 1 blitz game; blitz is testing, rapid is training.",
+      "success_metric": "Get your blitz blunder rate within 0.5 of your rapid rate over your next 20 games.",
+      "counter_evidence": "This only matters if you care about your rapid rating; in pure bullet practice the gap is expected.",
+      "rating_impact": "medium",
+      "refresh_after": "re-check after 20 new games",
+      "links": [
+        {
+          "label": "Lichess rapid pool",
+          "url": "https://lichess.org/?time=10&increment=0#/"
+        }
+      ],
+      "evidence": [
+        {
+          "game_url": "https://www.chess.com/game/live/1000",
+          "played_at": "2026-01-01T00:00:00",
+          "opponent_rating": 1050,
+          "ply": 1,
+          "move_san": "Nxe4",
+          "detail": "blunder with Nxe4 at move 1"
+        },
+        {
+          "game_url": "https://www.chess.com/game/live/1000",
+          "played_at": "2026-01-01T00:00:00",
+          "opponent_rating": 1050,
+          "ply": 3,
+          "move_san": "Nxe4",
+          "detail": "blunder with Nxe4 at move 3"
+        },
+        {
+          "game_url": "https://www.chess.com/game/live/1000",
+          "played_at": "2026-01-01T00:00:00",
+          "opponent_rating": 1050,
+          "ply": 5,
+          "move_san": "Nxe4",
+          "detail": "blunder with Nxe4 at move 5"
+        }
+      ]
+    }
+  ],
+  "opening_recs": [
+    {
+      "color": "white",
+      "name": "Italian Game (incl. Evans Gambit)",
+      "eco_family": "C50\u2013C54",
+      "why": "The open piece play and quick attacking chances suit someone who likes sharp, forcing positions \u2014 your capture density (1.00) and game length (1.00) point this way.",
+      "study_link": {
+        "label": "Study Italian Game (incl. Evans Gambit)",
+        "url": "https://lichess.org/opening/Italian_Game"
+      },
+      "already_plays": false
+    },
+    {
+      "color": "black",
+      "name": "Scandinavian Defense",
+      "eco_family": "B01",
+      "why": "The early queen sortie forces concrete calculation from move two onward \u2014 your capture density (1.00) and game length (1.00) point this way.",
+      "study_link": {
+        "label": "Study Scandinavian Defense",
+        "url": "https://lichess.org/opening/Scandinavian_Defense"
+      },
+      "already_plays": false
+    }
+  ],
+  "stats_block": {
+    "blunders_per_game": 12.2,
+    "mistakes_per_game": 0.0,
+    "acpl_overall": 192.3,
+    "acpl_by_phase": {
+      "opening": 192.3,
+      "middlegame": 192.3,
+      "endgame": 0.0
+    },
+    "endgame_conversion": null,
+    "accuracy_trend": "improving",
+    "per_game_acpl": [
+      300.0,
+      300.0,
+      300.0,
+      300.0,
+      300.0,
+      300.0,
+      300.0,
+      300.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0
+    ],
+    "by_color": {
+      "white": {
+        "games": 13,
+        "results": {
+          "win": 6,
+          "loss": 6,
+          "draw": 1
+        },
+        "blunders_per_game": 12.2,
+        "acpl_overall": 192.3,
+        "acpl_by_phase": {
+          "opening": 192.3,
+          "middlegame": 192.3,
+          "endgame": 0.0
+        },
+        "worst_phase": null,
+        "opening_leak_rate": 0.0,
+        "endgame_conversion": null,
+        "low_signal": false
+      }
+    }
+  },
+  "progress": null,
+  "engine_depth": 12
+}

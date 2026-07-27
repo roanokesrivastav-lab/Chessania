@@ -580,7 +580,10 @@ def load_features(session: Session, platform: str, username: str) -> PlayerFeatu
 
     evals: dict[str, list[MoveEval]] = {}
     for game in games:
-        rows = session.scalars(select(MoveEval).where(MoveEval.game_id == game.id)).all()
+        rows = sorted(
+            session.scalars(select(MoveEval).where(MoveEval.game_id == game.id)).all(),
+            key=lambda row: row.ply,
+        )
         evals[str(game.id)] = list(rows)
 
     # Compute most-frequent ECO per player_color for the opening recommender (S16).

@@ -128,6 +128,9 @@ def _pre_ponr_blunders(
     rows = session.scalars(
         select(MoveEval).where(MoveEval.game_id.in_([g.id for g in games]))
     ).all()
+    # Guard against non-deterministic DB return order so golden fixtures are
+    # byte-identical across runs.
+    rows = sorted(rows, key=lambda row: (game_map[str(row.game_id)].played_at, row.ply))
 
     result: list[tuple[Game, MoveEval]] = []
     for row in rows:

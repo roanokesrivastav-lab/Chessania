@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "player_summary": {
+    "platform": "chesscom",
+    "username": "endgame_loser",
+    "rating": 1610,
+    "games_analyzed": 12,
+    "date_range": "Jan 01 \u2013 Jan 01",
+    "time_class_mix": "12 rapid"
+  },
+  "playstyle": {
+    "label": "positional",
+    "score": -0.34,
+    "explanation": "you trade or take pieces on 0% of your moves and you castle opposite sides in 100% of games - that is the biggest driver of your style.",
+    "components": {
+      "capture_density": -1.0,
+      "game_length": 0.0,
+      "eval_volatility": -0.58,
+      "opposite_castling": 1.0,
+      "queen_keep": -1.0
+    }
+  },
+  "strengths": [
+    {
+      "headline": "Your rapid games are your cleanest time control.",
+      "detail": "You make 0.0 blunders per game in rapid."
+    }
+  ],
+  "issues": [
+    {
+      "key": "endgame_conversion",
+      "headline": "Winning positions aren't becoming wins.",
+      "diagnosis": "You reached a winning endgame in 12 games and converted 25.0%.",
+      "prescription": "Drill king + pawn fundamentals on Lichess Practice for 15 minutes, 2 times a week.",
+      "success_metric": "Convert at least 75% of winning endgames over your next 10 games (you are at 25.0%).",
+      "counter_evidence": "Only positions where you entered the endgame ahead by 2 pawns or more are counted.",
+      "rating_impact": "medium",
+      "refresh_after": "re-check after 20 new games",
+      "links": [
+        {
+          "label": "Lichess endgame practice",
+          "url": "https://lichess.org/practice/basic-endgames/"
+        }
+      ],
+      "evidence": [
+        {
+          "game_url": "https://www.chess.com/game/live/4000",
+          "played_at": "2026-01-01T00:00:00",
+          "opponent_rating": 1650,
+          "ply": 45,
+          "move_san": "c4",
+          "detail": "reached a winning endgame at move 45 but did not win"
+        },
+        {
+          "game_url": "https://www.chess.com/game/live/4001",
+          "played_at": "2026-01-01T01:00:00",
+          "opponent_rating": 1651,
+          "ply": 45,
+          "move_san": "c4",
+          "detail": "reached a winning endgame at move 45 but did not win"
+        },
+        {
+          "game_url": "https://www.chess.com/game/live/4002",
+          "played_at": "2026-01-01T02:00:00",
+          "opponent_rating": 1652,
+          "ply": 45,
+          "move_san": "c4",
+          "detail": "reached a winning endgame at move 45 but did not win"
+        }
+      ]
+    }
+  ],
+  "opening_recs": [
+    {
+      "color": "white",
+      "name": "London System",
+      "eco_family": "D02",
+      "why": "The solid pawn structure and slow build-up reward patient, space-gaining play \u2014 your capture density (-1.00) and opposite castling (1.00) point this way.",
+      "study_link": {
+        "label": "Study London System",
+        "url": "https://lichess.org/opening/London_System"
+      },
+      "already_plays": false
+    },
+    {
+      "color": "black",
+      "name": "Caro-Kann Defense",
+      "eco_family": "B10\u2013B19",
+      "why": "The solid pawn chain and bishop activity favor calm, long-term maneuvering \u2014 your capture density (-1.00) and opposite castling (1.00) point this way.",
+      "study_link": {
+        "label": "Study Caro-Kann Defense",
+        "url": "https://lichess.org/opening/Caro-Kann_Defense"
+      },
+      "already_plays": false
+    }
+  ],
+  "stats_block": {
+    "blunders_per_game": 0.0,
+    "mistakes_per_game": 0.0,
+    "acpl_overall": 20.0,
+    "acpl_by_phase": {
+      "opening": 20.0,
+      "middlegame": 20.0,
+      "endgame": 20.0
+    },
+    "endgame_conversion": 0.25,
+    "accuracy_trend": "flat",
+    "per_game_acpl": [
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0,
+      20.0
+    ],
+    "by_color": {
+      "white": {
+        "games": 12,
+        "results": {
+          "win": 3,
+          "loss": 6,
+          "draw": 3
+        },
+        "blunders_per_game": 0.0,
+        "acpl_overall": 20.0,
+        "acpl_by_phase": {
+          "opening": 20.0,
+          "middlegame": 20.0,
+          "endgame": 20.0
+        },
+        "worst_phase": null,
+        "opening_leak_rate": 0.0,
+        "endgame_conversion": 0.25,
+        "low_signal": false
+      }
+    }
+  },
+  "progress": null,
+  "engine_depth": 12
+}

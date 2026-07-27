@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "player_summary": {
+    "platform": "chesscom",
+    "username": "positional_leaker",
+    "rating": 1420,
+    "games_analyzed": 12,
+    "date_range": "Jan 01 \u2013 Jan 01",
+    "time_class_mix": "12 rapid"
+  },
+  "playstyle": {
+    "label": "positional",
+    "score": -1.0,
+    "explanation": "you trade or take pieces on 0% of your moves and your games run about 100 plies long - that is the biggest driver of your style.",
+    "components": {
+      "capture_density": -1.0,
+      "game_length": -1.0,
+      "eval_volatility": -1.0,
+      "opposite_castling": -1.0,
+      "queen_keep": -1.0
+    }
+  },
+  "strengths": [
+    {
+      "headline": "You convert winning endgames.",
+      "detail": "You converted 100% of your winning endgames \u2014 that is the skill that lets you turn advantages into points."
+    }
+  ],
+  "issues": [
+    {
+      "key": "opening_leak",
+      "headline": "Your B0 is leaking.",
+      "diagnosis": "You reached move 15 of your B0 games down an average of 170.0 centipawns across 12 games \u2014 you're losing these games before they start.",
+      "prescription": "Learn ONE reply properly: pick a single line in the B0 family and spend 20 minutes a day on it for 2 weeks.",
+      "success_metric": "Improve your B0 score by 50 centipawns at move 15 over your next 10 games.",
+      "counter_evidence": "This is based on 12 games \u2014 if you switch lines, the sample resets.",
+      "rating_impact": "high",
+      "refresh_after": "re-check after 20 new games",
+      "links": [
+        {
+          "label": "Lichess B0 explorer",
+          "url": "https://lichess.org/opening/B0"
+        }
+      ],
+      "evidence": [
+        {
+          "game_url": "https://www.chess.com/game/live/3000",
+          "played_at": "2026-01-01T00:00:00",
+          "opponent_rating": 1500,
+          "ply": 15,
+          "move_san": "d4",
+          "detail": "ok with d4 at move 15"
+        },
+        {
+          "game_url": "https://www.chess.com/game/live/3001",
+          "played_at": "2026-01-01T01:00:00",
+          "opponent_rating": 1501,
+          "ply": 15,
+          "move_san": "d4",
+          "detail": "ok with d4 at move 15"
+        },
+        {
+          "game_url": "https://www.chess.com/game/live/3002",
+          "played_at": "2026-01-01T02:00:00",
+          "opponent_rating": 1502,
+          "ply": 15,
+          "move_san": "d4",
+          "detail": "ok with d4 at move 15"
+        }
+      ]
+    }
+  ],
+  "opening_recs": [
+    {
+      "color": "white",
+      "name": "London System",
+      "eco_family": "D02",
+      "why": "The solid pawn structure and slow build-up reward patient, space-gaining play \u2014 your capture density (-1.00) and game length (-1.00) point this way.",
+      "study_link": {
+        "label": "Study London System",
+        "url": "https://lichess.org/opening/London_System"
+      },
+      "already_plays": false
+    },
+    {
+      "color": "black",
+      "name": "Caro-Kann Defense",
+      "eco_family": "B10\u2013B19",
+      "why": "The solid pawn chain and bishop activity favor calm, long-term maneuvering \u2014 your capture density (-1.00) and game length (-1.00) point this way.",
+      "study_link": {
+        "label": "Study Caro-Kann Defense",
+        "url": "https://lichess.org/opening/Caro-Kann_Defense"
+      },
+      "already_plays": false
+    }
+  ],
+  "stats_block": {
+    "blunders_per_game": 0.0,
+    "mistakes_per_game": 0.0,
+    "acpl_overall": 10.0,
+    "acpl_by_phase": {
+      "opening": 10.0,
+      "middlegame": 10.0,
+      "endgame": 10.0
+    },
+    "endgame_conversion": 1.0,
+    "accuracy_trend": "flat",
+    "per_game_acpl": [
+      10.0,
+      10.0,
+      10.0,
+      10.0,
+      10.0,
+      10.0,
+      10.0,
+      10.0,
+      10.0,
+      10.0,
+      10.0,
+      10.0
+    ],
+    "by_color": {
+      "white": {
+        "games": 12,
+        "results": {
+          "win": 9,
+          "loss": 3,
+          "draw": 0
+        },
+        "blunders_per_game": 0.0,
+        "acpl_overall": 10.0,
+        "acpl_by_phase": {
+          "opening": 10.0,
+          "middlegame": 10.0,
+          "endgame": 10.0
+        },
+        "worst_phase": null,
+        "opening_leak_rate": 0.83,
+        "endgame_conversion": 1.0,
+        "low_signal": false
+      }
+    }
+  },
+  "progress": null,
+  "engine_depth": 12
+}
