@@ -372,7 +372,7 @@ def _rule_opening_leak() -> _Rule:
 
         return schemas.Issue(
             key="opening_leak",
-            headline=f"Your {family} is leaking.",
+            headline=f"You're coming out of your {family} worse.",
             diagnosis=diagnosis,
             prescription=prescription,
             success_metric=success_metric,
@@ -547,7 +547,7 @@ def _rule_opening_general() -> _Rule:
             "castle within the first 10 moves, and don't grab pawns you can't keep."
         )
         success_metric = (
-            f"Drop your move-20 leak rate from {leak_rate}% to under 20% over your next 20 games."
+            f"Cut the share of games you're already worse by move 20 from {leak_rate}% to under 20% over your next 20 games."
         )
         counter = None
 

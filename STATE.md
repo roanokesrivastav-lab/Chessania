@@ -154,7 +154,15 @@
   flagged it as unsupportable). NOT changed (logged above in OPEN QUESTIONS): PGN upload stays
   deferred, platform stays neutral. Resequencing: a new time-coaching-detector session lands BEFORE
   S15; S15 then builds schemas.py + coach.py consuming the fuller `Issue`.
-- \_\_\_\_-\_\_: S17 report-quality gate → \_\_\_\_
+- 2026-07-27: S17 report-quality gate → **GO**. Founder reviewed the three golden reports; mechanical
+  audits (specificity + banned-phrase) already green. Two copy/threshold tweaks made at the gate, NOT a
+  fix-first loop: (1) endgame "winning" tightened to STRICTLY winning — `FEATURE_ENDGAME_AHEAD_CP`
+  200→300cp (a decisive edge a sub-1800 should convert ~10/10, incl. a clean extra-pawn endgame);
+  (2) dropped the non-chess word "leak" from the two user-facing strings (opening_leak headline +
+  opening_general success_metric) — internal `opening_leak*` identifiers unchanged. Appendix 3 + the
+  feature spec (roadmap 670/1644) updated to match (law-first). DELIBERATELY DEFERRED to pre-ship: all
+  fine-tuning of playstyle features + exact advice/language style — founder will tune those once the v1
+  frontend exists and reports can be seen in situ. Proceeding to frontend/next session.
 - \_\_\_\_-\_\_: S23 pre-deploy gate → \_\_\_\_
 
 ## FIXTURE REGISTRY (P0-1)
@@ -256,12 +264,15 @@ Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
   is; suggest gitignoring `.vexp/` later. (3) `test_build_report_is_deterministic` rebuilds from the
   same session/rows so it can't catch cross-run DB-order flakiness — the golden byte-comparison across
   runs is the real determinism guard.
-- **[founder-to-verify] — the S17 gate itself (items 3 + 4)**: read the three golden reports side by
-  side and run the **swap test** — confirm no paragraph could be moved to a different player unchanged.
-  Then log the **go / fix-first** verdict in the Decision Log above. Fix-first → Appendix-3 copy edits →
-  `REGEN_GOLDENS=1` → re-read. Do NOT start S20 (frontend report) on a fix-first verdict.
-- Next: pending the gate verdict — **go** → Session 18 (next roadmap session); **fix-first** → Appendix-3
-  copy loop + golden re-approval.
+- **RESOLVED (2026-07-27) — gate verdict = GO** (see Decision Log). Founder reviewed the goldens;
+  mechanical audits already green. Made two tweaks at the gate (not a fix-first loop): endgame
+  `FEATURE_ENDGAME_AHEAD_CP` 200→300cp (strictly winning) and dropped "leak" from the two user-facing
+  strings; Appendix 3 + feature spec updated to match; goldens regenerated (`REGEN_GOLDENS=1` — only the
+  opening_leak headline changed) + `test_endgame_conversion_exact_fraction` bumped its qualifying eval
+  250→350 for the new threshold. 156 tests green offline, no engine. All finer playstyle/advice/language
+  tuning explicitly deferred to pre-ship (tune once the v1 frontend lets reports be seen in situ).
+- Next: **frontend v1** — proceed to the next roadmap session (regular workflow: Opus plans → Kimi
+  codes → Opus reviews + pushes).
 
 ### 2026-07-26 · Session 16 · Opening recommendations (Appendix 4)
 

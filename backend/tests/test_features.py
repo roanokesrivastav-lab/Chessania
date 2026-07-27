@@ -270,7 +270,7 @@ def test_endgame_conversion_exact_fraction_of_qualifying_games(db_session):
     _insert_rows(
         db_session,
         won,
-        [{"ply": 30, "cp_loss": 0, "classification": "ok", "phase": "endgame", "eval_cp_before": 250}],
+        [{"ply": 30, "cp_loss": 0, "classification": "ok", "phase": "endgame", "eval_cp_before": 350}],
     )
 
     lost = _insert_player_and_game(

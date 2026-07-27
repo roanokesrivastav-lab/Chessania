@@ -38,7 +38,7 @@ class Settings(BaseSettings):
 
     # Features (Session 12+).
     FEATURE_OPENING_LEAK_CP: int = 150
-    FEATURE_ENDGAME_AHEAD_CP: int = 200
+    FEATURE_ENDGAME_AHEAD_CP: int = 300  # "strictly winning" — a decisive edge (≈ a clean piece / a won pawn endgame) a sub-1800 should convert
     FEATURE_TREND_MIN_GAMES: int = 8
     FEATURE_TREND_BAND: float = 0.10  # relative first-half vs second-half band
     FEATURE_COLOR_MIN_GAMES: int = 4  # below this, per-color numbers are low-signal
