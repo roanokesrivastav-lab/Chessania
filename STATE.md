@@ -253,8 +253,16 @@ Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
   features add, right work for S17. (2) S15 enforced digits per-sentence for Issues; S16 enforces
   per-string for `why`, and the deepen copy's first sentence has no digit — if S17's grep goes
   per-sentence on `opening_recs`, that copy needs a tweak.
-- **[founder-to-verify]** — S16 step 5 (chess judgment): founder reads their own white+black recs, confirms
-  they pass the sub-1800 smell test, and verifies all 12 Lichess study links are live.
+- **RESOLVED (2026-07-26, founder-verified)** — S16 step 5 (chess judgment): live report for
+  chesscom/Eleven_14 (1760, tactical bucket) recommends **white: Italian Game (incl. Evans
+  Gambit), C50–C54** and **black: Scandinavian Defense, B01**, each `why` citing the player's own
+  eval-volatility (1.00) and queen-keep (1.00) numbers. Founder confirms both pass the sub-1800
+  smell test — real, low-theory, club-level-appropriate lines, not engine-approved obscurities.
+  Noted (not a bug, just a property of this account): with both playstyle components saturated at
+  1.00, the white/black `why` strings share identical phrasing apart from the opening-specific
+  clause — worth knowing the template can read as canned when a player's top-two components tie
+  at the max. All 12 `study_url` entries in `openings.json` (11 unique — Italian Game is reused for
+  both `tactical` and `balanced` white-primary) checked live via curl — all HTTP 200. [founder-verified]
 - Next: **Session 17** — DECISION GATE (report quality + golden files). No new features; proves quality
   via 3 golden-file fixtures + the mechanical specificity/banned-phrase audit + the human swap test.
   The two S16 notes above are the natural first items to resolve inside S17's Appendix-3 copy loop.
