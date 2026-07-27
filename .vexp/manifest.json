@@ -10,7 +10,7 @@
     "backend/alembic/versions/0002_add_move_evals_seconds_spent.py": "862462c57dcf1df26ecd15679c875804998f1af7ef42da7eb823db20f165ebf3",
     "backend/app/__init__.py": "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
     "backend/app/analysis.py": "a8034bf877291d9ab1c23bff506822df4c5d078a29b726f9af61b5d2f473df78",
-    "backend/app/coach.py": "de9b10fdade4c6a19e4d8ce93c8508ef860088f598c5e172725a3196ebdcc0a7",
+    "backend/app/coach.py": "3f83fe38f7b0b53ac181bf7fabf2528b019e689e5dcf87bd4cf1b30a2397c78e",
     "backend/app/config.py": "a480229e585e6620bb8578cd9c6fbfbcb2290d5e0ffe71b3b51bb2327e5e6ac1",
     "backend/app/db.py": "695e629029e8797fd36aedc1a346b75c14c85883425ad16d26a527fdb8b84660",
     "backend/app/detectors.py": "1a6a11d607667cf1929990ca0f7edbc5ce54ec5b4f696cf9d666942b93988837",
@@ -55,11 +55,11 @@
     "frontend/next.config.ts": "cffa485cc39e35da1ff735d42c7a4e13fddb619d7d284a6ecced9e971a1e7f12",
     "frontend/postcss.config.mjs": "28a2e2028ed86bc42f1b4af4ea55278d0b89c5984c27c52fe738d8d0dd326085"
   },
-  "indexed_at_commit": "06e6bb9ec92dd6619a89afab1b7e56d265cecb6c",
-  "indexed_at_timestamp": "2026-07-27T02:39:48.575796+00:00",
+  "indexed_at_commit": "c51bb2e38292f6fab5d25d3a70adbcbca5485781",
+  "indexed_at_timestamp": "2026-07-27T02:47:20.755287+00:00",
   "schema_version": 3,
   "stats": {
-    "total_edges": 688,
+    "total_edges": 716,
     "total_files": 54,
     "total_nodes": 474
   },

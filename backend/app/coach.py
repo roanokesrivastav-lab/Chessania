@@ -129,8 +129,17 @@ def _pre_ponr_blunders(
         select(MoveEval).where(MoveEval.game_id.in_([g.id for g in games]))
     ).all()
     # Guard against non-deterministic DB return order so golden fixtures are
-    # byte-identical across runs.
-    rows = sorted(rows, key=lambda row: (game_map[str(row.game_id)].played_at, row.ply))
+    # byte-identical across runs. played_at is nullable (ingest leaves it None
+    # when the platform omits the timestamp), so a null-first flag keeps the
+    # sort from comparing None to a datetime — which would crash the report.
+    rows = sorted(
+        rows,
+        key=lambda row: (
+            game_map[str(row.game_id)].played_at is None,
+            game_map[str(row.game_id)].played_at,
+            row.ply,
+        ),
+    )
 
     result: list[tuple[Game, MoveEval]] = []
     for row in rows:
