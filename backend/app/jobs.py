@@ -17,9 +17,12 @@ from dataclasses import dataclass
 
 from sqlalchemy import select
 
+from app.analysis import analyze_game
 from app.config import settings
+from app.coach import build_report
 from app.db import SessionLocal
 from app.engine_eval import StockfishEvaluator
+from app.features import load_features
 from app.ingest import (
     NoEligibleGames,
     PlayerNotFound,
@@ -29,8 +32,7 @@ from app.ingest import (
     persist_games,
     upsert_player,
 )
-from app.analysis import analyze_game
-from app.models import Game
+from app.models import Game, Report as ReportModel
 
 
 @dataclass
@@ -142,6 +144,30 @@ def run_job(job_id: str) -> None:
         for i, game in enumerate(unanalyzed, start=1):
             analyze_game(game, evaluator, session)
             job.current_game = i
+
+        job.stage = "coaching"
+        features = load_features(session, job.platform, job.username)
+        if features is not None:
+            report = build_report(features, session, player)
+            # Persist the report so /api/reports can serve it instantly.
+            games = list(
+                session.scalars(
+                    select(Game).where(Game.player_id == player.id, Game.analyzed_at.is_not(None))
+                ).all()
+            )
+            first_game_at = min((g.played_at for g in games if g.played_at is not None), default=None)
+            last_game_at = max((g.played_at for g in games if g.played_at is not None), default=None)
+            session.add(
+                ReportModel(
+                    player_id=player.id,
+                    games_analyzed=len(games),
+                    first_game_at=first_game_at,
+                    last_game_at=last_game_at,
+                    report_json=report.model_dump(mode="json"),
+                )
+            )
+            session.commit()
+            job.report_ready = True
 
         job.state = "done"
     except PlayerNotFound:

@@ -73,5 +73,11 @@ class Settings(BaseSettings):
     DET_TIME_DAWDLE_MIN_GAMES: int = 5  # dawdling: min games to fire
     DET_TIME_DAWDLE_MAX_LEGAL: int = 8  # dawdling complexity gate: only ok-moves in positions with <= this many legal moves count (honors the LOCKED RULE)
 
+    # Coaching / rule engine (Session 15). All coach thresholds live here so
+    # the rule table in app/coach.py has no bare numbers.
+    COACH_BLUNDER_RATE: float = 1.5  # blunder_rate rule fires when meaningful blunders/game exceeds this
+    COACH_OPENING_GENERAL: float = 0.35  # opening_general rule fires when opening leak rate is at least this
+    COACH_ENDGAME_CONVERSION: float = 0.60  # endgame_conversion rule fires when conversion is below this
+
 
 settings = Settings()

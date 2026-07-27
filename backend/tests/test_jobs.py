@@ -10,16 +10,23 @@ import httpx
 import pytest
 import respx
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app import jobs, main
-from app.db import enable_sqlite_foreign_keys
+from app.db import enable_sqlite_foreign_keys, get_session
 from app.engine_eval import EvalResult
 from app.main import app
-from app.models import Base, Game, MoveEval, Player
+from app.models import Base, Game, MoveEval, Player, Report as ReportModel
 from tests.conftest import load_json_fixture
+from tests.test_debug_endpoint import seeded_session
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_overrides():
+    yield
+    app.dependency_overrides.pop(get_session, None)
 
 client = TestClient(app)
 
@@ -207,3 +214,78 @@ def test_run_job_ends_in_error_with_friendly_message_on_404(monkeypatch):
 
     assert job.state == "error"
     assert "couldn't find that username" in job.error_message
+
+
+# ---------------------------------------------------------------------------
+# Coaching stage + report persistence
+# ---------------------------------------------------------------------------
+
+
+def _job_session_factory_with_report():
+    """Same in-memory SQLite factory as above, but returns the sessionmaker
+    so the test can also query the final Report row."""
+    return _test_session_factory()
+
+
+@respx.mock
+def test_run_job_persists_a_report_and_sets_report_ready(monkeypatch):
+    """After the analyzing loop, run_job must load features, build a
+    Report, persist it, and flip job.report_ready to True."""
+    test_session_local = _test_session_factory()
+    monkeypatch.setattr(jobs, "SessionLocal", test_session_local)
+    monkeypatch.setattr(jobs, "StockfishEvaluator", StubEvaluator)
+
+    archives = load_json_fixture("api", "chesscom_archives.json")
+    month = load_json_fixture("api", "chesscom_month.json")
+    respx.get("https://api.chess.com/pub/player/fixture_user/games/archives").mock(
+        return_value=httpx.Response(200, json=archives)
+    )
+    respx.get("https://api.chess.com/pub/player/fixture_user/games/2026/06").mock(
+        return_value=httpx.Response(200, json=month)
+    )
+
+    job, _deduped = jobs.get_or_create_job("chesscom", "fixture_user")
+    jobs.run_job(job.job_id)
+
+    assert job.state == "done"
+    assert job.report_ready is True
+
+    with test_session_local() as session:
+        reports = session.scalars(select(ReportModel).order_by(ReportModel.created_at.desc())).all()
+        assert len(reports) == 1
+        assert reports[0].games_analyzed > 0
+        assert "player_summary" in reports[0].report_json
+        assert "issues" in reports[0].report_json
+
+
+# ---------------------------------------------------------------------------
+# GET /api/reports/{platform}/{username}
+# ---------------------------------------------------------------------------
+
+
+def test_get_report_returns_200_when_report_exists(seeded_session):
+    player = seeded_session.scalars(
+        select(Player).where(Player.platform == "chesscom", Player.username == "debugtester")
+    ).first()
+    assert player is not None
+
+    report_model = ReportModel(
+        player_id=player.id,
+        games_analyzed=1,
+        report_json={"schema_version": 1, "test": True},
+    )
+    seeded_session.add(report_model)
+    seeded_session.commit()
+
+    app.dependency_overrides[get_session] = lambda: seeded_session
+    resp = client.get("/api/reports/chesscom/debugtester")
+    assert resp.status_code == 200
+    assert resp.json()["schema_version"] == 1
+    assert resp.json()["test"] is True
+
+
+def test_get_report_returns_404_when_no_report_exists(seeded_session):
+    app.dependency_overrides[get_session] = lambda: seeded_session
+    resp = client.get("/api/reports/chesscom/nobodyhome")
+    assert resp.status_code == 404
+    assert "No report yet" in resp.json()["detail"]
