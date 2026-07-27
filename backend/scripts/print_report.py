@@ -10,10 +10,11 @@ Usage (from the backend directory with the virtualenv activated):
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
-# Make app/ importable when running from the repo root.
-sys.path.insert(0, "backend")
+# Make app/ importable regardless of the caller's cwd.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.db import SessionLocal
 from app.models import Player, Report as ReportModel
@@ -72,7 +73,7 @@ def main() -> int:
             print(f"• {strength['headline']}")
             print(f"  {strength['detail']}")
 
-        print(f"\n--- Stats ({stats['games_analyzed']} games) ---")
+        print(f"\n--- Stats ({summary['games_analyzed']} games) ---")
         print(f"Blunders/game: {stats['blunders_per_game']}")
         print(f"Mistakes/game: {stats['mistakes_per_game']}")
         print(f"ACPL: {stats['acpl_overall']}")

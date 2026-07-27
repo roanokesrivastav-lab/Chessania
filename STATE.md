@@ -248,10 +248,20 @@ Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
   rare edge but never crashes — logged as a tuning follow-up, not fixed now. (2) Could NOT run the
   real-data smoke (dev DB empty — no analyzed account), so `build_report` on genuine detector output is
   covered by the manual key cross-check, not a live run.
-- **[founder-to-verify]** (the S15 DoD's real bar): run a live `POST /api/analyze` on a real account
-  (e.g. chesscom/Eleven_14), then `python scripts/print_report.py chesscom Eleven_14` (or GET
-  /api/reports/...) and read the top issue out loud — does at least one line clear "…that's true and I
-  hadn't seen it put that way"? If not, tune Appendix 3 copy/thresholds FIRST, then code.
+- **RESOLVED (2026-07-26, founder-verified)** — the S15 DoD's real bar: ran a live `POST
+  /api/analyze` for chesscom/Eleven_14 (20 games, rating 1760) end-to-end through `run_job`, then
+  `python scripts/print_report.py chesscom Eleven_14`. Top issue: **"Blunders are your rating
+  cap" — 2.0 meaningful blunders/game across 20 games, 78% after move 25**, with counter-evidence
+  (2.0 of 2.5 raw blunders happen pre-PONR, so the raw count overstates it). Founder's call: "yeah
+  looks fine" — clears the bar. [founder-verified]
+  - Bug found + fixed while running the DoD: `scripts/print_report.py` referenced a nonexistent
+    `stats['games_analyzed']` (the key lives on `player_summary`, not `stats_block`) and its
+    `sys.path` hack (`sys.path.insert(0, "backend")`) only resolved when invoked from the repo
+    root — but `DATABASE_URL` is a relative sqlite path that only resolves to the real DB when
+    invoked from `backend/`, so the two requirements contradicted each other. Fixed both: path
+    insert now derives `backend/` from `__file__` (cwd-independent), and the stats-count print
+    reads `summary['games_analyzed']`. Script now matches its own docstring (run from `backend/`).
+    [AI-verified: ran clean end-to-end from `backend/` after the fix]
 - Next: **Session 16** — opening recommendations (Appendix 4): build `openings.py` + `openings.json`,
   fill the `opening_recs` the coach currently leaves `[]`.
 

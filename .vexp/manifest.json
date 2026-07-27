@@ -4,7 +4,7 @@
     "CLAUDE.md": "e19cf69ef82fa7c3f7bbc0178026ca36c267593b8e06a98ea76350d31c91d3a1",
     "PRD.md": "fcf9711c1cb4a0108e30f5350b1f19b036e8f6ee97396fe20240876cd41ec7c9",
     "README.md": "d937de63ff631a4b05266942c32b9b8b9b06e3e2c8f4710003bf0a67957bddfb",
-    "STATE.md": "b38ad2dcc4a8a78a923882244d943f6fc18bfac66869d6a330511df818fb4342",
+    "STATE.md": "ebbf7bf8129a61de47c48e609090c5b8f3129f51dd2998e33ed46cf42e03a391",
     "backend/alembic/env.py": "c52f6052851de8c559c02ea1801249cad11801d7efa45f41e986db9f94a56baa",
     "backend/alembic/versions/0001_initial_schema.py": "48298531f646e4deab10361f4e6733581e595a23133fbecfbd676cb9ae7456d1",
     "backend/alembic/versions/0002_add_move_evals_seconds_spent.py": "862462c57dcf1df26ecd15679c875804998f1af7ef42da7eb823db20f165ebf3",
@@ -27,7 +27,7 @@
     "backend/scripts/engine_hello.py": "a24e662c3e0cc665bcd5a26947b67f1db68440e29eb0e612ccc9a5361c4ff8fd",
     "backend/scripts/ingest_chesscom_hello.py": "70f7020dd9057dc5fad801971a1a5873b64f883379534799f2f3766fc91d25a4",
     "backend/scripts/ingest_lichess_hello.py": "54c6692a5a7351e4249064c74c3a47d7627ee621e404f7d031200c01a5869cb1",
-    "backend/scripts/print_report.py": "35efa3f0eff2774f137e1e21fb3d3e4e37f537b2a512c04e33c435c25cc65a4d",
+    "backend/scripts/print_report.py": "fde8dee1b5ad51117c6b1521eb59328135c6d1742e324a753017e208f6c3a6df",
     "backend/scripts/record_fixtures.py": "115f21ddc7cf1d11ff70c1caf47eb5035e27d8c5ffe2798f802213a3ffecbb52",
     "backend/tests/__init__.py": "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
     "backend/tests/conftest.py": "45999fd93df1aed45aaf79bfd9defe8a5856f660f8f9877af7bd7dd82308beff",
@@ -50,8 +50,8 @@
     "frontend/next.config.ts": "cffa485cc39e35da1ff735d42c7a4e13fddb619d7d284a6ecced9e971a1e7f12",
     "frontend/postcss.config.mjs": "28a2e2028ed86bc42f1b4af4ea55278d0b89c5984c27c52fe738d8d0dd326085"
   },
-  "indexed_at_commit": "dd107cba46bcbbb1ca8e58886a47caef7f949873",
-  "indexed_at_timestamp": "2026-07-27T00:42:58.570016+00:00",
+  "indexed_at_commit": "b855b82113ff65446f58eeb8db42d42889449e18",
+  "indexed_at_timestamp": "2026-07-27T01:04:46.785286+00:00",
   "schema_version": 3,
   "stats": {
     "total_edges": 660,
