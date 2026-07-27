@@ -381,7 +381,7 @@ def test_clean_player_produces_valid_strength_and_empty_issues(db_session):
     assert len(report.strengths) == 1
     strength = report.strengths[0]
     assert _sentences_contain_digits(strength.detail)
-    assert report.opening_recs == []
+    assert len(report.opening_recs) == 2
     assert report.progress is None
 
 

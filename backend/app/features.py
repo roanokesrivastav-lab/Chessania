@@ -34,6 +34,7 @@ separate computation, not part of this dataclass.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
 
 from sqlalchemy import select
@@ -134,6 +135,7 @@ class PlayerFeatures:
 
     detectors: dict | None = None  # S13: pattern-matched named weaknesses (see app/detectors.py)
     playstyle: Playstyle | None = None  # S14: tactical/positional/balanced index (see app/playstyle.py)
+    top_eco_by_color: dict[str, str | None] = field(default_factory=dict)  # S16: most-frequent ECO per color
 
 
 # ---------------------------------------------------------------------------
@@ -436,7 +438,10 @@ def _meaningful_blunders_per_game(
 
 
 def build_features(
-    games: list[Game], evals: dict[str, list[MoveEval]], rating_snapshot: int | None
+    games: list[Game],
+    evals: dict[str, list[MoveEval]],
+    rating_snapshot: int | None,
+    top_eco_by_color: dict[str, str | None] | None = None,
 ) -> PlayerFeatures:
     """The pure aggregation entry point: every analyzed game for a player,
     plus that game's move_evals rows (keyed by str(game.id)), in — one fully
@@ -468,6 +473,7 @@ def build_features(
             meaningful_blunders_per_game=0.0,
             by_color={},
             playstyle=compute_playstyle([], {}),
+            top_eco_by_color={},
         )
 
     # move_evals stores a row for EVERY ply of a game — both the player's
@@ -546,6 +552,7 @@ def build_features(
         by_color=by_color,
         detectors=detectors,
         playstyle=playstyle,
+        top_eco_by_color=top_eco_by_color or {},
     )
 
 
@@ -576,4 +583,17 @@ def load_features(session: Session, platform: str, username: str) -> PlayerFeatu
         rows = session.scalars(select(MoveEval).where(MoveEval.game_id == game.id)).all()
         evals[str(game.id)] = list(rows)
 
-    return build_features(list(games), evals, player.rating_snapshot)
+    # Compute most-frequent ECO per player_color for the opening recommender (S16).
+    top_eco_by_color: dict[str, str | None] = {}
+    for color in ("white", "black"):
+        color_ecos = [
+            g.opening_eco
+            for g in games
+            if g.player_color == color and g.opening_eco is not None
+        ]
+        if color_ecos:
+            top_eco_by_color[color] = Counter(color_ecos).most_common(1)[0][0]
+        else:
+            top_eco_by_color[color] = None
+
+    return build_features(list(games), evals, player.rating_snapshot, top_eco_by_color)

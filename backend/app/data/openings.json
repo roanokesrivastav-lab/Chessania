@@ -1,0 +1,122 @@
+[
+  {
+    "bucket": "tactical",
+    "color": "white",
+    "role": "primary",
+    "name": "Italian Game (incl. Evans Gambit)",
+    "eco_family": "C50–C54",
+    "line": "1.e4 e5 2.Nf3 Nc6 3.Bc4",
+    "why_template": "The open piece play and quick attacking chances suit someone who likes sharp, forcing positions",
+    "study_url": "https://lichess.org/opening/Italian_Game"
+  },
+  {
+    "bucket": "tactical",
+    "color": "white",
+    "role": "alt",
+    "name": "Scotch Game",
+    "eco_family": "C44–C45",
+    "line": "1.e4 e5 2.Nf3 Nc6 3.d4",
+    "why_template": "The early central tension and open lines give you chances to out-calculate your opponent",
+    "study_url": "https://lichess.org/opening/Scotch_Game"
+  },
+  {
+    "bucket": "positional",
+    "color": "white",
+    "role": "primary",
+    "name": "London System",
+    "eco_family": "D02",
+    "line": "1.d4 d5 2.Nf3 Nf6 3.Bf4",
+    "why_template": "The solid pawn structure and slow build-up reward patient, space-gaining play",
+    "study_url": "https://lichess.org/opening/London_System"
+  },
+  {
+    "bucket": "positional",
+    "color": "white",
+    "role": "alt",
+    "name": "Colle System",
+    "eco_family": "D04–D05",
+    "line": "1.d4 d5 2.Nf3 Nf6 3.e3",
+    "why_template": "The closed center and quiet development let you improve your pieces without fireworks",
+    "study_url": "https://lichess.org/opening/Colle_System"
+  },
+  {
+    "bucket": "balanced",
+    "color": "white",
+    "role": "primary",
+    "name": "Italian Game (quiet lines)",
+    "eco_family": "C50",
+    "line": "1.e4 e5 2.Nf3 Nc6 3.Bc4",
+    "why_template": "The classical development keeps the position sound while still offering real chances to play",
+    "study_url": "https://lichess.org/opening/Italian_Game"
+  },
+  {
+    "bucket": "balanced",
+    "color": "white",
+    "role": "alt",
+    "name": "Queen's Gambit",
+    "eco_family": "D06",
+    "line": "1.d4 d5 2.c4",
+    "why_template": "The pawn offer leads to rich but controlled positions where either side can press",
+    "study_url": "https://lichess.org/opening/Queens_Gambit"
+  },
+  {
+    "bucket": "tactical",
+    "color": "black",
+    "role": "primary",
+    "name": "Scandinavian Defense",
+    "eco_family": "B01",
+    "line": "1.e4 d5",
+    "why_template": "The early queen sortie forces concrete calculation from move two onward",
+    "study_url": "https://lichess.org/opening/Scandinavian_Defense"
+  },
+  {
+    "bucket": "tactical",
+    "color": "black",
+    "role": "alt",
+    "name": "King's Indian Defense",
+    "eco_family": "E60",
+    "line": "1.d4 Nf6 2.c4 g6",
+    "why_template": "The fianchetto and kingside counterattack create sharp positions from a solid foundation",
+    "study_url": "https://lichess.org/opening/Kings_Indian_Defense"
+  },
+  {
+    "bucket": "positional",
+    "color": "black",
+    "role": "primary",
+    "name": "Caro-Kann Defense",
+    "eco_family": "B10–B19",
+    "line": "1.e4 c6 2.d4 d5",
+    "why_template": "The solid pawn chain and bishop activity favor calm, long-term maneuvering",
+    "study_url": "https://lichess.org/opening/Caro-Kann_Defense"
+  },
+  {
+    "bucket": "positional",
+    "color": "black",
+    "role": "alt",
+    "name": "Slav Defense",
+    "eco_family": "D10",
+    "line": "1.d4 d5 2.c4 c6",
+    "why_template": "The stable center and straightforward development let you grind without much risk",
+    "study_url": "https://lichess.org/opening/Slav_Defense"
+  },
+  {
+    "bucket": "balanced",
+    "color": "black",
+    "role": "primary",
+    "name": "Classical 1...e5",
+    "eco_family": "C20",
+    "line": "1.e4 e5",
+    "why_template": "The symmetrical pawn fight keeps the game principled and gives both sides chances",
+    "study_url": "https://lichess.org/opening/Kings_Pawn_Game"
+  },
+  {
+    "bucket": "balanced",
+    "color": "black",
+    "role": "alt",
+    "name": "Queen's Gambit Declined",
+    "eco_family": "D30",
+    "line": "1.d4 d5 2.c4 e6",
+    "why_template": "The solid decline leaves you with a sound pawn structure and few weaknesses",
+    "study_url": "https://lichess.org/opening/Queens_Gambit_Declined"
+  }
+]

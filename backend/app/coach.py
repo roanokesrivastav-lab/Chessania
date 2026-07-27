@@ -27,6 +27,7 @@ from app.analysis import is_player_ply
 from app.config import settings
 from app.models import Game, MoveEval, Player
 from app.features import PlayerFeatures
+from app.openings import build_opening_recs
 
 
 # ---------------------------------------------------------------------------
@@ -970,7 +971,7 @@ def build_report(
         playstyle=_playstyle(features),
         strengths=[strength],
         issues=issues,
-        opening_recs=[],
+        opening_recs=build_opening_recs(features),
         stats_block=_stats_block(features),
         progress=None,
         generated_at=dt.datetime.now(dt.timezone.utc),
