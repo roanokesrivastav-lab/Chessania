@@ -229,6 +229,34 @@ Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-07-27 · Session 19 · Live progress screen
+
+- The 1–4 min wait, made to feel alive. Kimi 2.7 coded + committed (`c59289f`, no push); Opus reviewed +
+  ran `npm run build` live + pushed. Enhanced `frontend/lib/api.ts` (new `ApiError { message, status }` —
+  `status` = HTTP code on non-2xx, `null` on network failure; all 3 helpers throw it, same friendly copy;
+  S18's `page.tsx` still works via `err.message`). REPLACED the `analyzing/[jobId]` stub with the real
+  client screen: polls `getJob()` immediately then every 2s, renders by stage (fetching → "Pulling your
+  recent games…" · analyzing → progress bar + "Analyzing game {n} of {N}" · coaching → "Writing your
+  report…"), rotates playful waiting lines every 4s, redirects on `done` via `router.replace('/r/'+
+  platform+'/'+username)`. Error routing: `state==="error"` → backend `error_message` + "try another
+  username"; `ApiError.status===404` → "That analysis expired" copy; network miss → exponential backoff
+  (2/4/8/10s) surfacing "Reconnecting…" only after 3 consecutive misses. NEW minimal
+  `app/r/[platform]/[username]/page.tsx` stub so the done-redirect resolves (S20 builds the real page).
+- **AI-verified**: `npm run build` → compiled clean, TS passed, 4 routes (`/`, `/analyzing/[jobId]`,
+  `/r/[platform]/[username]`, `/_not-found`). Reviewed the poll loop: a `useEffect` cleanup clears both
+  intervals + sets a `stopped` ref, and terminal states (`done`/`error`/404) call `clearPolling()` — so
+  no poller leaks off-screen or after completion (the S19 teaching point). 404-vs-transient correctly
+  distinguished via `ApiError.status`. Backend UNTOUCHED. First commit with `.vexp/` properly gitignored.
+- **Opus review: clean — no bugs.** One low note (not fixed): `router` is in the poll effect's dep array;
+  App-Router's `router` is stable so it won't churn, and React Strict Mode's dev-only double-mount is
+  guarded by the `stopped` ref (at most a harmless duplicate dev fetch). Fine as-is.
+- **[founder-to-verify] — the S19 DoD**: run backend + `npm run dev`, submit a real username, and watch
+  the analysis progress end-to-end and land on `/r/...`; then kill the backend mid-poll and confirm you
+  see the graceful "Reconnecting…"/expired copy, NOT an endless spinner.
+- Next: **Session 20** — the report page (`/r/[platform]/[username]`), the product's face: server-fetch
+  the report, render every Appendix-2 section (ReportHeader / StrengthCard / IssueCard×≤3 / OpeningRecCards
+  / StatsBlock / footer), evidence rows deep-linking to the real games. Prereq S17 ✓ + S19 ✓.
+
 ### 2026-07-27 · Session 18 · Landing page + typed API client (Phase 3 begins)
 
 - First FRONTEND session — top of the funnel, one screen/one field. Kimi 2.7 coded + committed
