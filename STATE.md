@@ -229,7 +229,7 @@ Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
-### 2026-07-28 · Session 22 · Progress tracking
+### 2026-07-27 · Session 22 · Progress tracking
 
 - The sanctioned backend+frontend exception to the phase wall: on a player's SECOND (or later)
   analysis, the report now shows honest improvement deltas vs the previous and first reports.
@@ -261,6 +261,16 @@ Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
   analysis), open `/r/{platform}/{username}`, and confirm the Progress arrows/numbers match a
   hand-check of the two stored `report_json` `stats_block`s. Then re-run with no new games and verify
   the low-signal note appears instead of a bogus trend.
+- **Opus review — clean, no bugs.** Read all 7 files. `_delta` sign logic verified correct
+  (conversion up→better, ACPL/blunders down→better, within-epsilon→flat); null-skip works; the
+  honesty guard correctly counts games with `played_at` > previous report's `last_game_at`; timing is
+  safe (build_report runs before jobs.py persists the new row, so "prior reports" never includes the
+  one being generated). Re-ran `pytest -q` → 167 passed / 3 deselected, offline, `pgrep -f stockfish`
+  flat; confirmed the S17 golden JSONs are NOT in the diff (single-report fixtures → progress=None,
+  byte-identical). `npm run build` clean. ProgressStrip trusts the backend `direction` (never
+  re-derives sign) and formats conversion ×100 on the frontend only — the units trap avoided. No
+  scope creep (diff = exactly the planned files). Pushed to origin/main.
+- Next: **Session 23** — pre-deploy decision gate + hardening (Phase 4 begins).
 
 ### 2026-07-27 · Session 21 · Frontend hardening + copy pass
 
