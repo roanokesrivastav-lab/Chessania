@@ -272,6 +272,16 @@ Phase 5:  [ ] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch 
   head` line, confirm `/health` returns ok, and run a full real analysis on prod. Log the duration here.
   If prod is dramatically slower than local, `SF_DEPTH=11` is acceptable; below 11 requires a founder
   call.
+- **FOUNDER-VERIFIED — DEPLOYED (2026-07-28).** Root Directory = `backend` fixed the build.
+  **Real bug the founder caught:** no `DATABASE_URL` was set, so the app was silently running on
+  EPHEMERAL SQLite (all data would vanish on every restart). Fixed by adding `DATABASE_URL`
+  referencing the Railway Postgres plugin; logs now show `Context impl PostgresqlImpl` with migrations
+  0001 + 0002 applying cleanly BEFORE uvicorn starts, and `/health` returns `{"status":"ok"}` 200 in
+  ~10ms. **Prod timing (roadmap DoD):** cold analysis of Eleven_14 (chess.com) = **43.4s for 20 games
+  / 1,443 move evals at depth 12**; a cached repeat = **2s**. Well within the 1–4 min budget → **SF_DEPTH
+  stays 12** (no downgrade needed). **Open item carried to S25:** the service has no public domain yet
+  (Settings → Networking → Generate Domain) — it's only reachable inside Railway's network, so the
+  domain must be generated before the Vercel frontend can call it. 🏁 Backend is live (private).
 
 ### 2026-07-27 · Session 23 · Pre-deploy gate + rate limiting
 
