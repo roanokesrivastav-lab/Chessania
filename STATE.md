@@ -267,6 +267,9 @@ Phase 5:  [ ] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch 
   4. Tap any game row to open that game on the platform and review it on the real board.  
   5. Share the report link (`/r/chesscom/username` or `/r/lichess/username`) to a friend — they see the
      same report without an account.
+- **Opus review**: the `api.ts` trailing-slash guard is correct (`.replace(/\/+$/, "")`); `npm run
+  build` clean. Fixed a defect in `frontend/.env.example` — Kimi left two stray `[TEMPLATE]` marker
+  lines at the top (scaffolding leak); replaced with a normal header comment. Guard + fix pushed.
 - **Next**: founder completes the runbook, logs the result, and pushes. Then Phase 5 beta begins.
 
 ### 2026-07-28 · Session 24 · Deploy the backend
