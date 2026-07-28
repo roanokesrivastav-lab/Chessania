@@ -232,10 +232,42 @@ Phase 0:  [~] P0-1  [x] P0-2  [~] P0-3  [x] P0-4   ([~] = done but pending found
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
 Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [x] S14.5 (time-coaching detectors) [x] S15 [x] S16 [x] S17
 Phase 3:  [x] S18 [x] S19 [x] S20 [x] S21 [x] S22
-Phase 4:  [x] S23 [~] S24 (backend container + normalizer committed; founder Railway deploy pending) [ ] S25 [ ] weekly beta ×4–6
+Phase 4:  [x] S23 [x] S24 (backend live private) [~] S25 (frontend guard committed; founder Vercel deploy + smoke pending) [ ] weekly beta ×4–6
 Phase 5:  [ ] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch analytics; deferred per 2026-07-27)
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-28 · Session 25 · Deploy the frontend + end-to-end smoke 🏁
+
+- Frontend deploy prep + the one code guard. Modified `frontend/lib/api.ts` — `API_BASE` now strips
+  trailing slashes so a pasted `https://x.up.railway.app/` doesn't become `…//api/analyze`. Default
+  localhost still works. Modified `frontend/.env.example` — added a production comment that the
+  `NEXT_PUBLIC_API_URL` must be the https Railway domain with NO trailing slash. No other code changed.
+- **AI-verified**: `cd frontend && npm run build` → compiled clean, TypeScript passed, no routes lost.
+- **Commit**: `chore: vercel deploy + smoke path` — DO NOT push (per session rule). The actual Vercel
+  import, env var wiring, and the cellular-data smoke test are the founder's hands.
+- **[founder-to-verify] DoD — the live runbook** (do in order):
+  1. Railway → Settings → Networking → **Generate Domain**. Copy `https://<name>.up.railway.app`;
+     confirm `/health` 200.
+  2. Vercel → New Project → import Chessania → **Root Directory = `frontend`** → set
+     `NEXT_PUBLIC_API_URL = https://<name>.up.railway.app` (no trailing slash) → Deploy. Note the
+     production domain.
+  3. Railway → set `CORS_ORIGINS = https://<project>.vercel.app` (production domain, no trailing
+     slash) → redeploy backend.
+  4. Redeploy frontend if `NEXT_PUBLIC_API_URL` was set after the first build (it bakes in at
+     build-time).
+  5. **Smoke test on your phone, on cellular data (not Wi-Fi)**: open the Vercel URL → run a real
+     username through landing → analyzing → report → share the report `/r/...` link to a second
+     device and confirm it loads cold (server render + OG unfurl).
+  6. Log the prod timing and any CORS/mixed-content notes below, then commit/push this STATE.md update.
+- **Tester click-path (5-line beta tester runbook)** — paste into messages / README later if helpful:
+  1. Go to the site, choose Chess.com or Lichess, type a username, press **Coach me**.  
+  2. Wait on the progress screen while it fetches/analyzes/coaches (~1–4 minutes for 20 games).  
+  3. Read your report — scroll through your strength, top issues, opening recommendations, and stats.  
+  4. Tap any game row to open that game on the platform and review it on the real board.  
+  5. Share the report link (`/r/chesscom/username` or `/r/lichess/username`) to a friend — they see the
+     same report without an account.
+- **Next**: founder completes the runbook, logs the result, and pushes. Then Phase 5 beta begins.
 
 ### 2026-07-28 · Session 24 · Deploy the backend
 
