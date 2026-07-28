@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import Game, Player
+from app.opening_book import classify_opening
 
 ELIGIBLE_TIME_CLASSES = {"rapid", "blitz"}
 
@@ -338,6 +339,17 @@ def persist_games(session: Session, player: Player, games: list[NormalizedGame])
         if exists is not None:
             continue
 
+        # Chess.com's archive JSON carries no opening data; derive it from
+        # the moves so the rest of the pipeline (opening_leak, S16 recs)
+        # works for both platforms. Lichess games already have ECO/name and
+        # are never overwritten.
+        opening_eco = g.opening_eco
+        opening_name = g.opening_name
+        if opening_eco is None or opening_name is None:
+            book_eco, book_name = classify_opening(g.pgn)
+            opening_eco = opening_eco or book_eco
+            opening_name = opening_name or book_name
+
         session.add(
             Game(
                 player_id=player.id,
@@ -350,8 +362,8 @@ def persist_games(session: Session, player: Player, games: list[NormalizedGame])
                 player_rating=g.player_rating,
                 opponent_rating=g.opponent_rating,
                 played_at=g.played_at,
-                opening_eco=g.opening_eco,
-                opening_name=g.opening_name,
+                opening_eco=opening_eco,
+                opening_name=opening_name,
             )
         )
         new += 1

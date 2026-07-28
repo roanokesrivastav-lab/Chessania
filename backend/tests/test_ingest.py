@@ -349,6 +349,71 @@ def test_persist_games_is_idempotent_running_twice_adds_zero_new_rows():
         assert total_rows == 2  # not 4 — no duplicates from the second run
 
 
+def test_persist_games_preserves_existing_opening_data():
+    """Regression guard: Chess.com games get their opening derived from the
+    PGN, but Lichess games already carry authoritative opening_eco/name and
+    must never be overwritten by the opening book."""
+    engine = create_engine("sqlite:///:memory:")
+    enable_sqlite_foreign_keys(engine)
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        player = upsert_player(session, "lichess", "lichess_opening_preserve", 1500)
+        game = NormalizedGame(
+            platform="lichess",
+            platform_game_id="preserve_opening_1",
+            game_url="https://lichess.org/preserve_opening_1",
+            pgn="1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O *",
+            time_class="rapid",
+            player_color="white",
+            result="win",
+            player_rating=1500,
+            opponent_rating=1490,
+            played_at=None,
+            opening_eco="C78",  # supplied by Lichess
+            opening_name="Ruy Lopez: Morphy Defense, Closed Center",
+        )
+
+        persist_games(session, player, [game])
+        persisted = session.query(Game).filter_by(platform_game_id="preserve_opening_1").one()
+
+        assert persisted.opening_eco == "C78"
+        assert persisted.opening_name == "Ruy Lopez: Morphy Defense, Closed Center"
+
+
+def test_persist_games_derives_opening_for_chesscom_games():
+    """Chess.com games arrive with null openings; persist_games fills them
+    from the stored PGN using the opening book."""
+    engine = create_engine("sqlite:///:memory:")
+    enable_sqlite_foreign_keys(engine)
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        player = upsert_player(session, "chesscom", "chesscom_opening_derive", 1500)
+        game = NormalizedGame(
+            platform="chesscom",
+            platform_game_id="derive_opening_1",
+            game_url="https://www.chess.com/game/live/derive_opening_1",
+            pgn="1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O *",
+            time_class="blitz",
+            player_color="white",
+            result="win",
+            player_rating=1500,
+            opponent_rating=1490,
+            played_at=None,
+            opening_eco=None,  # Chess.com supplies no opening
+            opening_name=None,
+        )
+
+        persist_games(session, player, [game])
+        persisted = session.query(Game).filter_by(platform_game_id="derive_opening_1").one()
+
+        assert persisted.opening_eco is not None
+        assert persisted.opening_eco.startswith("C")
+        assert persisted.opening_name is not None
+        assert "Ruy Lopez" in persisted.opening_name or "Spanish" in persisted.opening_name
+
+
 def test_persist_games_for_different_players_do_not_collide():
     """Both platforms' games coexist for different players without collision."""
     engine = create_engine("sqlite:///:memory:")

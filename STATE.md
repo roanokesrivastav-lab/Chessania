@@ -233,9 +233,37 @@ Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit re
 Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [x] S14.5 (time-coaching detectors) [x] S15 [x] S16 [x] S17
 Phase 3:  [x] S18 [x] S19 [x] S20 [x] S21 [x] S22
 Phase 4:  [x] S23 [x] S24 [x] S25 🏁 LIVE (chessania.vercel.app) [ ] weekly beta ×4–6
-Phase 5:  [x] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch analytics; deferred per 2026-07-27)
+Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [ ] S31 [ ] S32 [ ] S33  (post-launch analytics; deferred per 2026-07-27)
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-29 · Session 31a · Opening derivation from PGN (backfill)
+
+- Status: AI-verified (commits local)
+- Goal: Derive opening ECO + name from the stored PGN so Chess.com games (which arrive with no opening data) get openings — unblocking S31 and retroactively powering `opening_leak` + S16 for both platforms.
+- Changes:
+  - Vendored the lichess-org/chess-openings TSVs (CC0) into `backend/app/data/openings_book/` with a `NOTICE` file.
+  - NEW `backend/app/opening_book.py` — loads the TSVs once at import, parses each SAN sequence into a canonical UCI move tuple, and exposes `classify_opening(pgn)` for longest-prefix matching (deepest named variation).
+  - Updated `backend/app/ingest.py` — `persist_games` now derives and fills missing `opening_eco`/`opening_name` from the PGN; existing Lichess data is preserved.
+  - NEW `backend/scripts/backfill_openings.py` — idempotent script that fills missing openings for already-stored games.
+  - NEW `backend/tests/test_opening_book.py` — offline tests for book loading, known openings, longest-prefix specificity, and empty/unparseable input.
+  - Extended `backend/tests/test_ingest.py` — tests that Lichess opening data is preserved and Chess.com opening data is derived.
+  - Updated `CHESSANIA_ROADMAP.md` — added S31a to Phase 5 and documented the Chess.com derivation note in Appendix 4.
+- Verification:
+  - `cd backend && python -m pytest -q` → **198 passed, 3 deselected**, ~4 s, OFFLINE, no Stockfish.
+  - `cd frontend && npm run build` → clean (no frontend changes).
+- Commit: `feat: derive openings from PGN + backfill` — DO NOT push (per session rule).
+- **AI review — clean, no bugs.** The opening book loads 3,807 entries across all five ECO files.
+  `classify_opening` returns the deepest matching prefix; known test PGNs resolve to sensible ECO/name
+  pairs (Ruy Lopez, Sicilian, Vienna). Ingest tests confirm Lichess-supplied openings are NOT
+  overwritten and Chess.com games DO get derived openings. The backfill script is idempotent and
+  chunk-commits. No report-contract change; no frontend change; no migration. One honest note: the
+  public-domain book covers every legal first move, so a weird-but-legal game still gets a prefix match
+  rather than `(None, None)`; only empty or unparseable PGNs return `(None, None)`.
+- **[founder-to-verify] DoD**: run `python scripts/backfill_openings.py` against your prod DB (or dev
+  DB) and confirm existing Chess.com games now carry real ECO + names; re-run a fresh analysis and
+  confirm `opening_leak` now groups your Chess.com games by family.
+- Next: **Session 31** — Opening performance by variation (Part G #10), now unblocked.
 
 ### 2026-07-28 · Session 30 · Tilt / Compounding
 

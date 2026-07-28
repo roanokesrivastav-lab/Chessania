@@ -1,0 +1,9 @@
+Opening book data is from the lichess-org/chess-openings repository,
+vendored as tab-separated value (TSV) files.
+
+Source:  https://github.com/lichess-org/chess-openings
+License: CC0 1.0 Universal (Public Domain Dedication)
+
+The files a.tsv, b.tsv, c.tsv, d.tsv, and e.tsv are unmodified copies of
+the corresponding files from that repository as of the date they were
+vendored into this project.

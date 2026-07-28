@@ -1139,8 +1139,31 @@ Definition of Done: founder's report flags real spirals with game evidence;
 tests green.
 
 
+Session 31a — Opening derivation from PGN (backfill)
+Est: 2 h · Prereq: none
+Goal: Chess.com's archive JSON carries no opening data, so derive ECO + opening
+name from the stored PGN using a public-domain opening book. This retroactively
+powers `opening_leak`, S16's already-plays check, and S31 for BOTH platforms.
+Only fills when missing — Lichess's authoritative opening data is never overwritten.
+Steps:
+1. Vendor the lichess-org/chess-openings TSVs (CC0) into
+   `backend/app/data/openings_book/` with a NOTICE file.
+2. `backend/app/opening_book.py`: load the TSVs once at import; parse each SAN
+   sequence into a canonical UCI move tuple; build `{uci_tuple: (eco, name)}`.
+   `classify_opening(pgn)` replays a game's mainline and returns the deepest
+   matching prefix (most specific named variation); `(None, None)` if none.
+3. `backend/app/ingest.py`: in `persist_games`, when a game has no
+   `opening_eco`/`opening_name`, call `classify_opening(pgn)` and fill both.
+4. `backend/scripts/backfill_openings.py`: idempotent script that iterates
+   existing games with null opening data and fills them.
+5. Tests (offline): known PGNs → correct ECO family/specific variation;
+   longest-prefix specificity; oddball move order → `(None, None)`.
+Definition of Done: `pytest -q` green; backfill script runs; `opening_leak`
+now groups Chess.com games; no report-contract change.
+
+
 Session 31 — Opening performance by variation (Part G #10 seat)
-Est: 4 h · Prereq: S28
+Est: 4 h · Prereq: S31a
 Goal: deepen today's per-FAMILY opening_leak to per-LINE — "Sicilian Paulsen:
 usually +0.6 out of the opening but you lose most of these." Uses ECO + evals
 already stored.
@@ -1827,6 +1850,14 @@ ________________
 
 APPENDIX 4 — openings.json (founder-approved in P0-4, committed in S16)
 Shape per entry: {bucket, color, name, eco_family, line, why_template, study_url}. The twelve mappings:
+
+Note (Session 31a): `games.opening_eco` / `games.opening_name` are populated
+from the platform API when available (Lichess). For Chess.com games, which
+arrive without opening data, the same two columns are filled by deriving ECO +
+opening name from the stored PGN via a vendored public-domain opening book
+(lichess-org/chess-openings, CC0). The derivation is longest-prefix matching on
+canonical UCI move tuples and runs only when the columns are null; existing
+Lichess data is never overwritten.
 
 
 bucket
