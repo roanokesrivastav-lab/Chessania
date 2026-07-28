@@ -237,7 +237,7 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [ ] S31 [ ] S32 [ ] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
-### 2026-07-29 · Session 31a · Opening derivation from PGN (backfill)
+### 2026-07-28 · Session 31a · Opening derivation from PGN (backfill)
 
 - Status: AI-verified (commits local)
 - Goal: Derive opening ECO + name from the stored PGN so Chess.com games (which arrive with no opening data) get openings — unblocking S31 and retroactively powering `opening_leak` + S16 for both platforms.
@@ -260,9 +260,22 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [ ] S31 [ ] S32 [ ] S33  (pos
   chunk-commits. No report-contract change; no frontend change; no migration. One honest note: the
   public-domain book covers every legal first move, so a weird-but-legal game still gets a prefix match
   rather than `(None, None)`; only empty or unparseable PGNs return `(None, None)`.
-- **[founder-to-verify] DoD**: run `python scripts/backfill_openings.py` against your prod DB (or dev
-  DB) and confirm existing Chess.com games now carry real ECO + names; re-run a fresh analysis and
-  confirm `opening_leak` now groups your Chess.com games by family.
+- **Opus review — core correct, ONE bug fixed, backfill proven on real data.** `opening_book.py`
+  (longest-prefix UCI match) and the ingest hook (fills only when missing, never overrides Lichess) are
+  correct; classify resolves Ruy Lopez Morphy / Sicilian Kan / **Vienna Gambit** (the founder's own
+  opening). 198 passed offline. **Bug Kimi's self-review missed:** `scripts/backfill_openings.py`
+  crashed with `ModuleNotFoundError: No module named 'app'` when run standalone (`python
+  scripts/backfill_openings.py`) — it lacked the `sys.path.insert(...)` bootstrap that `print_report.py`
+  has. Kimi's "no bugs" claim came from never running the script itself. Added the bootstrap; the
+  script now runs. **Proven:** ran it against the dev DB — all 40 of Eleven_14's Chess.com games (100%
+  null before) now carry real openings (Colle System, Sicilian Open/McDonnell, Indian Knights, …), 0
+  still null. This is the payoff: the founder's Chess.com account finally has opening data, unblocking
+  `opening_leak`/S16/S31. Note (correcting Kimi's log): the book does NOT cover every legal first move —
+  only book prefixes match; genuinely off-book move orders return `(None, None)`.
+- **[founder-to-verify] DoD**: run `python scripts/backfill_openings.py` against your **prod** DB
+  (Railway) once so existing Chess.com games get openings; re-run a fresh analysis and confirm
+  `opening_leak` now groups your Chess.com games by family, and your opening insight reflects what you
+  actually play.
 - Next: **Session 31** — Opening performance by variation (Part G #10), now unblocked.
 
 ### 2026-07-28 · Session 30 · Tilt / Compounding

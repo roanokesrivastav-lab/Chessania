@@ -10,7 +10,11 @@ safe to run multiple times and safe to run while the app is running.
 
 from __future__ import annotations
 
+import os
 import sys
+
+# Make app/ importable regardless of the caller's cwd (mirrors print_report.py).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import func, select
 
