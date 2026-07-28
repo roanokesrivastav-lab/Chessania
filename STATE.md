@@ -237,7 +237,7 @@ Phase 5:  [x] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch 
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
-### 2026-07-29 · Session 30 · Tilt / Compounding
+### 2026-07-28 · Session 30 · Tilt / Compounding
 
 - Status: AI-verified (commits local)
 - Goal: Add the Tilt / compounding detector (Part G #11c): a behavioral issue that flags when a mistake or blunder is immediately followed by another blunder on the player's own next move.
@@ -251,8 +251,27 @@ Phase 5:  [x] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch 
 - Verification:
   - `pytest -q` → 188 passed, 3 deselected.
   - `npm run build` → clean (no frontend changes).
-- Commit: `feat: tilt / compounding detector` (local, not pushed).
-- DoD (founder-to-verify): any tilt issue flags real back-to-back slips and its evidence links open the exact game moments where one mistake became two.
+- Commit: `feat: tilt / compounding detector` (`1c4cb42`).
+- **Opus review — logic correct, no bugs.** `detect_tilt` walks the player's own consecutive moves
+  (`is_player_ply`, sorted by ply), fires a tilt event on mistake/blunder → blunder, evidence = the
+  compounding blunder ply; registered in `run_detectors`. `_rule_tilt` reads it, renders a distinct
+  non-judgmental issue (reset-after-a-slip), counter-evidence separates it from `blunder_rate`. Backend
+  -only as designed: NO `schemas.py`/`types.ts`/frontend change (contract untouched). 188 passed
+  offline, no Stockfish. Appendix 3 copy + S13 detector-list note clean (fixed a duplicate "8."
+  numbering the insertion left).
+- **WATCH ITEM (real, not a bug) — tilt is EAGER + its priority may crowd out sharper issues.** In the
+  `tactical_blunderer` golden, tilt fired "13 of 13 games / 146 compounding events" and DISPLACED
+  `blitz_gap` from the top-3. The 146 is a fixture artifact (that profile blunders on nearly every
+  move), but the mechanism is real: back-to-back blunders are common for anyone who blunders a lot, so
+  tilt (priority 4, medium) will fire readily and can push out more specific/actionable issues
+  (blitz_gap, hung_pieces) in real reports. Options to consider WITH BETA DATA: lower tilt's priority
+  so it only shows when sharper issues don't, or tighten the fire condition (e.g. require the tilt rate
+  to exceed the base blunder rate, not just ≥3 games). Left as-is for now — a priority-tuning call best
+  made from real reports, consistent with the beta-loop ritual.
+- **[founder-to-verify] DoD**: any tilt issue flags real back-to-back slips and its evidence links open
+  the exact game moments where one mistake became two. If it shows on YOUR report, sanity-check whether
+  it's telling you something the other issues don't — that informs the priority-tuning call above.
+- Next: **Session 31** — Opening performance by variation (Part G #10).
 
 ### 2026-07-28 · Session 29 · Resourcefulness / Missed Saves
 
