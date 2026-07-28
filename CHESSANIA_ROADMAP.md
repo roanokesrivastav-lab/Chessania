@@ -1046,6 +1046,153 @@ The single question this phase answers: does the report make players feel seen? 
 ________________
 
 
+PHASE 5 — DEEPER ANALYTICS (post-launch)
+Sequencing: LOCKED 2026-07-27 — "deploy the lean report first, analytics
+after." This phase does NOT start until v1 has shipped through S25 and the
+friends beta (S26+) is live. It promotes the already-reserved seats in Part G
+#11 (a/b/c) and #10 into scheduled sessions — the 2026-07-25 finding still
+holds: every metric below derives from move_evals AS IT ALREADY EXISTS
+(eval_cp_before/after, cp_loss, best_move_san, classification, phase,
+seconds_spent, player_color, ply, fen_before), zero new capture, zero
+migration except the opt-in deep-dive's config in S33. All rule-based (the
+positional "WHY" prose stays the LLM seat, Part G #3). Every new number is a
+new section/issue in the SAME aggregate-report surface with evidence deep
+links — never a new per-game review. Appendix-first per Rule 3: the report
+contract (Appendix 2) and rule copy (Appendix 3) get the new fields BEFORE any
+code. Time coaching (Part G #11d) is already v1 (Appendix 3) and is surfaced,
+not rebuilt, here.
+
+
+Session 27 — Stat explainers (make every number legible)
+Est: 2 h · Prereq: S21 (report page)
+Goal: every stat the report shows (ACPL, opening-leak rate, endgame conversion,
+blunders/game, playstyle score) gains a plain-language "what this means and why
+it matters at your level" — a tap/hover on desktop, an expandable note on
+phone. No new metric, no contract change; pure legibility.
+Steps:
+1. One reusable explainer primitive (an accessible popover/disclosure) in the
+   frontend; content table keyed by stat id.
+2. Copy per stat: one sentence of definition + one of "good/bad at sub-1800",
+   in the friendly-strong-player voice. No jargon without immediately unpacking
+   it.
+3. Wire it onto ReportHeader/StatsBlock/playstyle chip.
+Definition of Done: founder taps any stat and gets a clear explanation; zero
+contract/schema change; phone-first.
+
+
+Session 28 — Advantage Capitalization (Part G #11b as a report metric)
+Est: 4 h · Prereq: S27
+Goal: the aggregate "you reached a winning edge in N games and converted M
+(P%)" plus the per-position "missed win" evidence (a winning eval_before + high
+cp_loss = you were winning and let it go). Distinct, transparent, clickable to
+the real game.
+Steps:
+1. Appendix 2 + 3 FIRST: add the capitalization block to the report contract
+   and the rule copy template (with the P% and the game count interpolated —
+   Locked 8: numbers in every string).
+2. features.py: over stored evals, per game find whether the player's POV eval
+   crossed a "winning" threshold (config, e.g. +300) and whether the game was
+   won; aggregate the rate; collect the worst unconverted positions as
+   evidence (game_url + ply + the eval swing).
+3. coach.py: emit the capitalization section/issue when the rate is poor.
+4. Golden fixtures + specificity/banned-phrase audits extended (the S17 gate
+   machinery).
+Definition of Done: founder's report shows an honest capitalization line with
+evidence links to the exact unconverted games; offline tests green; goldens
+regenerated + reviewed.
+
+
+Session 29 — Resourcefulness / Missed Saves (Part G #11a)
+Est: 4 h · Prereq: S28
+Goal: the flip side — worse-but-tenable positions (your-POV eval_before ~
+-50..-350) where a high cp_loss means a fighting move existed and you let it
+collapse; plus the positive "comebacks" count (worse → drew/won). Teaches
+defense/resilience.
+Steps:
+1. Appendix 2 + 3 first (contract + copy, numbers interpolated).
+2. features.py: detect missed-save plies and comeback games from stored evals;
+   aggregate; collect evidence.
+3. coach.py: emit the resourcefulness section; celebrate real comebacks as a
+   strength (warm-card discipline — sub-1800 players need the win acknowledged).
+4. Golden + audits extended.
+Definition of Done: founder sees an honest missed-saves line AND any genuine
+comeback surfaced as a strength; tests green; goldens reviewed.
+
+
+Session 30 — Tilt / compounding (Part G #11c)
+Est: 3 h · Prereq: S29
+Goal: the emotional spiral — a mistake/blunder immediately followed by another
+(consecutive move_evals.classification ordered by ply). Names the pattern
+kindly and points at the exact game moments.
+Steps:
+1. Appendix 2 + 3 first.
+2. features.py: scan consecutive classifications per game for blunder→blunder /
+   mistake→blunder runs; count games affected; evidence = the run's plies.
+3. coach.py: emit the tilt section with a concrete, non-judgmental prescription
+   (e.g. "after a blunder in N of your games the next move also slipped — a
+   10-second reset move helps").
+4. Golden + audits extended.
+Definition of Done: founder's report flags real spirals with game evidence;
+tests green.
+
+
+Session 31 — Opening performance by variation (Part G #10 seat)
+Est: 4 h · Prereq: S28
+Goal: deepen today's per-FAMILY opening_leak to per-LINE — "Sicilian Paulsen:
+usually +0.6 out of the opening but you lose most of these." Uses ECO + evals
+already stored.
+Steps:
+1. Appendix 2 + 4 first: per-variation stats block in the contract; note which
+   ECO granularity (specific opening name, not just family).
+2. features.py: group the player's games by specific opening/ECO, compute
+   avg eval at the opening-read ply and the W/L/D; guard small per-line samples
+   (low-signal hedge like the trend/color guards).
+3. coach.py: surface the 1–3 lines with the widest "ahead out of book but
+   losing" gap, each with games as evidence.
+4. Golden + audits extended.
+Definition of Done: founder sees their real problem variations with honest
+numbers and game links; small-sample lines hedged; tests green.
+
+
+Session 32 — Performance-by-Category dashboard (the click-through hub)
+Est: 4 h · Prereq: S28–S31 (+ time coaching, Appendix 3, if built)
+Goal: the "far more user-friendly dashboard" — a category view (Opening,
+Tactics/Advantage, Resourcefulness, Time, Endgame) with a score/summary each,
+expandable into the underlying section + its evidence. Frontend presentation of
+metrics already computed; every category score is a RULE, never ML.
+Steps:
+1. Define each category's score as a transparent function of existing metrics
+   (documented in-page; no black boxes — the anti-Aimchess wedge).
+2. Build the category overview + click-through to each detailed section.
+3. Order categories by rating_impact ("what to fix first").
+Definition of Done: founder's dashboard reflects their real report, every
+category expands to transparent numbers + evidence, phone-first, zero console
+errors.
+
+
+Session 33 — Tiered deep analysis (opt-in ~100 games)
+Est: 5 h (two sittings) · Prereq: S32
+Goal: keep the fast 20-game default; add an opt-in "deep dive" (up to ~100
+recent games, blitz included) for established accounts. Deepest stats for those
+who want them, without slowing everyone's first read.
+Steps:
+1. Config + contract: a games-cap parameter and a job "mode" (standard | deep);
+   the ONLY migration this phase needs (job/report carries its mode).
+2. Ingest/analyze honor the cap; the progress screen communicates the longer
+   wait honestly (deep runs can be 10–20 min — set expectations, don't hide it).
+3. The report notes it was a deep analysis (n games) so the numbers' weight is
+   clear. Revisit whether BackgroundTasks still holds at 100 games or Part G #9
+   (durable queue) is finally triggered — decide from real timing, not fear.
+4. UI: the opt-in lives on the report/re-analyze surface, never blocking the
+   default path.
+Definition of Done: founder runs a deep dive on their own account, watches the
+honest longer-wait progress, and gets a report visibly richer than the 20-game
+version; standard path unchanged; timing logged to inform the queue decision.
+
+
+________________
+
+
 PART G — v2 Horizon: the Do-Not-Build list (and why each is safe to defer)
 During MVP sessions this list is a hard fence (Rule 4). Each entry notes the seat already reserved for it — proof that deferring costs nothing. Rough later-order with triggers:
 
@@ -1938,6 +2085,7 @@ Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 
 
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
+Phase 5:  [ ] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch; deferred per 2026-07-27)
 
 
 ## SESSION LOG (newest first; honesty tags mandatory)
