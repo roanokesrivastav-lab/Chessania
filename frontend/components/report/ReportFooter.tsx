@@ -44,17 +44,18 @@ export default function ReportFooter({
     <footer className="space-y-3 border-t border-foreground/10 pt-6 text-sm text-foreground/70">
       <p>
         Analyzed {games_analyzed} games at depth {engine_depth}. Report
-        generated {new Date(generated_at).toLocaleDateString()}.
+        generated on {new Date(generated_at).toLocaleDateString()}.
       </p>
       <p className="break-words">
-        Reports are public at this link:{" "}
+        Reports are public at{" "}
         <a
           href={publicUrl || "#"}
           className="text-foreground underline underline-offset-2"
           suppressHydrationWarning
         >
-          {publicUrl || "…"}
+          this link
         </a>
+        .
       </p>
 
       {error && (

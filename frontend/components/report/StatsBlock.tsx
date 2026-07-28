@@ -67,13 +67,13 @@ export default function StatsBlock({ stats }: Props) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-foreground/50">Opening leak</p>
+                    <p className="text-xs text-foreground/50">Opening leak rate</p>
                     <p className="font-semibold">
                       {formatPercent(cs.opening_leak_rate)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-foreground/50">Conversion</p>
+                    <p className="text-xs text-foreground/50">Endgame conversion</p>
                     <p className="font-semibold">
                       {formatConversion(cs.endgame_conversion)}
                     </p>

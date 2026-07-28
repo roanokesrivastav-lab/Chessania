@@ -19,8 +19,17 @@ interface PageParams {
 export async function generateMetadata({ params }: PageParams): Promise<Metadata> {
   const { platform, username } = await params;
   return {
-    title: `${username} — Chessania report`,
+    title: username,
     description: `Free coaching report for ${username} on ${platform} — from Stockfish analysis of their last games.`,
+    openGraph: {
+      title: `${username} · Chessania report`,
+      description: `Free coaching report for ${username} on ${platform} — from Stockfish analysis of their last games.`,
+      url: `/r/${platform}/${username}`,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+    },
   };
 }
 

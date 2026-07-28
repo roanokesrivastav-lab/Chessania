@@ -8,13 +8,13 @@ export function formatNumber(value: number | null, fallback = "—"): string {
 
 export function formatPercent(value: number | null, fallback = "—"): string {
   if (value === null || Number.isNaN(value)) return fallback;
-  // value is a 0-1 fraction (e.g. 0.1); display as 10%
-  return `${formatNumber(value * 100)}%`;
+  // opening_leak_rate is already stored as a percent number (e.g. 35 = 35%)
+  return `${formatNumber(value)}%`;
 }
 
 export function formatConversion(value: number | null, fallback = "—"): string {
   if (value === null || Number.isNaN(value)) return fallback;
-  // value is a 0-1 fraction (e.g. 0.55); display as 55%
+  // endgame_conversion is stored as a 0-1 fraction (e.g. 0.55); display as 55%
   return `${formatNumber(value * 100)}%`;
 }
 

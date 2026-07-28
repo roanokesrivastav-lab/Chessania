@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect x="5" y="5" width="90" height="90" rx="20" fill="#171717" />
+  <text
+    x="50"
+    y="70"
+    textAnchor="middle"
+    fontSize="60"
+    fontFamily="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    fill="#ffffff"
+    fontWeight="700"
+  >
+    C
+  </text>
+</svg>

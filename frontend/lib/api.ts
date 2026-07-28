@@ -25,7 +25,7 @@ async function extractError(response: Response): Promise<string> {
   } catch {
     // Fall through to a generic message if the body isn't JSON.
   }
-  return "Something went wrong reaching Chessania.";
+  return "We couldn't reach Chessania — try again in a minute.";
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
