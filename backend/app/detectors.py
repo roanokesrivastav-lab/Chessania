@@ -696,6 +696,49 @@ def detect_dawdling(games: list[Game], evals: dict[str, list[MoveEval]]) -> dict
 
 
 # ---------------------------------------------------------------------------
+# 10. tilt — a mistake or blunder immediately followed by another blunder
+# ---------------------------------------------------------------------------
+
+
+def detect_tilt(games: list[Game], evals: dict[str, list[MoveEval]]) -> dict:
+    """The emotional spiral: one slip (mistake or blunder) is immediately
+    followed by another blunder on the player's own next move. We only
+    count the player's own moves (via is_player_ply) and require the two
+    moves to be consecutive in the player's move list — the opponent's
+    reply sits between them in raw plies, which is exactly what "your next
+    move also slipped" means."""
+    tilt_events: list[tuple[str, int]] = []  # (game_id, ply of the compounding blunder)
+    tilt_games = 0
+
+    for game in games:
+        rows = sorted(evals.get(str(game.id), []), key=lambda r: r.ply)
+        player_rows = [
+            r for r in rows if is_player_ply(r.ply, game.player_color)
+        ]
+
+        had_tilt = False
+        for row, next_row in zip(player_rows, player_rows[1:]):
+            if row.classification in ("mistake", "blunder") and next_row.classification == "blunder":
+                tilt_events.append((str(game.id), next_row.ply))
+                had_tilt = True
+
+        if had_tilt:
+            tilt_games += 1
+
+    fired = tilt_games >= settings.DET_TILT_MIN_GAMES
+
+    return {
+        "fired": fired,
+        "stats": {
+            "tilt_games": tilt_games,
+            "tilt_events": len(tilt_events),
+            "games_analyzed": len(games),
+        },
+        "evidence": tilt_events[:3],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Shared helper: remaining clock per ply, parsed from the PGN
 # ---------------------------------------------------------------------------
 
@@ -741,4 +784,5 @@ def run_detectors(games: list[Game], evals: dict[str, list[MoveEval]]) -> dict[s
         "rushed_blunders": detect_rushed_blunders(games, evals),
         "time_trouble_collapse": detect_time_trouble_collapse(games, evals),
         "dawdling": detect_dawdling(games, evals),
+        "tilt": detect_tilt(games, evals),
     }

@@ -98,6 +98,10 @@ class Settings(BaseSettings):
     DET_TIME_DAWDLE_MIN_GAMES: int = 5  # dawdling: min games to fire
     DET_TIME_DAWDLE_MAX_LEGAL: int = 8  # dawdling complexity gate: only ok-moves in positions with <= this many legal moves count (honors the LOCKED RULE)
 
+    # Tilt / compounding (Session 30). Counts games where a mistake/blunder is
+    # immediately followed by another blunder on the player's own next move.
+    DET_TILT_MIN_GAMES: int = 3  # min games with a tilt event before the rule fires
+
     # Coaching / rule engine (Session 15). All coach thresholds live here so
     # the rule table in app/coach.py has no bare numbers.
     COACH_BLUNDER_RATE: float = 1.5  # blunder_rate rule fires when meaningful blunders/game exceeds this

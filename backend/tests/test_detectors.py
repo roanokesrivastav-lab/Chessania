@@ -26,6 +26,7 @@ from app.detectors import (
     detect_opening_leak,
     detect_overextension,
     detect_rushed_blunders,
+    detect_tilt,
     detect_time_class_split,
     detect_time_trouble_collapse,
     detect_turning_point,
@@ -188,7 +189,7 @@ def test_game_eco_reads_from_pgn_tag_when_opening_eco_column_is_none():
 # ---------------------------------------------------------------------------
 
 
-def test_run_detectors_returns_all_nine_keys_and_is_safe_on_empty_input():
+def test_run_detectors_returns_all_ten_keys_and_is_safe_on_empty_input():
     result = run_detectors([], {})
     assert set(result) == {
         "hung_pieces",
@@ -200,6 +201,7 @@ def test_run_detectors_returns_all_nine_keys_and_is_safe_on_empty_input():
         "rushed_blunders",
         "time_trouble_collapse",
         "dawdling",
+        "tilt",
     }
     for detector in result.values():
         assert detector["fired"] is False
@@ -923,3 +925,80 @@ def test_remaining_clock_by_ply_returns_none_when_no_clocks():
         result="loss",
     )
     assert _remaining_clock_by_ply(game) == {1: None, 2: None}
+
+
+# ---------------------------------------------------------------------------
+# 10. tilt
+# ---------------------------------------------------------------------------
+
+
+def _make_tilt_game(db_session, *, username, i=0, classifications=None):
+    """A white game with three player plies whose classifications are
+    controlled by the caller. Defaults to a classic tilt sequence:
+    mistake -> blunder (the compounding blunder)."""
+    game = _insert_player_and_game(
+        db_session, color="white", result="loss", played_at=_BASE_TIME + dt.timedelta(minutes=i), username=username
+    )
+    rows = classifications or ["mistake", "blunder", "ok"]
+    _insert_rows(
+        db_session,
+        game,
+        [
+            {"ply": 1, "cp_loss": 100, "classification": rows[0]},
+            {"ply": 3, "cp_loss": 300, "classification": rows[1]},
+            {"ply": 5, "cp_loss": 0, "classification": rows[2] if len(rows) > 2 else "ok"},
+        ],
+    )
+    return game
+
+
+def test_detect_tilt_fires_at_minimum_game_count(db_session):
+    games = [
+        _make_tilt_game(db_session, username="tilt_pos", i=0),
+        _make_tilt_game(db_session, username="tilt_pos", i=1),
+        _make_tilt_game(db_session, username="tilt_pos", i=2),
+    ]
+    result = detect_tilt(games, _evals_for(db_session, *games))
+
+    assert result["fired"] is True
+    assert result["stats"]["tilt_games"] == 3
+    assert result["stats"]["tilt_events"] == 3
+    assert result["stats"]["games_analyzed"] == 3
+    # Evidence cites the compounding (second) blunder, up to 3.
+    assert len(result["evidence"]) == 3
+    assert all(ply % 2 == 1 for _gid, ply in result["evidence"])
+
+
+def test_detect_tilt_does_not_fire_below_min_games(db_session):
+    games = [
+        _make_tilt_game(db_session, username="tilt_min", i=0),
+        _make_tilt_game(db_session, username="tilt_min", i=1),
+    ]
+    result = detect_tilt(games, _evals_for(db_session, *games))
+
+    assert result["fired"] is False
+    assert result["stats"]["tilt_games"] == 2
+    assert result["stats"]["tilt_events"] == 2
+
+
+def test_detect_tilt_ignores_non_consecutive_player_errors(db_session):
+    """A lone blunder, or a mistake followed by a good move then a blunder,
+    should not count as tilt — only back-to-back player moves."""
+    game = _make_tilt_game(db_session, username="tilt_neg", classifications=["mistake", "ok", "blunder"])
+    result = detect_tilt([game], _evals_for(db_session, game))
+
+    assert result["fired"] is False
+    assert result["stats"]["tilt_games"] == 0
+    assert result["stats"]["tilt_events"] == 0
+    assert result["evidence"] == []
+
+
+def test_detect_tilt_ignores_blunders_separated_by_a_good_move(db_session):
+    """Two player blunders with a good move in between are not a tilt event."""
+    game = _make_tilt_game(db_session, username="tilt_sep", classifications=["blunder", "ok", "blunder"])
+    result = detect_tilt([game], _evals_for(db_session, game))
+
+    assert result["fired"] is False
+    assert result["stats"]["tilt_games"] == 0
+    assert result["stats"]["tilt_events"] == 0
+    assert result["evidence"] == []

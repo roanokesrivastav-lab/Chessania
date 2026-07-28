@@ -546,6 +546,54 @@ def _rule_missed_saves() -> _Rule:
     return _Rule("missed_saves", 4, "medium", fires, render)
 
 
+def _rule_tilt() -> _Rule:
+    def fires(f: PlayerFeatures) -> bool:
+        return bool(f.detectors and f.detectors.get("tilt", {}).get("fired"))
+
+    def render(f: PlayerFeatures, session, player: Player | None) -> schemas.Issue:
+        stats = f.detectors["tilt"]["stats"]
+        tilt_games = stats["tilt_games"]
+        tilt_events = stats["tilt_events"]
+        games_analyzed = stats["games_analyzed"]
+        evidence = f.detectors["tilt"]["evidence"]
+
+        diagnosis = (
+            f"In {tilt_games} of your {games_analyzed} games, a mistake or blunder was immediately "
+            f"followed by another blunder — {tilt_events} compounding events in total."
+        )
+        prescription = (
+            "After any error, treat the next position as brand new — take 10 slow seconds, reset, "
+            "and ask what the position actually needs before moving. One mistake shouldn't become two."
+        )
+        success_metric = "Play 10 games in a row without a compounding blunder."
+        counter = "This counts only back-to-back errors on your own consecutive moves, not scattered blunders."
+
+        return schemas.Issue(
+            key="tilt",
+            headline="Your mistakes are compounding into blunders.",
+            diagnosis=diagnosis,
+            prescription=prescription,
+            success_metric=success_metric,
+            counter_evidence=counter,
+            rating_impact="medium",
+            refresh_after="re-check after 20 new games",
+            links=[
+                schemas.Link(
+                    label="Lichess practice",
+                    url="https://lichess.org/training/",
+                )
+            ],
+            evidence=_resolve_evidence(
+                session,
+                player,
+                evidence,
+                lambda g, r: f"compounded a previous slip by blundering {r.move_san} at move {r.ply}",
+            ),
+        )
+
+    return _Rule("tilt", 4, "medium", fires, render)
+
+
 def _rule_late_collapse() -> _Rule:
     def fires(f: PlayerFeatures) -> bool:
         return bool(f.detectors and f.detectors.get("late_collapse", {}).get("fired"))
@@ -976,6 +1024,7 @@ def _all_rules() -> list[_Rule]:
         _rule_endgame_conversion(),
         _rule_advantage_capitalization(),
         _rule_missed_saves(),
+        _rule_tilt(),
         _rule_late_collapse(),
         _rule_blitz_gap(),
         _rule_opening_general(),

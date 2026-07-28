@@ -237,6 +237,23 @@ Phase 5:  [x] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch 
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-07-29 · Session 30 · Tilt / Compounding
+
+- Status: AI-verified (commits local)
+- Goal: Add the Tilt / compounding detector (Part G #11c): a behavioral issue that flags when a mistake or blunder is immediately followed by another blunder on the player's own next move.
+- Changes:
+  - Updated CHESSANIA_ROADMAP.md Appendix 3 (tilt copy) and the S13 detector-list note.
+  - Added `DET_TILT_MIN_GAMES` to `backend/app/config.py`.
+  - Implemented `detect_tilt` in `backend/app/detectors.py` and registered it in `run_detectors`.
+  - Added `_rule_tilt` in `backend/app/coach.py` and registered it in `_all_rules`.
+  - Added unit tests for `detect_tilt` in `backend/tests/test_detectors.py`.
+  - Regenerated S17 golden fixtures.
+- Verification:
+  - `pytest -q` → 188 passed, 3 deselected.
+  - `npm run build` → clean (no frontend changes).
+- Commit: `feat: tilt / compounding detector` (local, not pushed).
+- DoD (founder-to-verify): any tilt issue flags real back-to-back slips and its evidence links open the exact game moments where one mistake became two.
+
 ### 2026-07-28 · Session 29 · Resourcefulness / Missed Saves
 
 - Status: AI-verified (commits local)

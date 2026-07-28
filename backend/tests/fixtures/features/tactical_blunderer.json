@@ -112,18 +112,18 @@
       ]
     },
     {
-      "key": "blitz_gap",
-      "headline": "You don't have a chess problem \u2014 you have a blitz problem.",
-      "diagnosis": "You don't have a chess problem \u2014 you have a blitz problem: 18.0 blunders per game in blitz vs 3.0 in rapid.",
-      "prescription": "Shift the ratio toward rapid for 30 days: play 3 rapid games for every 1 blitz game; blitz is testing, rapid is training.",
-      "success_metric": "Get your blitz blunder rate within 0.5 of your rapid rate over your next 20 games.",
-      "counter_evidence": "This only matters if you care about your rapid rating; in pure bullet practice the gap is expected.",
+      "key": "tilt",
+      "headline": "Your mistakes are compounding into blunders.",
+      "diagnosis": "In 13 of your 13 games, a mistake or blunder was immediately followed by another blunder \u2014 146 compounding events in total.",
+      "prescription": "After any error, treat the next position as brand new \u2014 take 10 slow seconds, reset, and ask what the position actually needs before moving. One mistake shouldn't become two.",
+      "success_metric": "Play 10 games in a row without a compounding blunder.",
+      "counter_evidence": "This counts only back-to-back errors on your own consecutive moves, not scattered blunders.",
       "rating_impact": "medium",
       "refresh_after": "re-check after 20 new games",
       "links": [
         {
-          "label": "Lichess rapid pool",
-          "url": "https://lichess.org/?time=10&increment=0#/"
+          "label": "Lichess practice",
+          "url": "https://lichess.org/training/"
         }
       ],
       "evidence": [
@@ -131,17 +131,9 @@
           "game_url": "https://www.chess.com/game/live/1000",
           "played_at": "2026-01-01T00:00:00",
           "opponent_rating": 1050,
-          "ply": 1,
-          "move_san": "Nxe4",
-          "detail": "blunder with Nxe4 at move 1"
-        },
-        {
-          "game_url": "https://www.chess.com/game/live/1000",
-          "played_at": "2026-01-01T00:00:00",
-          "opponent_rating": 1050,
           "ply": 3,
           "move_san": "Nxe4",
-          "detail": "blunder with Nxe4 at move 3"
+          "detail": "compounded a previous slip by blundering Nxe4 at move 3"
         },
         {
           "game_url": "https://www.chess.com/game/live/1000",
@@ -149,7 +141,15 @@
           "opponent_rating": 1050,
           "ply": 5,
           "move_san": "Nxe4",
-          "detail": "blunder with Nxe4 at move 5"
+          "detail": "compounded a previous slip by blundering Nxe4 at move 5"
+        },
+        {
+          "game_url": "https://www.chess.com/game/live/1000",
+          "played_at": "2026-01-01T00:00:00",
+          "opponent_rating": 1050,
+          "ply": 7,
+          "move_san": "O-O-O",
+          "detail": "compounded a previous slip by blundering O-O-O at move 7"
         }
       ]
     }
