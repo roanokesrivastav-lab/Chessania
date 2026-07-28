@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { ApiError, getJob } from "@/lib/api";
 import type { Job, JobStage } from "@/lib/types";
 
@@ -176,12 +177,12 @@ export default function AnalyzingPage() {
         {(error || is404) && (
           <div className="flex flex-col gap-3 rounded-lg bg-red-50 px-4 py-3 text-red-700 dark:bg-red-950 dark:text-red-200">
             <p>{error ?? "That analysis expired — start a fresh one."}</p>
-            <a
+            <Link
               href="/"
               className="font-semibold underline underline-offset-2"
             >
               Try another username
-            </a>
+            </Link>
           </div>
         )}
       </div>
