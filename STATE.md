@@ -233,9 +233,30 @@ Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit re
 Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [x] S14.5 (time-coaching detectors) [x] S15 [x] S16 [x] S17
 Phase 3:  [x] S18 [x] S19 [x] S20 [x] S21 [x] S22
 Phase 4:  [x] S23 [x] S24 [x] S25 🏁 LIVE (chessania.vercel.app) [ ] weekly beta ×4–6
-Phase 5:  [ ] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch analytics; deferred per 2026-07-27)
+Phase 5:  [x] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch analytics; deferred per 2026-07-27)
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-28 · Session 27 · Stat explainers
+
+- Added self-explaining info affordances for every jargon stat on the report. NEW
+  `frontend/lib/statInfo.ts` — a content map keyed by stat id (`acpl`, `acpl_phase`,
+  `blunders_per_game`, `mistakes_per_game`, `endgame_conversion`, `opening_leak_rate`,
+  `accuracy_trend`, `playstyle`), each with `term`, a one-sentence plain definition, and a one-sentence
+  "at your level" note for sub-1800 players. NEW `frontend/components/report/StatExplainer.tsx`
+  (client leaf) — a small "?" button that toggles a popover on click/tap, closes on Escape and
+  outside-click, carries `aria-expanded`/`aria-label`/`aria-controls`, and is capped to the viewport so
+  it never causes horizontal scroll at phone width. Wired into `frontend/components/report/StatsBlock.tsx`
+  for Blunders/game, Mistakes/game, ACPL, Endgame conversion, the three phase ACPLs, Opening leak rate,
+  and Endgame conversion in the by_color grid; also wired into `frontend/components/report/ReportHeader.tsx`
+  next to the playstyle chip. No numbers, formats, contracts, or backend were touched.
+- **AI-verified**: `cd frontend && npm run build` → compiled clean, TypeScript passed. StatsBlock and
+  ReportHeader remain server components; only `StatExplainer` and the existing `IssueCard`/`ReportFooter`
+  are client leaves.
+- **Commit**: `feat: stat explainers` — DO NOT push (per session rule).
+- **[founder-to-verify] DoD**: on your live report at phone width, tap each "?" and confirm the copy is
+  clear and true; confirm nothing about the numbers or layout regressed.
+- Next: **Session 28** — (roadmap Phase 5 continues; pick the next analytics/enrichment session).
 
 ### 2026-07-28 · Session 25 · Deploy the frontend + end-to-end smoke 🏁
 
