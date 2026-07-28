@@ -79,5 +79,10 @@ class Settings(BaseSettings):
     COACH_OPENING_GENERAL: float = 0.35  # opening_general rule fires when opening leak rate is at least this
     COACH_ENDGAME_CONVERSION: float = 0.60  # endgame_conversion rule fires when conversion is below this
 
+    # Progress tracking (Session 22). Pure DB/JSON math; no engine.
+    PROGRESS_MIN_NEW_GAMES: int = 5
+    PROGRESS_FLAT_EPSILON: float = 0.02  # relative fraction for "flat" direction
+    PROGRESS_LOW_SIGNAL_NOTE: str = "mostly the same games as last time — play a few more for a real read"
+
 
 settings = Settings()

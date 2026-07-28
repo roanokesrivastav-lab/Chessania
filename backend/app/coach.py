@@ -28,6 +28,7 @@ from app.config import settings
 from app.models import Game, MoveEval, Player
 from app.features import PlayerFeatures
 from app.openings import build_opening_recs
+from app.progress import build_progress
 
 
 # ---------------------------------------------------------------------------
@@ -977,6 +978,10 @@ def build_report(
     if session and player:
         games = list(session.scalars(select(Game).where(Game.player_id == player.id)).all())
 
+    progress = None
+    if session and player:
+        progress = build_progress(session, player, features, games)
+
     return schemas.Report(
         schema_version=1,
         player_summary=_player_summary(features, player, games),
@@ -985,7 +990,7 @@ def build_report(
         issues=issues,
         opening_recs=build_opening_recs(features),
         stats_block=_stats_block(features),
-        progress=None,
+        progress=progress,
         generated_at=dt.datetime.now(dt.timezone.utc),
         engine_depth=settings.SF_DEPTH,
     )

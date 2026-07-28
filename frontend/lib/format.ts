@@ -72,3 +72,36 @@ export function platformUrlPrefix(platform: Platform): string {
     ? "https://www.chess.com/member/"
     : "https://lichess.org/@/";
 }
+
+export function formatDeltaValue(metricLabel: string, value: number): string {
+  if (metricLabel.toLowerCase().includes("conversion")) {
+    return `${Math.round(value * 100)}%`;
+  }
+  if (metricLabel.toLowerCase().includes("acpl")) {
+    return `${Math.round(value)}`;
+  }
+  // Blunders/game and fallback: one decimal.
+  return `${value.toFixed(1)}`;
+}
+
+export function directionArrow(direction: "better" | "worse" | "flat"): string {
+  if (direction === "better") return "↑";
+  if (direction === "worse") return "↓";
+  return "→";
+}
+
+export function directionColor(direction: "better" | "worse" | "flat"): string {
+  if (direction === "better") return "text-emerald-600 dark:text-emerald-400";
+  if (direction === "worse") return "text-rose-600 dark:text-rose-400";
+  return "text-foreground/50";
+}
+
+export function formatProgressDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}

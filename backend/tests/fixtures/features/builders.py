@@ -15,8 +15,11 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
+from sqlalchemy import select
+
+from app.coach import build_report
 from app.features import PlayerFeatures, load_features
-from app.models import Game, MoveEval, Player
+from app.models import Game, MoveEval, Player, Report as ReportModel
 
 _BASE_TIME = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 
@@ -268,6 +271,138 @@ def build_positional_leaker(session) -> tuple[PlayerFeatures, Player]:
         _insert_rows(session, game, rows)
 
     return load_features(session, "chesscom", player.username), player
+
+
+def _custom_game_rows(
+    *,
+    ply_count: int,
+    result: str,
+    reached_winning_endgame: bool | None = None,
+) -> list[dict[str, object]]:
+    """Deterministic rows for a 60-ply rapid game.
+
+    `reached_winning_endgame` controls whether the player reached a winning
+    endgame (eval >= 300) at the endgame-entry ply:
+    - True  -> winning endgame reached (caller should set result="win" for a conversion)
+    - False -> winning endgame reached but the game was lost/drawn
+    - None  -> no winning endgame reached
+    """
+    rows: list[dict[str, object]] = []
+    for ply in range(1, ply_count + 1):
+        is_player = ply % 2 == 1
+        phase = "opening" if ply <= 20 else ("endgame" if ply >= 45 else "middlegame")
+        classification = "ok"
+        cp_loss = 0
+        eval_cp_before = 0
+        eval_cp_after = 0
+
+        # Middlegame: give the player some cost so worst_phase is non-null.
+        if is_player and phase == "middlegame" and ply in (25, 27, 29):
+            cp_loss = 100
+            classification = "mistake"
+
+        # Endgame entry signal.
+        if ply == 45:
+            phase = "endgame"
+            if reached_winning_endgame is not None:
+                eval_cp_before = 300
+
+        rows.append(
+            {
+                "ply": ply,
+                "move_san": "e4" if is_player else "e5",
+                "fen_before": _START_FEN,
+                "eval_cp_before": eval_cp_before,
+                "eval_cp_after": eval_cp_after,
+                "cp_loss": cp_loss,
+                "best_move_san": "e4" if is_player else "e5",
+                "classification": classification if is_player else "ok",
+                "phase": phase,
+            }
+        )
+
+    # Result doesn't change the MoveEval rows; it lives on the Game row.
+    # The helper caller sets it when creating the Game.
+    return rows
+
+
+def build_sequential_player(
+    session, *, batch2_size: int = 5
+) -> tuple[Player, ReportModel]:
+    """Seed a player with two batches of games for progress tracking tests.
+
+    Batch 1 (5 games, Jan 1-5) reaches a winning endgame once but does not
+    convert it, so endgame_conversion is 0%. The batch is then persisted as a
+    prior report.
+
+    Batch 2 (`batch2_size` games, Jan 10+) includes one game that reaches a
+    winning endgame and wins it, raising the overall conversion.
+
+    Returns (player, report1_model) so tests can build report 2 via
+    load_features + build_report and inspect progress.
+    """
+    if batch2_size < 0:
+        raise ValueError("batch2_size must be non-negative")
+
+    player = _make_player(session, username="sequential_player", rating=1200)
+
+    # Batch 1.
+    for i in range(5):
+        game = _make_game(
+            session,
+            player,
+            i=i,
+            time_class="rapid",
+            result="loss",
+            opening_eco="B07",
+            opponent_rating=1250 + i,
+            game_url=f"https://www.chess.com/game/live/{5000 + i}",
+        )
+        rows = _custom_game_rows(
+            ply_count=60, result="loss", reached_winning_endgame=False
+        )
+        _insert_rows(session, game, rows)
+
+    # Persist report 1, mirroring jobs.py.
+    features1 = load_features(session, "chesscom", player.username)
+    report1 = build_report(features1, session, player)
+    batch1_games = list(
+        session.scalars(select(Game).where(Game.player_id == player.id)).all()
+    )
+    dates = [g.played_at for g in batch1_games if g.played_at is not None]
+    report1_model = ReportModel(
+        player_id=player.id,
+        games_analyzed=len(batch1_games),
+        first_game_at=min(dates) if dates else None,
+        last_game_at=max(dates) if dates else None,
+        report_json=report1.model_dump(mode="json"),
+    )
+    session.add(report1_model)
+    session.commit()
+
+    # Batch 2.
+    for j in range(batch2_size):
+        # First batch-2 game reaches a winning endgame and converts; the rest do not.
+        reached_winning_endgame = j == 0
+        result = "win" if reached_winning_endgame else "loss"
+        game = _make_game(
+            session,
+            player,
+            i=10 + j,
+            time_class="rapid",
+            result=result,
+            opening_eco="B07",
+            opponent_rating=1260 + j,
+            game_url=f"https://www.chess.com/game/live/{6000 + j}",
+        )
+        rows = _custom_game_rows(
+            ply_count=60,
+            result=result,
+            reached_winning_endgame=reached_winning_endgame,
+        )
+        _insert_rows(session, game, rows)
+
+    return player, report1_model
 
 
 def build_endgame_loser(session) -> tuple[PlayerFeatures, Player]:
