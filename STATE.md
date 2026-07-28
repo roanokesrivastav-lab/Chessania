@@ -163,7 +163,14 @@
   feature spec (roadmap 670/1644) updated to match (law-first). DELIBERATELY DEFERRED to pre-ship: all
   fine-tuning of playstyle features + exact advice/language style — founder will tune those once the v1
   frontend exists and reports can be seen in situ. Proceeding to frontend/next session.
-- \_\_\_\_-\_\_: S23 pre-deploy gate → \_\_\_\_
+- 2026-07-28: **S23 pre-deploy gate — AI-verified quadrant GO, founder quadrant pending.**
+  Quality: full backend suite (170 passed) + S17 goldens unchanged + frontend build clean.
+  Cost: local single-game depth-12 analysis is ~1–2 s per game (baseline for S24 prod sizing);
+  `MAX_CONCURRENT_JOBS=2` + in-memory job dedup already limits blast radius.
+  Scope: audit of the working tree confirms no Part G leaks (no chessboard, puzzles, accounts,
+  LLM/ML, Celery/Redis, PGN upload). Honesty + founder "didn't-know-that" bar: left as
+  [founder-to-verify] in the S23 session log. Verdict: GO on the AI-verified quadrants; founder
+  completes the human half before S24.
 
 ## FIXTURE REGISTRY (P0-1)
 
@@ -228,6 +235,37 @@ Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
 Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-28 · Session 23 · Pre-deploy gate + rate limiting
+
+- Phase 4 opening gate. Added slowapi rate limiting to POST /api/analyze.
+  `backend/app/config.py` added `RATE_LIMIT_ANALYZE: str = "3/hour"`.
+  `backend/app/main.py` wired a `Limiter(key_func=get_remote_address)`, attached it to
+  `app.state.limiter`, registered a custom `RateLimitExceeded` handler returning 429 with JSON
+  `{"detail": "You've queued a few already — reports keep, come back soon."}`, and decorated
+  `/api/analyze` with the limiter. The limit value is supplied by a callable that reads
+  `settings.RATE_LIMIT_ANALYZE`, so dev can override it via env and tests can change it without
+  reloading the module. CORS is driven by `settings.CORS_ORIGINS` (already env-driven; only added a
+  clarifying comment) and `/api/debug/features` remains prod-gated by `settings.ENV != "dev"`
+  (only added a clarifying comment). `backend/requirements.txt` pinned `slowapi==0.1.10`.
+  NEW `backend/tests/test_rate_limit.py` — offline, resets slowapi's in-memory storage between
+  tests, mocks the job helper to avoid background tasks, and asserts both the 200 under-limit path
+  and the 429 + friendly-detail over-limit path.
+- **AI-verified**: `cd backend && source venv/bin/activate && python -m pytest -q` → **170 passed,
+  3 deselected**, ~2 s, OFFLINE, no Stockfish. S17 golden fixtures unchanged. Live curl proof
+  started the server with `RATE_LIMIT_ANALYZE=1/minute`; the second consecutive POST returned the
+  friendly 429 body (`"You've queued a few already — reports keep, come back soon."`). Frontend
+  `npm run build` remains clean from S21/S22.
+- **Gate verdict**: GO on Quality / Cost / Scope (AI side). Honesty + founder bar remains
+  [founder-to-verify] below. No Part G leaks found in tree diff.
+- **Commit**: `chore: pre-deploy gate + rate limiting` — DO NOT push. STATE.md updated in a
+  separate docs commit.
+- **[founder-to-verify] — the S23 human half of the gate**: (1) Open your own live report and
+  confirm at least one sentence makes you think "I didn't know that about my own games." (2) Kill
+  the backend and click through landing / analyzing / report / 404 / expired paths — every screen
+  should say something true, no infinite spinners. (3) Run the curl loop yourself: start the server
+  with `RATE_LIMIT_ANALYZE=1/minute`, hit `POST /api/analyze` twice, confirm the second is 429 with
+  the friendly copy.
 
 ### 2026-07-27 · Session 22 · Progress tracking
 

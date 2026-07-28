@@ -84,5 +84,9 @@ class Settings(BaseSettings):
     PROGRESS_FLAT_EPSILON: float = 0.02  # relative fraction for "flat" direction
     PROGRESS_LOW_SIGNAL_NOTE: str = "mostly the same games as last time — play a few more for a real read"
 
+    # Rate limiting (Session 23). "3/hour" keeps a single IP from queueing
+    # more than a few reports per hour; dev can loosen via env.
+    RATE_LIMIT_ANALYZE: str = "3/hour"
+
 
 settings = Settings()
