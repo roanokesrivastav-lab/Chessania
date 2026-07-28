@@ -1636,7 +1636,11 @@ class StatsBlock(BaseModel):
     acpl_overall: float
 
 
-    acpl_by_phase: PhaseStats    endgame_conversion: float | None     # None = no qualifying games (say so in UI)
+    acpl_by_phase: PhaseStats
+
+
+    endgame_conversion: float | None     # None = no qualifying games (say so in UI)
+
 
     advantage_capitalization: float | None  # None = never reached +3 winning advantage in any phase
 

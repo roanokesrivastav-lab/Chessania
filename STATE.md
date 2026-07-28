@@ -249,7 +249,25 @@ Phase 5:  [x] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch 
   - Regenerated S17 golden fixtures; diffs reviewed — `endgame_loser` now also fires the new rule (expected).
   - Updated `CHESSANIA_ROADMAP.md` Appendix 2 + Appendix 3.
 - **AI-verified**: `pytest -q` → 178 passed, 3 deselected, ~2 s, offline, no Stockfish. `npm run build` clean.
-- **Commit**: `feat: advantage capitalization metric` — DO NOT push.
+- **Commit**: `feat: advantage capitalization metric` (`36f2510`).
+- **Opus review — logic correct, two defects fixed.** Feature + rule reviewed: peak player-POV eval ≥
+  +300 → reached; rate = won/reached; `None` at zero; evidence picks the highest-cp_loss ply while
+  still winning (the thrown-away moment). Min-sample guard (≥4 reached) is an honest improvement over
+  the endgame rule. Golden `endgame_loser` correctly shows `advantage_capitalization: 0.25` + the new
+  issue ("reached a winning advantage in 12 games and converted 3 (25.0%)", evidence "you were winning
+  at move 45 but did not win"). Frontend tile/statInfo/types correct. **Fixed two defects Kimi left:**
+  (1) the Appendix 2 edit had jammed `acpl_by_phase: PhaseStats` and `endgame_conversion` onto ONE line
+  (Appendix 2 is LAW) — separated them; (2) `features.py`'s empty-data branch had 8-space indentation
+  on the new kwargs vs the surrounding 12 (valid Python, sloppy) — normalized. `pytest -q` still 178
+  passed after both fixes. Pushed.
+- **Watch item (not a bug):** for `endgame_loser` both `endgame_conversion` and `advantage_capitalization`
+  read 25% because that fixture's winning positions are all endgame-entry ones — the two issues can
+  co-fire with similar numbers. Headlines + counter-evidence distinguish them, but if real reports
+  consistently show both with identical numbers, consider a dedupe/priority tweak. Revisit with real
+  beta reports.
+- **[founder-to-verify] DoD**: on your live report, the Advantage-conversion number matches a hand-check
+  (`print_report.py`), and if the issue fires its evidence links open the exact games you were winning
+  and didn't close out.
 
 ### 2026-07-28 · Session 27 · Stat explainers
 
