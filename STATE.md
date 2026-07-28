@@ -237,7 +237,7 @@ Phase 5:  [x] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch 
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
-### 2026-07-29 · Session 29 · Resourcefulness / Missed Saves
+### 2026-07-28 · Session 29 · Resourcefulness / Missed Saves
 
 - Status: AI-verified (commits local)
 - Goal: Add the resourcefulness/missed-saves metric — the mirror of advantage capitalization: a COMEBACK strength when a player saves fightable-down positions, and a MISSED_SAVES issue when they collapse them.
@@ -252,7 +252,24 @@ Phase 5:  [x] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch 
 - Verification:
   - `pytest -q` → 184 passed, 3 deselected.
   - `npm run build` → clean.
-- Commit: `feat: resourcefulness / missed saves metric` (local, not pushed).
+- Commit: `feat: resourcefulness / missed saves metric` (`40281d5`).
+- **Opus review — clean, no bugs.** Feature correct: trouble game = worst player-POV eval in
+  [-600, -150] (tenable-but-losing), comeback = such a game ending win/draw, `None` at zero trouble
+  games; missed-save evidence filters to `is_player_ply` blunders in the band (better than the plan —
+  correctly excludes opponent moves). Rule + strength are mutually exclusive on the same 0.40
+  threshold (verified — never both praise and scold the same axis); comeback strength placed FIRST in
+  the cascade per the plan. Contract both sides + Appendix 2/3 CLEAN this time (no mangling; Kimi also
+  documented both S28 + S29 feature defs in the S12 spec). All three golden profiles show
+  `resourcefulness: null` — correct, they're never in the trouble band; dedicated tests cover the
+  firing paths instead (`test_missed_saves_rule_fires_and_renders`,
+  `test_comeback_strength_surfaces_when_resourceful`, min-games guard, None case, evidence fallback).
+  184 passed offline, no Stockfish; `npm run build` clean. Minor non-issue: the render computes a
+  redundant `rate` local equal to `saved_pct` (harmless, left as-is). Pushed.
+- **[founder-to-verify] DoD**: on your live report, the Resourcefulness number matches a hand-check;
+  any comeback strength points at games you genuinely saved; any missed-saves evidence opens games
+  where you were worse-but-fighting and collapsed it. (Your account may show `null`/no tile if you
+  rarely fall into a -150..-600 spot — that's honest, not a bug.)
+- Next: **Session 30** — Tilt / compounding (Part G #11c): consecutive-blunder spirals.
 - DoD (founder-to-verify): confirm the Resourcefulness number matches a hand-check; any comeback strength points at games genuinely saved; any missed-saves evidence opens the right collapsed game.
 
 ### 2026-07-28 · Session 28 · Advantage Capitalization
