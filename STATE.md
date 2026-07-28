@@ -232,10 +232,34 @@ Phase 0:  [~] P0-1  [x] P0-2  [~] P0-3  [x] P0-4   ([~] = done but pending found
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
 Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [x] S14.5 (time-coaching detectors) [x] S15 [x] S16 [x] S17
 Phase 3:  [x] S18 [x] S19 [x] S20 [x] S21 [x] S22
-Phase 4:  [~] S23 (code + AI gate done; founder gate half pending) [ ] S24 [ ] S25 [ ] weekly beta ×4–6
+Phase 4:  [x] S23 [~] S24 (backend container + normalizer committed; founder Railway deploy pending) [ ] S25 [ ] weekly beta ×4–6
 Phase 5:  [ ] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch analytics; deferred per 2026-07-27)
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-28 · Session 24 · Deploy the backend
+
+- Backend containerization + deploy prep. NEW `backend/Dockerfile` — `python:3.12-slim`, installs
+  `stockfish` from Debian, sets `SF_PATH=/usr/games/stockfish`, installs Python deps, and boots with
+  `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}` so migrations run
+  before the server starts and Railway's injected `PORT` is honored. NEW `backend/.dockerignore` —
+  excludes `venv/`, `__pycache__/`, `*.sqlite3`, `.pytest_cache/`, `.git/`, `tests/`, `.env`, etc.,
+  keeping the image lean and secret-free. NEW `backend/tests/test_db_url.py` — offline tests for the
+  `postgres://` → `postgresql://` normalizer. Modified `backend/app/config.py` — added a
+  `_normalize_database_url` helper and a Pydantic `field_validator` on `DATABASE_URL` so a Railway
+  `postgres://` URL is rewritten once at settings load time; `postgresql://` and `sqlite://` are left
+  untouched. No app behavior changed.
+- **AI-verified**: `cd backend && source venv/bin/activate && python -m pytest -q` → **175 passed,
+  3 deselected**, ~2.0 s, OFFLINE, no Stockfish. The new `test_db_url.py` passes and the existing
+  suite is unaffected.
+- **Commit**: `feat: dockerfile + railway deploy` — DO NOT push (per session rule). The actual Railway
+  project creation, Postgres plugin, env-var configuration, deploy, and prod timing check are the
+  founder's hands in S24.
+- **[founder-to-verify] DoD**: create the Railway project from this repo, add the Postgres plugin, set
+  `ENV=prod`, `CONTACT_EMAIL`, `CORS_ORIGINS` (Vercel domain placeholder is fine until S25), and the
+  auto-provided `DATABASE_URL`; deploy, watch the migration logs, confirm `/health` returns ok, and run
+  a full real analysis on prod. Log the duration in STATE.md here. If prod is dramatically slower than
+  local, `SF_DEPTH=11` is acceptable; below 11 requires a founder call.
 
 ### 2026-07-27 · Session 23 · Pre-deploy gate + rate limiting
 

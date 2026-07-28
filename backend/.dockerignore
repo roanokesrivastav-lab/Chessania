@@ -1,0 +1,30 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+
+# Local databases / state
+*.sqlite3
+*.sqlite3-journal
+*.db
+.env
+.env.local
+
+# Git
+.git/
+.gitignore
+
+# Tests and CI are not needed in the production image
+tests/
+.github/
+
+# Logs
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store

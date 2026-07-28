@@ -10,14 +10,31 @@ Read once at import time from environment variables / a `.env` file, with
 defaults sane enough to run entirely locally with zero configuration.
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _normalize_database_url(url: str) -> str:
+    """Railway sometimes hands out DATABASE_URL starting with postgres://,
+    which SQLAlchemy 2.0 rejects. Normalizing once here means db.py, the
+    app, and alembic all see postgresql:// without touching every call site.
+    """
+    if url.startswith("postgres://"):
+        return "postgresql" + url.removeprefix("postgres")
+    return url
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     # Database — SQLite locally, Postgres in prod (see app/db.py).
+    # Normalized on load so a postgres:// Railway URL still works.
     DATABASE_URL: str = "sqlite:///./chessania.sqlite3"
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def _normalize_database_url_field(cls, value: str) -> str:
+        return _normalize_database_url(value)
 
     # Stockfish (wired up starting Session 4).
     SF_PATH: str = "stockfish"
