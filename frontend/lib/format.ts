@@ -8,8 +8,9 @@ export function formatNumber(value: number | null, fallback = "—"): string {
 
 export function formatPercent(value: number | null, fallback = "—"): string {
   if (value === null || Number.isNaN(value)) return fallback;
-  // opening_leak_rate is already stored as a percent number (e.g. 35 = 35%)
-  return `${formatNumber(value)}%`;
+  // opening_leak_rate is a 0-1 fraction (features.py: leak_count / len(games),
+  // e.g. 0.1 = 10%); display as a percent. Do NOT remove the ×100 — see S20/S21 log.
+  return `${formatNumber(value * 100)}%`;
 }
 
 export function formatConversion(value: number | null, fallback = "—"): string {
