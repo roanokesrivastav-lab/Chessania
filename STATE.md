@@ -229,6 +229,13 @@ Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-07-27 · Session 20 · The report page
+
+- Built the shareable coaching report face at `/r/[platform]/[username]`. NEW async Server Component `frontend/app/r/[platform]/[username]/page.tsx` fetches `getReport()` server-side, `export const dynamic = "force-dynamic"` for fresh re-analyzes, and `generateMetadata` for unfurl. 404 path renders inline `<AnalyzeForm initialPlatform={rawPlatform} />` for a fresh analysis; other errors show a friendly block. EXTRACTED the landing form into `frontend/components/AnalyzeForm.tsx` (client) so both the home page and the empty state share the same validation/submit logic; `frontend/app/page.tsx` now delegates to it. NEW `frontend/lib/format.ts` centralizes units: `endgame_conversion` is a 0–1 fraction → ×100; `opening_leak_rate` is already a percent → no ×100; raw numbers preserved via `String(value)`. NEW report components under `frontend/components/report/` rendered in locked order: `ReportHeader` (username, platform badge, rating, date range, time-class mix, playstyle chip), `StrengthCard` (warm, always above issues), `IssueCard` (client, expandable evidence rows that deep-link to `game_url`), `OpeningRecCards` (stacked on phone, side by side on desktop), `StatsBlock` (ACPL by phase, conversion, trend, optional `by_color` split), `ProgressStrip` (only when non-null), and `ReportFooter` (client re-analyze button + public-link note). Also fixed lint/Next issues in `frontend/app/analyzing/[jobId]/page.tsx` (use `Link` for `/`, escaped unescaped entity).
+- **AI-verified**: `cd frontend && npm run build && npm run lint` → compiled clean, TypeScript passed, 4 routes (`/`, `/analyzing/[jobId]`, `/r/[platform]/[username]`, `/_not-found`) generated. Backend UNTOUCHED (Phase-3 wall held). Commit: `06eaae3` `feat: report page`; not pushed.
+- **[founder-to-verify] — the S20 DoD**: run backend + `npm run dev`, visit a live `/r/{platform}/{username}` for your account, check phone-width layout, confirm every evidence link opens the right game on the platform, hit Re-analyze and watch it redirect to the progress screen, and load the shared URL cold on a friend's phone. Cross-check the rendered numbers against `python scripts/print_report.py <platform> <user>` / the raw JSON — especially the leak-rate vs conversion unit split.
+- Next: **Session 21** — OG images + polish (OpenGraph metadata/OG images for the shared link, final visual pass). Prereq S20 ✓.
+
 ### 2026-07-27 · Session 19 · Live progress screen
 
 - The 1–4 min wait, made to feel alive. Kimi 2.7 coded + committed (`c59289f`, no push); Opus reviewed +
