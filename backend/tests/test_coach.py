@@ -98,6 +98,10 @@ def _base_features(**overrides) -> PlayerFeatures:
         "advantage_reached": 0,
         "advantage_converted": 0,
         "advantage_capitalization_evidence": [],
+        "resourcefulness": None,
+        "resource_trouble_games": 0,
+        "resource_comebacks": 0,
+        "missed_save_evidence": [],
         "meaningful_blunders_per_game": 0.5,
         "by_color": {},
         "detectors": {
@@ -449,6 +453,58 @@ def test_advantage_capitalization_does_not_fire_below_min_games(db_session):
     report = build_report(features, db_session, player)
     keys = [issue.key for issue in report.issues]
     assert "advantage_capitalization" not in keys
+
+
+# ---------------------------------------------------------------------------
+# Resourcefulness / missed saves (S29)
+# ---------------------------------------------------------------------------
+
+def test_missed_saves_rule_fires_and_renders(db_session):
+    player, game = _insert_player_and_game(db_session)
+    blunder_row = _insert_row(db_session, game, ply=1, classification="blunder", cp_loss=300)
+
+    features = _base_features(
+        resourcefulness=0.25,
+        resource_trouble_games=4,
+        resource_comebacks=1,
+        missed_save_evidence=[(str(game.id), blunder_row.ply)],
+    )
+
+    report = build_report(features, db_session, player)
+    keys = [issue.key for issue in report.issues]
+    assert "missed_saves" in keys
+    missed = next(i for i in report.issues if i.key == "missed_saves")
+    assert _has_digit(missed.diagnosis)
+    assert _has_digit(missed.success_metric)
+    assert missed.counter_evidence
+    assert len(missed.evidence) == 1
+
+
+def test_comeback_strength_surfaces_when_resourceful(db_session):
+    player, _game = _insert_player_and_game(db_session)
+    features = _base_features(
+        resourcefulness=0.50,
+        resource_trouble_games=4,
+        resource_comebacks=2,
+    )
+
+    report = build_report(features, db_session, player)
+    assert len(report.strengths) == 1
+    assert "fought back" in report.strengths[0].detail.lower()
+    assert "missed_saves" not in [issue.key for issue in report.issues]
+
+
+def test_missed_saves_does_not_fire_below_min_games(db_session):
+    player, _game = _insert_player_and_game(db_session)
+    features = _base_features(
+        resourcefulness=0.25,
+        resource_trouble_games=3,  # below FEATURE_RESOURCE_MIN_GAMES (4)
+        resource_comebacks=0,
+    )
+
+    report = build_report(features, db_session, player)
+    keys = [issue.key for issue in report.issues]
+    assert "missed_saves" not in keys
 
 
 def test_opening_general_fires_when_no_single_family_leak_but_general_leak(db_session):

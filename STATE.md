@@ -237,6 +237,24 @@ Phase 5:  [x] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch 
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-07-29 · Session 29 · Resourcefulness / Missed Saves
+
+- Status: AI-verified (commits local)
+- Goal: Add the resourcefulness/missed-saves metric — the mirror of advantage capitalization: a COMEBACK strength when a player saves fightable-down positions, and a MISSED_SAVES issue when they collapse them.
+- Changes:
+  - Updated CHESSANIA_ROADMAP.md Appendix 2 + 3.
+  - Added config tunables in `backend/app/config.py`.
+  - Implemented `_resourcefulness` in `backend/app/features.py` and wired new `PlayerFeatures` fields.
+  - Added `_rule_missed_saves` and comeback strength candidate in `backend/app/coach.py`.
+  - Updated `backend/app/schemas.py` + `frontend/lib/types.ts` contract.
+  - Added "Resourcefulness" tile + explainer in the frontend.
+  - Added backend unit/integration tests and regenerated S17 golden fixtures.
+- Verification:
+  - `pytest -q` → 184 passed, 3 deselected.
+  - `npm run build` → clean.
+- Commit: `feat: resourcefulness / missed saves metric` (local, not pushed).
+- DoD (founder-to-verify): confirm the Resourcefulness number matches a hand-check; any comeback strength points at games genuinely saved; any missed-saves evidence opens the right collapsed game.
+
 ### 2026-07-28 · Session 28 · Advantage Capitalization
 
 - Added the first Phase 5 derived metric: **any-phase advantage capitalization**.

@@ -492,6 +492,60 @@ def _rule_advantage_capitalization() -> _Rule:
     return _Rule("advantage_capitalization", 4, "medium", fires, render)
 
 
+def _rule_missed_saves() -> _Rule:
+    def fires(f: PlayerFeatures) -> bool:
+        return (
+            f.resourcefulness is not None
+            and f.resource_trouble_games >= settings.FEATURE_RESOURCE_MIN_GAMES
+            and f.resourcefulness < settings.COACH_RESOURCEFULNESS
+        )
+
+    def render(f: PlayerFeatures, session, player: Player | None) -> schemas.Issue:
+        trouble_games = f.resource_trouble_games
+        comebacks = f.resource_comebacks
+        rate = round(f.resourcefulness * 100, 1)  # type: ignore[arg-type]
+        saved_pct = round((comebacks / trouble_games) * 100, 1)
+
+        diagnosis = (
+            f"You got into a fightable position in {trouble_games} games and saved "
+            f"{comebacks} ({saved_pct}%)."
+        )
+        prescription = (
+            "When you're down material, look for one active defensive resource on every move — "
+            "a single tricky counter-attack can turn a losing position into a draw or win."
+        )
+        target = round(settings.COACH_RESOURCEFULNESS * 100, 1)
+        success_metric = (
+            f"Save at least {target}% of fightable positions over your next 10 games (you are at {saved_pct}%)."
+        )
+        counter = "This counts positions where you were down about a piece or less at any point, not only endgames."
+
+        return schemas.Issue(
+            key="missed_saves",
+            headline="You collapse positions you could still fight for.",
+            diagnosis=diagnosis,
+            prescription=prescription,
+            success_metric=success_metric,
+            counter_evidence=counter,
+            rating_impact="medium",
+            refresh_after="re-check after 20 new games",
+            links=[
+                schemas.Link(
+                    label="Lichess defensive tactics",
+                    url="https://lichess.org/practice/intermediate-tactics/defensive-move/",
+                )
+            ],
+            evidence=_resolve_evidence(
+                session,
+                player,
+                f.missed_save_evidence,
+                lambda g, r: f"you were worse but still fighting at move {r.ply} and let it collapse",
+            ),
+        )
+
+    return _Rule("missed_saves", 4, "medium", fires, render)
+
+
 def _rule_late_collapse() -> _Rule:
     def fires(f: PlayerFeatures) -> bool:
         return bool(f.detectors and f.detectors.get("late_collapse", {}).get("fired"))
@@ -849,6 +903,20 @@ def _strength_for(
     features: PlayerFeatures, session, player: Player | None
 ) -> schemas.Strength:
     """Exactly one strength, with a real number that earns it."""
+    # S29: a genuine comeback is the most motivating strength we can show.
+    if (
+        features.resourcefulness is not None
+        and features.resource_trouble_games >= settings.FEATURE_RESOURCE_MIN_GAMES
+        and features.resourcefulness >= settings.COACH_RESOURCEFULNESS
+    ):
+        return schemas.Strength(
+            headline="You fight back from losing positions.",
+            detail=(
+                f"You fought back from a losing position in {features.resource_comebacks} of "
+                f"{features.resource_trouble_games} games — that resilience wins points others throw away."
+            ),
+        )
+
     best = _best_phase(features)
     if best:
         phase, acpl, margin = best
@@ -907,6 +975,7 @@ def _all_rules() -> list[_Rule]:
         _rule_opening_leak(),
         _rule_endgame_conversion(),
         _rule_advantage_capitalization(),
+        _rule_missed_saves(),
         _rule_late_collapse(),
         _rule_blitz_gap(),
         _rule_opening_general(),
@@ -929,6 +998,7 @@ def _stats_block(features: PlayerFeatures) -> schemas.StatsBlock:
         ),
         endgame_conversion=features.endgame_conversion,
         advantage_capitalization=features.advantage_capitalization,
+        resourcefulness=features.resourcefulness,
         accuracy_trend=features.accuracy_trend,
         per_game_acpl=features.per_game_acpl,
         by_color={

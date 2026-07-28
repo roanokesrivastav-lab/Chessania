@@ -58,6 +58,12 @@ class Settings(BaseSettings):
     FEATURE_ENDGAME_AHEAD_CP: int = 300  # "strictly winning" — a decisive edge ( a clean piece / a won pawn endgame) a sub-1800 should convert
     FEATURE_ADVANTAGE_CP: int = 300  # any-phase "winning advantage" peak (≈ +3 pawns), mirroring endgame threshold
     FEATURE_ADVANTAGE_MIN_GAMES: int = 4  # min games reaching +3 before coaching on conversion
+
+    # Resourcefulness / missed saves (Session 29).
+    FEATURE_RESOURCE_TROUBLE_CP: int = -150  # upper (least losing) bound of the "tenable but losing" band
+    FEATURE_RESOURCE_LOST_CP: int = -600     # lower (most losing) bound — positions worse than this are considered already lost
+    FEATURE_RESOURCE_MIN_GAMES: int = 4     # min trouble games before coaching/strength on resourcefulness
+    COACH_RESOURCEFULNESS: float = 0.40     # at or above = comeback strength; below = missed-saves issue
     FEATURE_TREND_MIN_GAMES: int = 8
     FEATURE_TREND_BAND: float = 0.10  # relative first-half vs second-half band
     FEATURE_COLOR_MIN_GAMES: int = 4  # below this, per-color numbers are low-signal

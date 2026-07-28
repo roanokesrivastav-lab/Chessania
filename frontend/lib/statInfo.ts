@@ -47,6 +47,13 @@ export const statInfo: Record<string, StatInfo> = {
     atYourLevel:
       "Sub-1800 players often reach a winning position but still lose. If this is below 60%, the problem is usually tactics or time management, not the endgame itself.",
   },
+  resourcefulness: {
+    term: "Resourcefulness",
+    definition:
+      "How often you save or draw a game after falling into a clearly worse but still fightable position. Higher is better.",
+    atYourLevel:
+      "At your level, saving around 40% of fightable-down positions is strong. If this is below 25%, practicing defensive tactics and active defense is the fastest fix.",
+  },
   opening_leak_rate: {
     term: "Opening leak rate",
     definition:

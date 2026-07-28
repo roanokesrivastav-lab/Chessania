@@ -147,6 +147,7 @@
     },
     "endgame_conversion": 0.25,
     "advantage_capitalization": 0.25,
+    "resourcefulness": null,
     "accuracy_trend": "flat",
     "per_game_acpl": [
       20.0,

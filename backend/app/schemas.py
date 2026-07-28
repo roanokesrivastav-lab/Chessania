@@ -116,6 +116,7 @@ class StatsBlock(BaseModel):
     acpl_by_phase: PhaseStats
     endgame_conversion: float | None
     advantage_capitalization: float | None
+    resourcefulness: float | None
     accuracy_trend: Literal["improving", "flat", "declining", "insufficient_data"]
     per_game_acpl: list[float]
     by_color: dict[str, ColorStats] | None

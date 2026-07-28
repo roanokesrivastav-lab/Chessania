@@ -371,6 +371,91 @@ def test_advantage_capitalization_none_when_zero_qualifying_games(db_session):
 
 
 # ---------------------------------------------------------------------------
+# 5b. resourcefulness / missed saves (S29)
+# ---------------------------------------------------------------------------
+
+def test_resourcefulness_rate_and_evidence(db_session):
+    comeback = _insert_player_and_game(
+        db_session,
+        color="white",
+        result="draw",
+        played_at=_BASE_TIME,
+        username="res_a",
+    )
+    _insert_rows(
+        db_session,
+        comeback,
+        [
+            {"ply": 20, "cp_loss": 0, "classification": "ok", "eval_cp_before": -200},
+            {"ply": 22, "cp_loss": 0, "classification": "ok", "eval_cp_before": -180},
+        ],
+    )
+
+    collapsed = _insert_player_and_game(
+        db_session,
+        color="white",
+        result="loss",
+        played_at=_BASE_TIME + dt.timedelta(minutes=1),
+        username="res_a",
+    )
+    _insert_rows(
+        db_session,
+        collapsed,
+        [
+            {"ply": 19, "cp_loss": 0, "classification": "ok", "eval_cp_before": -200},
+            {"ply": 21, "cp_loss": 250, "classification": "blunder", "eval_cp_before": -200},
+            {"ply": 23, "cp_loss": 0, "classification": "ok", "eval_cp_before": -300},
+        ],
+    )
+
+    games = [comeback, collapsed]
+    features = build_features(games, _evals_for(db_session, *games), rating_snapshot=None)
+
+    assert features.resource_trouble_games == 2
+    assert features.resource_comebacks == 1
+    assert features.resourcefulness == 0.5
+    # Evidence is the player-move blunder in the lost game while in the tenable band.
+    assert features.missed_save_evidence == [(str(collapsed.id), 21)]
+
+
+def test_resourcefulness_none_when_zero_trouble_games(db_session):
+    game = _insert_player_and_game(
+        db_session, color="white", result="win", played_at=_BASE_TIME, username="res_b"
+    )
+    # Worst eval is only -100 (outside the tenable-but-losing band).
+    _insert_rows(
+        db_session,
+        game,
+        [{"ply": 10, "cp_loss": 0, "classification": "ok", "eval_cp_before": -100}],
+    )
+    features = build_features([game], _evals_for(db_session, game), rating_snapshot=None)
+    assert features.resourcefulness is None
+    assert features.resource_trouble_games == 0
+    assert features.resource_comebacks == 0
+    assert features.missed_save_evidence == []
+
+
+def test_resourcefulness_evidence_fallback_uses_worst_player_ply(db_session):
+    """When a lost trouble game has no band blunder, evidence falls back to the worst player ply."""
+    game = _insert_player_and_game(
+        db_session, color="white", result="loss", played_at=_BASE_TIME, username="res_c"
+    )
+    _insert_rows(
+        db_session,
+        game,
+        [
+            {"ply": 19, "cp_loss": 0, "classification": "ok", "eval_cp_before": -100},
+            {"ply": 21, "cp_loss": 0, "classification": "ok", "eval_cp_before": -300},
+            {"ply": 23, "cp_loss": 0, "classification": "ok", "eval_cp_before": -200},
+        ],
+    )
+    features = build_features([game], _evals_for(db_session, game), rating_snapshot=None)
+    assert features.resourcefulness == 0.0
+    assert features.resource_trouble_games == 1
+    assert features.missed_save_evidence == [(str(game.id), 21)]
+
+
+# ---------------------------------------------------------------------------
 # 6. opening_leak_rate (including a black game, to exercise player_pov_eval)
 # ---------------------------------------------------------------------------
 

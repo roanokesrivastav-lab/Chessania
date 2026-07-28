@@ -129,6 +129,13 @@ class PlayerFeatures:
     advantage_converted: int = 0
     advantage_capitalization_evidence: list[tuple[str, int]] = field(default_factory=list)
 
+    # S29: resourcefulness / missed saves. Did the player fall into a
+    # tenable-but-losing position (-600 to -150 from their POV) and come back?
+    resourcefulness: float | None = None
+    resource_trouble_games: int = 0
+    resource_comebacks: int = 0
+    missed_save_evidence: list[tuple[str, int]] = field(default_factory=list)
+
     # S13: the blunder-inflation resolution. blunders_per_game (above) counts
     # every player blunder in every game, including ones played after a lost
     # game's point-of-no-return (PONR) — moves in an already-decided game that
@@ -383,6 +390,68 @@ def _advantage_capitalization(
     return rate, reached, converted, not_won[:3]
 
 
+def _resourcefulness(
+    games: list[Game], evals: dict[str, list[MoveEval]]
+) -> tuple[float | None, int, int, list[tuple[str, int]]]:
+    """Of the games where the player fell into a tenable-but-losing position
+    (player-POV eval between FEATURE_RESOURCE_LOST_CP and
+    FEATURE_RESOURCE_TROUBLE_CP at its worst), what fraction ended as a win
+    or draw? This is the mirror of advantage_capitalization: instead of "you
+    were winning and let it go," it answers "you were losing but still
+    fighting — did you save it?" Returns (rate, trouble_games, comebacks,
+    evidence). Rate is None when zero trouble games."""
+    trouble: list[tuple[Game, int]] = []  # (game, worst_ply)
+    for game in games:
+        rows = evals.get(str(game.id), [])
+        if not rows:
+            continue
+        worst_row = min(
+            rows,
+            key=lambda r: player_pov_eval(r.eval_cp_before, game.player_color),
+        )
+        worst = player_pov_eval(worst_row.eval_cp_before, game.player_color)
+        if (
+            settings.FEATURE_RESOURCE_LOST_CP
+            <= worst
+            <= settings.FEATURE_RESOURCE_TROUBLE_CP
+        ):
+            trouble.append((game, worst_row.ply))
+
+    if not trouble:
+        return None, 0, 0, []
+
+    trouble_games = len(trouble)
+    comebacks = sum(1 for g, _ply in trouble if g.result in ("win", "draw"))
+    rate = round(comebacks / trouble_games, 2)
+
+    # Evidence: lost trouble games where the player blundered in the band.
+    lost_trouble = [(g, ply) for g, ply in trouble if g.result == "loss"]
+    missed_saves: list[tuple[str, int]] = []
+    for game, _worst_ply in lost_trouble:
+        rows = evals.get(str(game.id), [])
+        player_rows = [r for r in rows if is_player_ply(r.ply, game.player_color)]
+        collapse_rows = [
+            r
+            for r in player_rows
+            if r.classification == "blunder"
+            and settings.FEATURE_RESOURCE_LOST_CP
+            <= player_pov_eval(r.eval_cp_before, game.player_color)
+            <= settings.FEATURE_RESOURCE_TROUBLE_CP
+        ]
+        if collapse_rows:
+            chosen = max(collapse_rows, key=lambda r: r.cp_loss)
+            missed_saves.append((str(game.id), chosen.ply))
+        elif player_rows:
+            # Fall back to the worst player-move ply so the issue still cites a game.
+            worst = min(
+                player_rows,
+                key=lambda r: player_pov_eval(r.eval_cp_before, game.player_color),
+            )
+            missed_saves.append((str(game.id), worst.ply))
+
+    return rate, trouble_games, comebacks, missed_saves[:3]
+
+
 def _endgame_entry_row(rows: list[MoveEval]) -> MoveEval | None:
     """The first (lowest-ply) row where this game's phase became 'endgame',
     i.e. the position the player actually entered the endgame in. None if
@@ -532,6 +601,10 @@ def build_features(
             advantage_reached=0,
             advantage_converted=0,
             advantage_capitalization_evidence=[],
+            resourcefulness=None,
+            resource_trouble_games=0,
+            resource_comebacks=0,
+            missed_save_evidence=[],
             meaningful_blunders_per_game=0.0,
             by_color={},
             playstyle=compute_playstyle([], {}),
@@ -584,6 +657,12 @@ def build_features(
         advantage_converted,
         advantage_capitalization_evidence,
     ) = _advantage_capitalization(games_sorted, evals)
+    (
+        resourcefulness,
+        resource_trouble_games,
+        resource_comebacks,
+        missed_save_evidence,
+    ) = _resourcefulness(games_sorted, evals)
 
     by_color: dict[str, ColorStats] = {}
     for color in ("white", "black"):
@@ -620,6 +699,10 @@ def build_features(
         advantage_reached=advantage_reached,
         advantage_converted=advantage_converted,
         advantage_capitalization_evidence=advantage_capitalization_evidence,
+        resourcefulness=resourcefulness,
+        resource_trouble_games=resource_trouble_games,
+        resource_comebacks=resource_comebacks,
+        missed_save_evidence=missed_save_evidence,
         meaningful_blunders_per_game=meaningful_blunders_per_game,
         by_color=by_color,
         detectors=detectors,
