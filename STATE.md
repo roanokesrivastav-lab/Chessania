@@ -255,11 +255,23 @@ Phase 5:  [ ] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch 
 - **Commit**: `feat: dockerfile + railway deploy` — DO NOT push (per session rule). The actual Railway
   project creation, Postgres plugin, env-var configuration, deploy, and prod timing check are the
   founder's hands in S24.
-- **[founder-to-verify] DoD**: create the Railway project from this repo, add the Postgres plugin, set
-  `ENV=prod`, `CONTACT_EMAIL`, `CORS_ORIGINS` (Vercel domain placeholder is fine until S25), and the
-  auto-provided `DATABASE_URL`; deploy, watch the migration logs, confirm `/health` returns ok, and run
-  a full real analysis on prod. Log the duration in STATE.md here. If prod is dramatically slower than
-  local, `SF_DEPTH=11` is acceptable; below 11 requires a founder call.
+- **Opus review + fix — the monorepo build failure.** Founder's first Railway deploy attempt failed at
+  the BUILD step (before env vars could even matter): the repo root has `frontend/` and `backend/`
+  side by side with no Dockerfile at the top, so Railway's own auto-detection (Nixpacks) had nothing
+  to build correctly. Kimi's Dockerfile itself was correct — reviewed line by line, `pytest -q` still
+  175 passed offline — but nothing told Railway where to find it. NEW `backend/railway.json` pins
+  `builder: DOCKERFILE`, `dockerfilePath: Dockerfile` (relative to the service's Root Directory) and a
+  `/health` healthcheck with a bounded restart policy — belt-and-suspenders alongside the dashboard
+  setting below.
+- **[founder-to-verify] DoD — ONE setting to fix the build, then redeploy**: in the Railway dashboard,
+  open the service → **Settings → Source → Root Directory**, set it to `backend`, save, and trigger a
+  redeploy (or push again). This is what tells Railway "the Dockerfile lives here, build from this
+  folder" — without it, Railway can't find `backend/Dockerfile` no matter what env vars are set. After
+  that: add the Postgres plugin, set `ENV=prod`, `CONTACT_EMAIL`, `CORS_ORIGINS` (Vercel placeholder is
+  fine until S25) and the auto-provided `DATABASE_URL`; deploy, watch the logs for the `alembic upgrade
+  head` line, confirm `/health` returns ok, and run a full real analysis on prod. Log the duration here.
+  If prod is dramatically slower than local, `SF_DEPTH=11` is acceptable; below 11 requires a founder
+  call.
 
 ### 2026-07-27 · Session 23 · Pre-deploy gate + rate limiting
 
