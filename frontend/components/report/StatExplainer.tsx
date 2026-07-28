@@ -8,11 +8,9 @@ interface Props {
 }
 
 export default function StatExplainer({ id }: Props) {
-  const info = getStatInfo(id);
-  if (!info) return null;
-
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const info = getStatInfo(id);
 
   useEffect(() => {
     if (!open) return;
@@ -31,6 +29,9 @@ export default function StatExplainer({ id }: Props) {
       document.removeEventListener("mousedown", handleClick);
     };
   }, [open]);
+
+  // After hooks (Rules of Hooks): bail if this id has no explainer copy.
+  if (!info) return null;
 
   return (
     <div ref={ref} className="relative inline-flex items-center">

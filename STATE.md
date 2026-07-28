@@ -254,9 +254,18 @@ Phase 5:  [x] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch 
   ReportHeader remain server components; only `StatExplainer` and the existing `IssueCard`/`ReportFooter`
   are client leaves.
 - **Commit**: `feat: stat explainers` — DO NOT push (per session rule).
+- **Opus review — copy good, one bug fixed.** The explainer copy is in the right voice and the
+  directions are correct (ACPL / leak / blunders lower-is-better, conversion higher-is-better; no jargon
+  left unpacked). Wiring correct (all ids right, phase ACPLs share `acpl_phase`, by_color grid covered).
+  **Fixed a Rules-of-Hooks violation** in `StatExplainer.tsx`: the `if (!info) return null` sat BEFORE
+  `useState`/`useRef`/`useEffect`, so hooks were called after a conditional return. It doesn't crash in
+  current usage (every `id` is a constant literal, so the hook count is stable per instance) but it's a
+  real violation + footgun (a dynamic id would throw "rendered fewer hooks"); moved the guard to after
+  the hooks. `npm run build` clean after the fix. No numbers/formats/contract/backend touched.
 - **[founder-to-verify] DoD**: on your live report at phone width, tap each "?" and confirm the copy is
   clear and true; confirm nothing about the numbers or layout regressed.
-- Next: **Session 28** — (roadmap Phase 5 continues; pick the next analytics/enrichment session).
+- Next: **Session 28** — Advantage Capitalization (Phase 5; the first new derived metric — backend +
+  contract + render, builds Part G #11b).
 
 ### 2026-07-28 · Session 25 · Deploy the frontend + end-to-end smoke 🏁
 
