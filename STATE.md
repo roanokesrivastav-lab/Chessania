@@ -232,7 +232,7 @@ Phase 0:  [~] P0-1  [x] P0-2  [~] P0-3  [x] P0-4   ([~] = done but pending found
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
 Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [x] S14.5 (time-coaching detectors) [x] S15 [x] S16 [x] S17
 Phase 3:  [x] S18 [x] S19 [x] S20 [x] S21 [x] S22
-Phase 4:  [x] S23 [x] S24 (backend live private) [~] S25 (frontend guard committed; founder Vercel deploy + smoke pending) [ ] weekly beta ×4–6
+Phase 4:  [x] S23 [x] S24 [x] S25 🏁 LIVE (chessania.vercel.app) [ ] weekly beta ×4–6
 Phase 5:  [ ] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch analytics; deferred per 2026-07-27)
 
 ## SESSION LOG (newest first; honesty tags mandatory)
@@ -270,6 +270,14 @@ Phase 5:  [ ] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch 
 - **Opus review**: the `api.ts` trailing-slash guard is correct (`.replace(/\/+$/, "")`); `npm run
   build` clean. Fixed a defect in `frontend/.env.example` — Kimi left two stray `[TEMPLATE]` marker
   lines at the top (scaffolding leak); replaced with a normal header comment. Guard + fix pushed.
+- **🏁 FOUNDER-VERIFIED — CHESSANIA IS LIVE (2026-07-28).** Backend: `https://chessania-production.up.railway.app`
+  (`/health` 200 over HTTPS). Frontend: `https://chessania.vercel.app` (Vercel GitHub App on
+  roanokesrivastav-lab, Root Directory `frontend`, `NEXT_PUBLIC_API_URL` set before the build so no
+  rebuild race). `CORS_ORIGINS=https://chessania.vercel.app` on Railway (redeployed). **End-to-end
+  proof:** ran a real analysis of Eleven_14 from the browser — network trace shows client → Railway
+  `POST /api/analyze` 200 and `GET /api/jobs/{id}` 200 directly, no CORS errors, no mixed-content,
+  console clean, report rendered with real data. **Phone/cellular cold-load on a second device:
+  confirmed working.** Phase 4 deploy sessions (S23–S25) complete.
 - **Next**: founder completes the runbook, logs the result, and pushes. Then Phase 5 beta begins.
 
 ### 2026-07-28 · Session 24 · Deploy the backend
