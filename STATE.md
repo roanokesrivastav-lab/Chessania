@@ -229,6 +229,39 @@ Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-07-28 · Session 22 · Progress tracking
+
+- The sanctioned backend+frontend exception to the phase wall: on a player's SECOND (or later)
+  analysis, the report now shows honest improvement deltas vs the previous and first reports.
+  NEW `backend/app/progress.py` — pure DB/JSON math, no engine. A centralized `_delta()` holds the
+  single sign-flip mapping (conversion up = better; ACPL/blunders down = better; flat within
+  `PROGRESS_FLAT_EPSILON`). `build_progress()` queries the latest and earliest prior reports for the
+  player, computes deltas for Blunders/game, Overall ACPL, worst-phase ACPL, and Endgame conversion,
+  and sets `progress.note` to the low-signal copy when fewer than `PROGRESS_MIN_NEW_GAMES` provably
+  new games exist since the last report. `backend/app/coach.py` now calls `build_progress()` when
+  `session and player` are present; single-report builds still get `progress=None` so the S17
+  golden fixtures are unchanged. `backend/app/config.py` added `PROGRESS_MIN_NEW_GAMES` (5),
+  `PROGRESS_FLAT_EPSILON` (0.02), and `PROGRESS_LOW_SIGNAL_NOTE`. FRONTEND: `frontend/lib/format.ts`
+  gained `formatDeltaValue` (conversion ×100 → %, ACPL → integer, bluders/game → 1 decimal),
+  `directionArrow`, `directionColor`, and `formatProgressDate`. `frontend/components/report/ProgressStrip.tsx`
+  upgraded from a bare stub to the ProgressCard: header with date span, vs_previous/vs_first groups,
+  colored arrow + `prev → curr` formatted values per metric, and the hedged note when present.
+- NEW `backend/tests/test_progress.py` — unit tests for `_delta` (conversion up → better, ACPL down →
+  better, blunders up → worse, within-epsilon → flat, null side dropped) and integration tests for no
+  prior report (returns None), sign-flip via endgame conversion improvement, low-signal note when <5
+  new games, and no note when enough new games. Extended `backend/tests/fixtures/features/builders.py`
+  with `_custom_game_rows()` and `build_sequential_player()` to seed a persisted first report + a
+  second batch of newer games deterministically.
+- **AI-verified**: `cd backend && source venv/bin/activate && python -m pytest -q` → **167 passed,
+  3 deselected**, ~2.0s, OFFLINE, no Stockfish. `cd frontend && npm run build` → compiled clean,
+  TypeScript passed. Backend schema/types untouched; frontend contract unchanged.
+- **Commit**: `f9befa2` `feat: progress tracking` — DO NOT push (per session rule). STATE.md updated
+  in a separate docs commit.
+- **[founder-to-verify] DoD**: re-analyze your real account (you've played new games since the first
+  analysis), open `/r/{platform}/{username}`, and confirm the Progress arrows/numbers match a
+  hand-check of the two stored `report_json` `stats_block`s. Then re-run with no new games and verify
+  the low-signal note appears instead of a bogus trend.
+
 ### 2026-07-27 · Session 21 · Frontend hardening + copy pass
 
 - No new product features, no backend changes. HARDENING only. NEW `frontend/app/layout.tsx` metadata: `metadataBase` from `NEXT_PUBLIC_SITE_URL`, title template (`%s · Chessania`), real description, OG `siteName`/`type`, and Twitter `summary_large_image`. NEW `frontend/app/icon.svg` self-contained "C" monogram favicon; removed leftover `app/favicon.ico`. NEW `frontend/app/opengraph-image.tsx` site-wide OG card (1200×630 PNG) and NEW `frontend/app/r/[platform]/[username]/opengraph-image.tsx` per-player dynamic OG card that `await`s params, calls `getReport()`, and renders username/rating/games/playstyle; any error/404 falls back to a generic Chessania card so the route never throws. Extended `frontend/app/r/[platform]/[username]/page.tsx` `generateMetadata` with `openGraph` (title/description/url/type) and `twitter` (did NOT set `openGraph.images`; co-located image file auto-populates it). NEW `frontend/app/not-found.tsx` warm 404 page. Deleted create-next-app cruft: `public/{file,globe,next,vercel,window}.svg`. Copy sweep: `format.ts` unit fix (`opening_leak_rate` is already a percent → `formatPercent` no ×100; `endgame_conversion` is a 0–1 fraction → `formatConversion` ×100), friendlier API fallback, `ReportFooter` "generated on" + "this link", `StatsBlock` "Opening leak rate" / "Endgame conversion" labels.
