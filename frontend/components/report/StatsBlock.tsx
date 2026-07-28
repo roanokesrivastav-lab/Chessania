@@ -22,6 +22,16 @@ export default function StatsBlock({ stats }: Props) {
         <Stat label="Endgame conversion" value={formatConversion(stats.endgame_conversion)} explainerId="endgame_conversion" />
       </div>
 
+      {stats.advantage_capitalization !== null && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Stat
+            label="Advantage conversion"
+            value={formatConversion(stats.advantage_capitalization)}
+            explainerId="advantage_capitalization"
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-3">
         <Stat label="Opening ACPL" value={formatNumber(stats.acpl_by_phase.opening)} explainerId="acpl_phase" />
         <Stat label="Middlegame ACPL" value={formatNumber(stats.acpl_by_phase.middlegame)} explainerId="acpl_phase" />

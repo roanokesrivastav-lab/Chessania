@@ -97,6 +97,7 @@ export interface StatsBlock {
   acpl_overall: number;
   acpl_by_phase: PhaseStats;
   endgame_conversion: number | null;
+  advantage_capitalization: number | null;
   accuracy_trend: "improving" | "flat" | "declining" | "insufficient_data";
   per_game_acpl: number[];
   by_color: Record<string, ColorStats> | null;

@@ -55,7 +55,9 @@ class Settings(BaseSettings):
 
     # Features (Session 12+).
     FEATURE_OPENING_LEAK_CP: int = 150
-    FEATURE_ENDGAME_AHEAD_CP: int = 300  # "strictly winning" — a decisive edge (≈ a clean piece / a won pawn endgame) a sub-1800 should convert
+    FEATURE_ENDGAME_AHEAD_CP: int = 300  # "strictly winning" — a decisive edge ( a clean piece / a won pawn endgame) a sub-1800 should convert
+    FEATURE_ADVANTAGE_CP: int = 300  # any-phase "winning advantage" peak (≈ +3 pawns), mirroring endgame threshold
+    FEATURE_ADVANTAGE_MIN_GAMES: int = 4  # min games reaching +3 before coaching on conversion
     FEATURE_TREND_MIN_GAMES: int = 8
     FEATURE_TREND_BAND: float = 0.10  # relative first-half vs second-half band
     FEATURE_COLOR_MIN_GAMES: int = 4  # below this, per-color numbers are low-signal
@@ -95,6 +97,7 @@ class Settings(BaseSettings):
     COACH_BLUNDER_RATE: float = 1.5  # blunder_rate rule fires when meaningful blunders/game exceeds this
     COACH_OPENING_GENERAL: float = 0.35  # opening_general rule fires when opening leak rate is at least this
     COACH_ENDGAME_CONVERSION: float = 0.60  # endgame_conversion rule fires when conversion is below this
+    COACH_ADVANTAGE_CAPITALIZATION: float = 0.60  # advantage_capitalization rule fires when conversion is below this
 
     # Progress tracking (Session 22). Pure DB/JSON math; no engine.
     PROGRESS_MIN_NEW_GAMES: int = 5

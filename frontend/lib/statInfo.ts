@@ -40,6 +40,13 @@ export const statInfo: Record<string, StatInfo> = {
     atYourLevel:
       "At your level, converting around 60% of good endgames is solid. If this number is below 50%, studying basic king-and-pawn endings will pay off quickly.",
   },
+  advantage_capitalization: {
+    term: "Advantage conversion",
+    definition:
+      "How often you convert a game after reaching a winning advantage (about +3 pawns or more) at any point. Higher is better.",
+    atYourLevel:
+      "Sub-1800 players often reach a winning position but still lose. If this is below 60%, the problem is usually tactics or time management, not the endgame itself.",
+  },
   opening_leak_rate: {
     term: "Opening leak rate",
     definition:

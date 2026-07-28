@@ -1636,11 +1636,9 @@ class StatsBlock(BaseModel):
     acpl_overall: float
 
 
-    acpl_by_phase: PhaseStats
+    acpl_by_phase: PhaseStats    endgame_conversion: float | None     # None = no qualifying games (say so in UI)
 
-
-    endgame_conversion: float | None     # None = no qualifying games (say so in UI)
-
+    advantage_capitalization: float | None  # None = never reached +3 winning advantage in any phase
 
     accuracy_trend: Literal["improving","flat","declining","insufficient_data"]
 
@@ -1790,6 +1788,7 @@ Copy templates (structural shapes — full strings live in code, matching these 
 * hung_pieces — H: "Free pieces are walking away." D: "{hang_pct}% of your blunders left a piece where it could simply be taken — like {example_move} against {example_opp} ({example_detail})." P: board-vision drill — before moving, scan every undefended piece of yours; puzzle theme "hanging pieces."
 * opening_leak — H: "You're coming out of your {family_name} worse." D: "You reached move 15 of your {family_name} games down an average of {avg_cp} centipawns across {k} games — you're losing these games before they start." P: "Learn ONE reply properly: {concrete_line_from_openings_json}." Link: the family's Lichess study/explorer. (Copy avoids the non-chess term "leak" per 2026-07-27 founder note; the internal opening_leak identifiers are unchanged.)
 * endgame_conversion — H: "Winning positions aren't becoming wins." D: "You reached a winning endgame in {q} games and converted {conv_pct}%." P: king+pawn fundamentals; Lichess Practice endgame drills; 15 min × 2/week.
+* advantage_capitalization — H: "Winning advantages are slipping away." D: "You reached a winning advantage in {reached} games and converted {converted} ({rate}%)." P: when up +3, switch from tactic-hunting to prophylaxis; ask what the opponent's best try is before every move. Counter-evidence: counts any game where you reached +3 at any point, not only endgames.
 * late_collapse — H: "Your games are decided after move 30 — against you." D: "Past move 30 you blunder {late_ratio}× as often as before it." P: the 5-second blunder-check habit + clock framing (keep 25% of your clock for the last 15 moves).
 * blitz_gap — H: "You don't have a chess problem — you have a blitz problem." D: "{blitz_bpg} blunders/game in blitz vs {rapid_bpg} in rapid." P: shift the ratio toward rapid for a month; blitz is testing, rapid is training.
 * opening_general — the softer variant when no single family is guilty: D cites {leak_rate}% of games worse by move 20; P: opening principles (development, king safety) — not lines — with one link.

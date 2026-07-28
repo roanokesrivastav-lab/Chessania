@@ -439,6 +439,59 @@ def _rule_endgame_conversion() -> _Rule:
     return _Rule("endgame_conversion", 4, "medium", fires, render)
 
 
+def _rule_advantage_capitalization() -> _Rule:
+    def fires(f: PlayerFeatures) -> bool:
+        return (
+            f.advantage_capitalization is not None
+            and f.advantage_reached >= settings.FEATURE_ADVANTAGE_MIN_GAMES
+            and f.advantage_capitalization < settings.COACH_ADVANTAGE_CAPITALIZATION
+        )
+
+    def render(f: PlayerFeatures, session, player: Player | None) -> schemas.Issue:
+        reached = f.advantage_reached
+        converted = f.advantage_converted
+        rate = round(f.advantage_capitalization * 100, 1)  # type: ignore[arg-type]
+
+        diagnosis = (
+            f"You reached a winning advantage in {reached} games and converted {converted} "
+            f"({rate}%)."
+        )
+        prescription = (
+            "When you're up +3, stop searching for more tactics and switch to prophylaxis: "
+            "ask what your opponent's best try is before every move."
+        )
+        target = round(settings.COACH_ADVANTAGE_CAPITALIZATION * 100, 1)
+        success_metric = (
+            f"Convert at least {target}% of winning advantages over your next 10 games (you are at {rate}%)."
+        )
+        counter = "This counts any game where you reached +3 at any point, not only endgames."
+
+        return schemas.Issue(
+            key="advantage_capitalization",
+            headline="Winning advantages are slipping away.",
+            diagnosis=diagnosis,
+            prescription=prescription,
+            success_metric=success_metric,
+            counter_evidence=counter,
+            rating_impact="medium",
+            refresh_after="re-check after 20 new games",
+            links=[
+                schemas.Link(
+                    label="Lichess tactics",
+                    url="https://lichess.org/training/tactics",
+                )
+            ],
+            evidence=_resolve_evidence(
+                session,
+                player,
+                f.advantage_capitalization_evidence,
+                lambda g, r: f"you were winning at move {r.ply} but did not win",
+            ),
+        )
+
+    return _Rule("advantage_capitalization", 4, "medium", fires, render)
+
+
 def _rule_late_collapse() -> _Rule:
     def fires(f: PlayerFeatures) -> bool:
         return bool(f.detectors and f.detectors.get("late_collapse", {}).get("fired"))
@@ -853,6 +906,7 @@ def _all_rules() -> list[_Rule]:
         _rule_hung_pieces(),
         _rule_opening_leak(),
         _rule_endgame_conversion(),
+        _rule_advantage_capitalization(),
         _rule_late_collapse(),
         _rule_blitz_gap(),
         _rule_opening_general(),
@@ -874,6 +928,7 @@ def _stats_block(features: PlayerFeatures) -> schemas.StatsBlock:
             endgame=features.acpl_by_phase.endgame or 0.0,
         ),
         endgame_conversion=features.endgame_conversion,
+        advantage_capitalization=features.advantage_capitalization,
         accuracy_trend=features.accuracy_trend,
         per_game_acpl=features.per_game_acpl,
         by_color={

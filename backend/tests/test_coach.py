@@ -94,6 +94,10 @@ def _base_features(**overrides) -> PlayerFeatures:
         "opening_leak_evidence": [],
         "endgame_conversion": None,
         "endgame_conversion_evidence": [],
+        "advantage_capitalization": None,
+        "advantage_reached": 0,
+        "advantage_converted": 0,
+        "advantage_capitalization_evidence": [],
         "meaningful_blunders_per_game": 0.5,
         "by_color": {},
         "detectors": {
@@ -193,6 +197,15 @@ def test_each_individual_rule_renders_a_valid_issue(db_session):
             _base_features(
                 endgame_conversion=0.50,
                 endgame_conversion_evidence=[(gid, endgame_row.ply)],
+            ),
+        ),
+        (
+            "advantage_capitalization",
+            _base_features(
+                advantage_capitalization=0.50,
+                advantage_reached=4,
+                advantage_converted=2,
+                advantage_capitalization_evidence=[(gid, blunder_row.ply)],
             ),
         ),
         (
@@ -420,6 +433,22 @@ def test_report_serializes_and_validates(db_session):
 # ---------------------------------------------------------------------------
 # 6. opening_general rule fires when opening_leak does not
 # ---------------------------------------------------------------------------
+
+
+def test_advantage_capitalization_does_not_fire_below_min_games(db_session):
+    player, game = _insert_player_and_game(db_session)
+    blunder_row = _insert_row(db_session, game, ply=1, classification="blunder", cp_loss=300)
+
+    features = _base_features(
+        advantage_capitalization=0.50,
+        advantage_reached=3,  # below FEATURE_ADVANTAGE_MIN_GAMES (4)
+        advantage_converted=1,
+        advantage_capitalization_evidence=[(str(game.id), blunder_row.ply)],
+    )
+
+    report = build_report(features, db_session, player)
+    keys = [issue.key for issue in report.issues]
+    assert "advantage_capitalization" not in keys
 
 
 def test_opening_general_fires_when_no_single_family_leak_but_general_leak(db_session):

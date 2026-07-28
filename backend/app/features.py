@@ -122,6 +122,13 @@ class PlayerFeatures:
     endgame_conversion: float | None
     endgame_conversion_evidence: list[tuple[str, int]]
 
+    # S28: any-phase advantage capitalization. Did the player reach a winning
+    # advantage (>= +3) at any point, and did they win those games?
+    advantage_capitalization: float | None = None
+    advantage_reached: int = 0
+    advantage_converted: int = 0
+    advantage_capitalization_evidence: list[tuple[str, int]] = field(default_factory=list)
+
     # S13: the blunder-inflation resolution. blunders_per_game (above) counts
     # every player blunder in every game, including ones played after a lost
     # game's point-of-no-return (PONR) — moves in an already-decided game that
@@ -325,6 +332,57 @@ def _opening_leak_stats(
     return rate, evidence
 
 
+def _advantage_capitalization(
+    games: list[Game], evals: dict[str, list[MoveEval]]
+) -> tuple[float | None, int, int, list[tuple[str, int]]]:
+    """Of the games where the player reached a winning advantage at any
+    point (player-POV peak eval >= FEATURE_ADVANTAGE_CP), what fraction did
+    they actually win? This is broader than endgame_conversion, which only
+    looks at the endgame-entry ply; this catches "+3 in the middlegame and
+    threw it away." Returns (rate, reached, converted, evidence). Rate is
+    None when zero games reached a winning advantage."""
+    qualifying: list[tuple[Game, int]] = []  # (game, peak_ply)
+    for game in games:
+        rows = evals.get(str(game.id), [])
+        if not rows:
+            continue
+        peak_row = max(
+            rows,
+            key=lambda r: player_pov_eval(r.eval_cp_before, game.player_color),
+        )
+        if player_pov_eval(peak_row.eval_cp_before, game.player_color) >= settings.FEATURE_ADVANTAGE_CP:
+            qualifying.append((game, peak_row.ply))
+
+    if not qualifying:
+        return None, 0, 0, []
+
+    reached = len(qualifying)
+    converted = sum(1 for g, _ply in qualifying if g.result == "win")
+    rate = round(converted / reached, 2)
+
+    # Evidence: not-won qualifying games. Pick the ply with the highest
+    # cp_loss among rows already at +3 or better; fall back to the peak row
+    # if no such row has a recorded loss.
+    not_won: list[tuple[str, int]] = []
+    for game, peak_ply in qualifying:
+        if game.result == "win":
+            continue
+        rows = evals.get(str(game.id), [])
+        qualifying_rows = [
+            r
+            for r in rows
+            if player_pov_eval(r.eval_cp_before, game.player_color) >= settings.FEATURE_ADVANTAGE_CP
+        ]
+        if qualifying_rows:
+            # Highest cp_loss is where they threw the advantage away.
+            chosen = max(qualifying_rows, key=lambda r: r.cp_loss)
+            not_won.append((str(game.id), chosen.ply))
+        else:
+            not_won.append((str(game.id), peak_ply))
+
+    return rate, reached, converted, not_won[:3]
+
+
 def _endgame_entry_row(rows: list[MoveEval]) -> MoveEval | None:
     """The first (lowest-ply) row where this game's phase became 'endgame',
     i.e. the position the player actually entered the endgame in. None if
@@ -467,10 +525,14 @@ def build_features(
             accuracy_trend="insufficient_data",
             per_game_acpl=[],
             opening_leak_rate=0.0,
-            opening_leak_evidence=[],
-            endgame_conversion=None,
-            endgame_conversion_evidence=[],
-            meaningful_blunders_per_game=0.0,
+        opening_leak_evidence=[],
+        endgame_conversion=None,
+        endgame_conversion_evidence=[],
+        advantage_capitalization=None,
+        advantage_reached=0,
+        advantage_converted=0,
+        advantage_capitalization_evidence=[],
+        meaningful_blunders_per_game=0.0,
             by_color={},
             playstyle=compute_playstyle([], {}),
             top_eco_by_color={},
@@ -516,6 +578,12 @@ def build_features(
 
     opening_leak_rate, opening_leak_evidence = _opening_leak_stats(games_sorted, evals)
     endgame_conversion, endgame_conversion_evidence = _endgame_conversion(games_sorted, evals)
+    (
+        advantage_capitalization,
+        advantage_reached,
+        advantage_converted,
+        advantage_capitalization_evidence,
+    ) = _advantage_capitalization(games_sorted, evals)
 
     by_color: dict[str, ColorStats] = {}
     for color in ("white", "black"):
@@ -548,6 +616,10 @@ def build_features(
         opening_leak_evidence=opening_leak_evidence,
         endgame_conversion=endgame_conversion,
         endgame_conversion_evidence=endgame_conversion_evidence,
+        advantage_capitalization=advantage_capitalization,
+        advantage_reached=advantage_reached,
+        advantage_converted=advantage_converted,
+        advantage_capitalization_evidence=advantage_capitalization_evidence,
         meaningful_blunders_per_game=meaningful_blunders_per_game,
         by_color=by_color,
         detectors=detectors,

@@ -309,6 +309,68 @@ def test_endgame_conversion_none_when_zero_qualifying_games(db_session):
 
 
 # ---------------------------------------------------------------------------
+# 5b. advantage_capitalization
+# ---------------------------------------------------------------------------
+
+
+def test_advantage_capitalization_rate_and_evidence(db_session):
+    won = _insert_player_and_game(
+        db_session, color="white", result="win", played_at=_BASE_TIME, username="adv_a"
+    )
+    _insert_rows(
+        db_session,
+        won,
+        [
+            {"ply": 15, "cp_loss": 0, "classification": "ok", "eval_cp_before": 350},
+            {"ply": 17, "cp_loss": 0, "classification": "ok", "eval_cp_before": 320},
+        ],
+    )
+
+    lost = _insert_player_and_game(
+        db_session,
+        color="white",
+        result="loss",
+        played_at=_BASE_TIME + dt.timedelta(minutes=1),
+        username="adv_a",
+    )
+    _insert_rows(
+        db_session,
+        lost,
+        [
+            {"ply": 20, "cp_loss": 0, "classification": "ok", "eval_cp_before": 400},
+            {"ply": 22, "cp_loss": 250, "classification": "blunder", "eval_cp_before": 350},
+            {"ply": 24, "cp_loss": 50, "classification": "inaccuracy", "eval_cp_before": 300},
+        ],
+    )
+
+    games = [won, lost]
+    features = build_features(games, _evals_for(db_session, *games), rating_snapshot=None)
+
+    assert features.advantage_reached == 2
+    assert features.advantage_converted == 1
+    assert features.advantage_capitalization == 0.5
+    # Evidence is the thrown-away ply (highest cp_loss while >= +3) in the lost game.
+    assert features.advantage_capitalization_evidence == [(str(lost.id), 22)]
+
+
+def test_advantage_capitalization_none_when_zero_qualifying_games(db_session):
+    game = _insert_player_and_game(
+        db_session, color="white", result="win", played_at=_BASE_TIME, username="adv_b"
+    )
+    # Peak eval is only +150 (< FEATURE_ADVANTAGE_CP).
+    _insert_rows(
+        db_session,
+        game,
+        [{"ply": 10, "cp_loss": 0, "classification": "ok", "eval_cp_before": 150}],
+    )
+    features = build_features([game], _evals_for(db_session, game), rating_snapshot=None)
+    assert features.advantage_capitalization is None
+    assert features.advantage_reached == 0
+    assert features.advantage_converted == 0
+    assert features.advantage_capitalization_evidence == []
+
+
+# ---------------------------------------------------------------------------
 # 6. opening_leak_rate (including a black game, to exercise player_pov_eval)
 # ---------------------------------------------------------------------------
 

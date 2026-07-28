@@ -237,6 +237,20 @@ Phase 5:  [x] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch 
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-07-28 · Session 28 · Advantage Capitalization
+
+- Added the first Phase 5 derived metric: **any-phase advantage capitalization**.
+  - `backend/app/config.py`: `FEATURE_ADVANTAGE_CP=300`, `FEATURE_ADVANTAGE_MIN_GAMES=4`, `COACH_ADVANTAGE_CAPITALIZATION=0.60`.
+  - `backend/app/features.py`: `_advantage_capitalization(...)` computes rate/reached/converted/evidence from player-POV peak eval >= +3.
+  - `backend/app/coach.py`: new `_rule_advantage_capitalization` with counter-evidence distinguishing it from endgame conversion; mapped into `_stats_block`.
+  - Contract updated both sides: `backend/app/schemas.py` + `frontend/lib/types.ts`.
+  - Frontend: added "Advantage conversion" tile in `frontend/components/report/StatsBlock.tsx` and explainer in `frontend/lib/statInfo.ts`.
+  - Tests: `backend/tests/test_features.py` unit tests, `backend/tests/test_coach.py` min-games guard and rule rendering.
+  - Regenerated S17 golden fixtures; diffs reviewed — `endgame_loser` now also fires the new rule (expected).
+  - Updated `CHESSANIA_ROADMAP.md` Appendix 2 + Appendix 3.
+- **AI-verified**: `pytest -q` → 178 passed, 3 deselected, ~2 s, offline, no Stockfish. `npm run build` clean.
+- **Commit**: `feat: advantage capitalization metric` — DO NOT push.
+
 ### 2026-07-28 · Session 27 · Stat explainers
 
 - Added self-explaining info affordances for every jargon stat on the report. NEW
