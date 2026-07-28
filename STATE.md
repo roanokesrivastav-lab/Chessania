@@ -230,13 +230,14 @@ Phase 0:  [~] P0-1  [x] P0-2  [~] P0-3  [x] P0-4   ([~] = done but pending found
           P0-1 founder+lichess accounts logged, band accounts deferred to S11;
           P0-3 ground truth AI-drafted, founder to verify against the analysis board)
 Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit reached
-Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [x] S14.5 (time-coaching detectors) [x] S15 [ ] S16 [ ] S17
-Phase 3:  [ ] S18 [ ] S19 [ ] S20 [ ] S21 [ ] S22
-Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
+Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [x] S14.5 (time-coaching detectors) [x] S15 [x] S16 [x] S17
+Phase 3:  [x] S18 [x] S19 [x] S20 [x] S21 [x] S22
+Phase 4:  [~] S23 (code + AI gate done; founder gate half pending) [ ] S24 [ ] S25 [ ] weekly beta ×4–6
+Phase 5:  [ ] S27 [ ] S28 [ ] S29 [ ] S30 [ ] S31 [ ] S32 [ ] S33  (post-launch analytics; deferred per 2026-07-27)
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
-### 2026-07-28 · Session 23 · Pre-deploy gate + rate limiting
+### 2026-07-27 · Session 23 · Pre-deploy gate + rate limiting
 
 - Phase 4 opening gate. Added slowapi rate limiting to POST /api/analyze.
   `backend/app/config.py` added `RATE_LIMIT_ANALYZE: str = "3/hour"`.
@@ -258,8 +259,21 @@ Phase 4:  [ ] S23 [ ] S24 [ ] S25 [ ] weekly beta ×4–6
   `npm run build` remains clean from S21/S22.
 - **Gate verdict**: GO on Quality / Cost / Scope (AI side). Honesty + founder bar remains
   [founder-to-verify] below. No Part G leaks found in tree diff.
-- **Commit**: `chore: pre-deploy gate + rate limiting` — DO NOT push. STATE.md updated in a
-  separate docs commit.
+- **Opus review — clean, verified live.** Read all 5 files. slowapi wiring correct (custom 429
+  handler with the friendly copy; `request: Request` injected; callable-limit reads settings so tests
+  override without reload). Independent live checks: started uvicorn with `RATE_LIMIT_ANALYZE=2/minute`
+  and curled POST /api/analyze ×3 → 400, 400, **429 friendly** (used an invalid username so no
+  job/network ran, proving the limiter fires first). Started uvicorn with `ENV=prod` →
+  `/api/debug/features` returns **404** (200 under dev), `/health` 200 — the prod gate closes. Full
+  suite 170 passed / 3 deselected, offline, `pgrep -f stockfish` flat; S17 goldens byte-identical.
+  Scope diff = exactly the 5 planned files, no Part G leak.
+- **Gate — AI half: GO.** Quality (goldens + suite green), Scope (no leak), Cost (concurrency is
+  survivable: `MAX_CONCURRENT_JOBS=2` semaphore + username dedup + queue → a spike degrades to longer
+  waits, not a crash; the precise minutes-per-analysis number is measured on prod hardware in S24 step
+  3 / the founder's DoD re-analysis). **The final GO/fix-first verdict awaits the founder's half
+  below and blocks S24.**
+- **Commit**: `chore: pre-deploy gate + rate limiting` (`997e686`, code + Kimi log together). Opus
+  review + checklist fix pushed to origin/main.
 - **[founder-to-verify] — the S23 human half of the gate**: (1) Open your own live report and
   confirm at least one sentence makes you think "I didn't know that about my own games." (2) Kill
   the backend and click through landing / analyzing / report / 404 / expired paths — every screen
