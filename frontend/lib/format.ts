@@ -8,8 +8,8 @@ export function formatNumber(value: number | null, fallback = "—"): string {
 
 export function formatPercent(value: number | null, fallback = "—"): string {
   if (value === null || Number.isNaN(value)) return fallback;
-  // value is already a 0-100 percent number (e.g. 35)
-  return `${formatNumber(value)}%`;
+  // value is a 0-1 fraction (e.g. 0.1); display as 10%
+  return `${formatNumber(value * 100)}%`;
 }
 
 export function formatConversion(value: number | null, fallback = "—"): string {
