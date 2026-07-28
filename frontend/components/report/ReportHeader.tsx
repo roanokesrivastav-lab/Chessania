@@ -1,5 +1,6 @@
 import type { PlayerSummary, Playstyle } from "@/lib/types";
 import { formatRating, formatDateRange, platformLabel, playstyleColor } from "@/lib/format";
+import StatExplainer from "./StatExplainer";
 
 interface Props {
   summary: PlayerSummary;
@@ -18,11 +19,12 @@ export default function ReportHeader({ summary, playstyle }: Props) {
             {platformLabel(summary.platform)}
           </span>
           <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${playstyleColor(
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${playstyleColor(
               playstyle.label
             )}`}
           >
             {playstyle.label}
+            <StatExplainer id="playstyle" />
           </span>
         </div>
       </div>

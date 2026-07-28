@@ -1,5 +1,6 @@
 import type { StatsBlock as Stats } from "@/lib/types";
 import { formatNumber, formatPercent, formatConversion, formatTrend } from "@/lib/format";
+import StatExplainer from "./StatExplainer";
 
 interface Props {
   stats: Stats;
@@ -15,21 +16,21 @@ export default function StatsBlock({ stats }: Props) {
       </h2>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Blunders/game" value={formatNumber(stats.blunders_per_game)} />
-        <Stat label="Mistakes/game" value={formatNumber(stats.mistakes_per_game)} />
-        <Stat label="ACPL" value={formatNumber(stats.acpl_overall)} />
-        <Stat label="Endgame conversion" value={formatConversion(stats.endgame_conversion)} />
+        <Stat label="Blunders/game" value={formatNumber(stats.blunders_per_game)} explainerId="blunders_per_game" />
+        <Stat label="Mistakes/game" value={formatNumber(stats.mistakes_per_game)} explainerId="mistakes_per_game" />
+        <Stat label="ACPL" value={formatNumber(stats.acpl_overall)} explainerId="acpl" />
+        <Stat label="Endgame conversion" value={formatConversion(stats.endgame_conversion)} explainerId="endgame_conversion" />
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <Stat label="Opening ACPL" value={formatNumber(stats.acpl_by_phase.opening)} />
-        <Stat label="Middlegame ACPL" value={formatNumber(stats.acpl_by_phase.middlegame)} />
-        <Stat label="Endgame ACPL" value={formatNumber(stats.acpl_by_phase.endgame)} />
+        <Stat label="Opening ACPL" value={formatNumber(stats.acpl_by_phase.opening)} explainerId="acpl_phase" />
+        <Stat label="Middlegame ACPL" value={formatNumber(stats.acpl_by_phase.middlegame)} explainerId="acpl_phase" />
+        <Stat label="Endgame ACPL" value={formatNumber(stats.acpl_by_phase.endgame)} explainerId="acpl_phase" />
       </div>
 
       <div className="rounded-lg border border-foreground/10 bg-foreground/5 p-3">
         <p className="text-xs uppercase tracking-wide text-foreground/50">
-          Accuracy trend
+          Accuracy trend <StatExplainer id="accuracy_trend" />
         </p>
         <p className="mt-1 font-semibold">{formatTrend(stats.accuracy_trend)}</p>
       </div>
@@ -67,13 +68,17 @@ export default function StatsBlock({ stats }: Props) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-foreground/50">Opening leak rate</p>
+                    <p className="text-xs text-foreground/50">
+                      Opening leak rate <StatExplainer id="opening_leak_rate" />
+                    </p>
                     <p className="font-semibold">
                       {formatPercent(cs.opening_leak_rate)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-foreground/50">Endgame conversion</p>
+                    <p className="text-xs text-foreground/50">
+                      Endgame conversion <StatExplainer id="endgame_conversion" />
+                    </p>
                     <p className="font-semibold">
                       {formatConversion(cs.endgame_conversion)}
                     </p>
@@ -93,10 +98,21 @@ export default function StatsBlock({ stats }: Props) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  explainerId,
+}: {
+  label: string;
+  value: string;
+  explainerId?: string;
+}) {
   return (
     <div className="rounded-lg border border-foreground/10 p-3">
-      <p className="text-xs uppercase tracking-wide text-foreground/50">{label}</p>
+      <p className="text-xs uppercase tracking-wide text-foreground/50">
+        {label}
+        {explainerId && <StatExplainer id={explainerId} />}
+      </p>
       <p className="mt-1 text-lg font-semibold">{value}</p>
     </div>
   );
