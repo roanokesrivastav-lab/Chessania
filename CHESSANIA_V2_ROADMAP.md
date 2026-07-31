@@ -393,6 +393,18 @@ V2-S15 — 360 / Intuition Trainer  (EXPLICITLY CUTTABLE)
   drills. Cut without ceremony if T5 needs the time.
   DoD (if built): founder runs an intuition set. [REFINE or CUT]
 
+  [MAYBE — founder idea 2026-07-31] "Intuition calibration": curated real
+  positions where the point is a JUDGMENT, not a forced line — show a
+  position and ask the player's read (right plan / which side is better /
+  is this piece well-placed / attack or hold?), then reveal the engine/GM
+  verdict and score how calibrated their intuition was over a set. This
+  fits the self-evaluation identity (test whether your feel is correct,
+  not teach theory) better than the rapid-square drill above, and could
+  replace or absorb V2-S15. Keep as a MAYBE until v2 scope is finalized.
+  Open design Qs: where the positions come from (curated set vs mined from
+  the player's own games at decision points), and how to grade a
+  judgment answer fairly.
+
 
 PHASE T5 — THE TRAINING DASHBOARD (retention)
 ----------------------------------------------

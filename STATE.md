@@ -276,6 +276,8 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [ ] S31 [ ] S32 [ ] S33  (pos
   (Railway) once so existing Chess.com games get openings; re-run a fresh analysis and confirm
   `opening_leak` now groups your Chess.com games by family, and your opening insight reflects what you
   actually play.
+- **FOUNDER-VERIFIED (2026-07-31):** opening leak checked on the live report — works. Chess.com opening
+  derivation is live end-to-end.
 - Next: **Session 31** — Opening performance by variation (Part G #10), now unblocked.
 
 ### 2026-07-28 · Session 30 · Tilt / Compounding
