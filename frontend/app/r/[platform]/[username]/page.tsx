@@ -4,10 +4,8 @@ import type { Platform } from "@/lib/types";
 import AnalyzeForm from "@/components/AnalyzeForm";
 import ReportHeader from "@/components/report/ReportHeader";
 import StrengthCard from "@/components/report/StrengthCard";
-import IssueCard from "@/components/report/IssueCard";
+import CategoryDashboard from "@/components/report/CategoryDashboard";
 import OpeningRecCards from "@/components/report/OpeningRecCards";
-import OpeningPerformance from "@/components/report/OpeningPerformance";
-import StatsBlock from "@/components/report/StatsBlock";
 import ProgressStrip from "@/components/report/ProgressStrip";
 import ReportFooter from "@/components/report/ReportFooter";
 
@@ -84,14 +82,8 @@ export default async function ReportPage({ params }: PageParams) {
           playstyle={report.playstyle}
         />
         <StrengthCard strengths={report.strengths} />
-        <div className="space-y-4">
-          {report.issues.map((issue) => (
-            <IssueCard key={issue.key} issue={issue} />
-          ))}
-        </div>
+        <CategoryDashboard report={report} />
         <OpeningRecCards recs={report.opening_recs} />
-        <OpeningPerformance lines={report.opening_performance} />
-        <StatsBlock stats={report.stats_block} />
         <ProgressStrip progress={report.progress} />
         <ReportFooter
           platform={report.player_summary.platform}

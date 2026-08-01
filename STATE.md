@@ -233,9 +233,28 @@ Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit re
 Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [x] S14.5 (time-coaching detectors) [x] S15 [x] S16 [x] S17
 Phase 3:  [x] S18 [x] S19 [x] S20 [x] S21 [x] S22
 Phase 4:  [x] S23 [x] S24 [x] S25 🏁 LIVE (chessania.vercel.app) [ ] weekly beta ×4–6
-Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [ ] S32 [ ] S33  (post-launch analytics; deferred per 2026-07-27)
+Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [ ] S33  (post-launch analytics; deferred per 2026-07-27)
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-08-01 · **Session 32** · Performance-by-Category dashboard
+- Status: AI-verified (build + typecheck clean; committed locally, not pushed)
+- Changed: frontend only — new `lib/categories.ts` (single source of truth: the
+  15 issue keys → 6 categories, deterministic verdicts, headline numbers, concern
+  ordering); new `components/report/CategoryDashboard.tsx` (client — collapsible
+  category cards reusing IssueCard / OpeningPerformance / StatTile + an Overall card);
+  extracted `components/report/StatTile.tsx`; `StatsBlock.tsx` reduced to the cross-cutting
+  stats (ACPL, phase ACPLs, trend, by_color); the report page re-assembled: Header → Strength → CategoryDashboard → Opening recs → Progress → Footer. No number, format, contract, or backend change.
+- Claims: `npm run build` clean [AI-verified]; every rendered number is the same
+  value/formatter as before (pure re-layout) [AI-verified]; all 15 issue keys routed
+  (opening_leak/general/variation → Opening; blunder_rate/hung_pieces/tilt/
+  overextension → Tactics; advantage_capitalization → Advantage;
+  missed_saves → Resourcefulness; rushed_blunders/time_trouble_collapse/dawdling/
+  blitz_gap → Time; endgame_conversion/late_collapse → Endgame)
+  [AI-verified by code review].
+- Open bugs: none known.
+- Next: Session 33 — tiered deep analysis (opt-in ~100 games).
+
 
 ### 2026-08-01 · Session 31 · Opening performance by variation
 
