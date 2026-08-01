@@ -1763,6 +1763,7 @@ class Report(BaseModel):
 
 
     schema_version: int = 1
+    analysis_mode: Literal["standard", "deep"] = "standard"  # S33: fast 20-game default | opt-in deep (~100) — lives inside report_json, no migration
 
 
     player_summary: PlayerSummary

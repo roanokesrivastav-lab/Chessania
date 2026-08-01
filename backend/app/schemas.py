@@ -170,6 +170,10 @@ class Report(BaseModel):
     """The full coaching report, exactly as stored in reports.report_json."""
 
     schema_version: int = 1
+    # Session 33: "standard" = fast 20-game default | "deep" = opt-in ~100
+    # games. Sits inside report_json (no DB migration); the frontend shows
+    # "Deep analysis of N games" when deep so the numbers' weight is clear.
+    analysis_mode: Literal["standard", "deep"] = "standard"
     player_summary: PlayerSummary
     playstyle: Playstyle
     strengths: list[Strength]

@@ -2,6 +2,7 @@ export type Platform = "chesscom" | "lichess";
 
 export type JobState = "queued" | "running" | "done" | "error";
 export type JobStage = "fetching" | "analyzing" | "coaching";
+export type AnalysisMode = "standard" | "deep";
 
 export interface AnalyzeResponse {
   job_id: string;
@@ -13,6 +14,7 @@ export interface Job {
   username: string;
   state: JobState;
   stage: JobStage;
+  mode: AnalysisMode;
   current_game: number;
   total_games: number;
   error_message: string | null;
@@ -139,6 +141,7 @@ export interface PlayerSummary {
 
 export interface Report {
   schema_version: number;
+  analysis_mode: AnalysisMode;
   player_summary: PlayerSummary;
   playstyle: Playstyle;
   strengths: Strength[];

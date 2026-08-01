@@ -69,6 +69,8 @@ def health() -> dict[str, str]:
 class AnalyzeRequest(BaseModel):
     platform: Literal["chesscom", "lichess"]
     username: str
+    # Session 33: "standard" (fast 20-game default) | "deep" (opt-in ~100).
+    mode: Literal["standard", "deep"] = "standard"
 
 
 def _analyze_rate_limit() -> str:
@@ -90,7 +92,7 @@ def analyze(request: Request, payload: AnalyzeRequest, background_tasks: Backgro
             detail=f"That doesn't look like a valid {platform_label} username.",
         )
 
-    job, deduped = get_or_create_job(payload.platform, payload.username)
+    job, deduped = get_or_create_job(payload.platform, payload.username, mode=payload.mode)
     if not deduped:
         background_tasks.add_task(run_job, job.job_id)
 

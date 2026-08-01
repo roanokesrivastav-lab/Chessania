@@ -1214,7 +1214,10 @@ def _player_summary(features: PlayerFeatures, player: Player | None, games: list
 
 
 def build_report(
-    features: PlayerFeatures, session=None, player: Player | None = None
+    features: PlayerFeatures,
+    session=None,
+    player: Player | None = None,
+    mode: str = "standard",
 ) -> schemas.Report:
     """Evaluate every Appendix 3 rule, keep the fired ones, and return a
     Report ordered by (rating_impact bucket, priority). Top 3 issues are
@@ -1225,6 +1228,9 @@ def build_report(
     and compute DB-backed numbers (pre-PONR blunders, winning-endgame
     counts, time-class blunder rates). When absent, those pieces degrade
     gracefully.
+
+    `mode` (S33) is stamped onto the report so the frontend can say
+    "Deep analysis of N games" — it does not change any rule or number.
     """
     rules = _all_rules()
     fired = [rule for rule in rules if rule.fires(features)]
@@ -1265,6 +1271,7 @@ def build_report(
 
     return schemas.Report(
         schema_version=1,
+        analysis_mode=mode,
         player_summary=_player_summary(features, player, games),
         playstyle=_playstyle(features),
         strengths=[strength],

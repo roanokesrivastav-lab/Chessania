@@ -1,4 +1,4 @@
-import type { AnalyzeResponse, Job, Platform, Report } from "./types";
+import type { AnalyzeResponse, AnalysisMode, Job, Platform, Report } from "./types";
 
 const API_BASE = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
@@ -46,12 +46,13 @@ function throwNetworkError(): never {
 
 export async function analyze(
   platform: Platform,
-  username: string
+  username: string,
+  mode: AnalysisMode = "standard"
 ): Promise<AnalyzeResponse> {
   const response = await fetch(apiUrl("/api/analyze"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ platform, username }),
+    body: JSON.stringify({ platform, username, mode }),
   }).catch(() => {
     throwNetworkError();
   });

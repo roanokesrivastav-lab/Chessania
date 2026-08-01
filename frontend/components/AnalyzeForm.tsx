@@ -25,6 +25,7 @@ export default function AnalyzeForm({
   const router = useRouter();
   const [platform, setPlatform] = useState<Platform>(initialPlatform);
   const [username, setUsername] = useState("");
+  const [deep, setDeep] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +51,11 @@ export default function AnalyzeForm({
 
     setLoading(true);
     try {
-      const data = await analyze(platform, username.trim());
+      const data = await analyze(
+        platform,
+        username.trim(),
+        deep ? "deep" : "standard"
+      );
       router.push(`/analyzing/${data.job_id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
@@ -95,6 +100,17 @@ export default function AnalyzeForm({
         />
       </div>
 
+      <label className="flex items-center gap-2 text-sm text-foreground/70">
+        <input
+          type="checkbox"
+          checked={deep}
+          onChange={(e) => setDeep(e.target.checked)}
+          disabled={loading}
+          className="h-4 w-4 rounded border-foreground/30 accent-foreground disabled:opacity-60"
+        />
+        <span>Deep dive — up to 100 games, slower</span>
+      </label>
+
       {error && (
         <p
           role="alert"
@@ -109,7 +125,7 @@ export default function AnalyzeForm({
         disabled={loading}
         className="rounded-lg bg-foreground px-4 py-3 font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-60"
       >
-        {loading ? "Waking up the engine…" : "Coach me"}
+        {loading ? "Waking up the engine…" : deep ? "Start deep dive" : "Coach me"}
       </button>
     </form>
   );

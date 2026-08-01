@@ -15,9 +15,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app import jobs, main
+from app.config import settings
 from app.db import enable_sqlite_foreign_keys, get_session
 from app.engine_eval import EvalResult
-from app.main import app
+from app.main import app, limiter
 from app.models import Base, Game, MoveEval, Player, Report as ReportModel
 from tests.conftest import load_json_fixture
 from tests.test_debug_endpoint import seeded_session
@@ -39,6 +40,17 @@ def clear_registry():
     jobs._registry.clear()
     yield
     jobs._registry.clear()
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """POST /api/analyze is rate-limited (3/hour) with in-memory storage
+    shared across the whole process. Reset it around every test so the
+    endpoint tests never trip the limit and bleed into each other (same
+    pattern as test_rate_limit.py's autouse fixture)."""
+    limiter.reset()
+    yield
+    limiter.reset()
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +80,47 @@ def test_second_call_for_same_live_job_is_deduped():
     job3, deduped3 = jobs.get_or_create_job("chesscom", "alice")
     assert deduped3 is False
     assert job3.job_id != job1.job_id
+
+
+# ---------------------------------------------------------------------------
+# Session 33: deep mode — per-mode dedup, the games cap, and the deep semaphore
+# ---------------------------------------------------------------------------
+
+
+def test_get_or_create_job_stores_mode_and_dedups_per_mode():
+    """A deep request must NOT join a live standard job (different analysis),
+    and a repeat of the SAME mode still dedups."""
+    std, deduped_std = jobs.get_or_create_job("chesscom", "alice")
+    assert deduped_std is False
+    assert std.mode == "standard"
+
+    deep, deduped_deep = jobs.get_or_create_job("chesscom", "alice", mode="deep")
+    assert deduped_deep is False  # standard job is live but mode differs
+    assert deep.mode == "deep"
+    assert deep.job_id != std.job_id
+
+    deep2, deduped_deep2 = jobs.get_or_create_job("chesscom", "alice", mode="deep")
+    assert deduped_deep2 is True  # same mode still dedups
+    assert deep2.job_id == deep.job_id
+
+    assert std.to_dict()["mode"] == "standard"
+    assert deep.to_dict()["mode"] == "deep"
+
+
+def test_analyze_accepts_deep_mode(monkeypatch):
+    """POST /api/analyze with mode='deep' creates a deep job (and the
+    returned job_id resolves with mode in the status body)."""
+    monkeypatch.setattr(main, "run_job", lambda job_id: None)
+    resp = client.post(
+        "/api/analyze",
+        json={"platform": "chesscom", "username": "deepuser", "mode": "deep"},
+    )
+    assert resp.status_code == 200
+    job = jobs.get_job(resp.json()["job_id"])
+    assert job is not None
+    assert job.mode == "deep"
+    status = client.get(f"/api/jobs/{job.job_id}").json()
+    assert status["mode"] == "deep"
 
 
 # ---------------------------------------------------------------------------
@@ -156,6 +209,73 @@ def _test_session_factory():
     enable_sqlite_foreign_keys(engine)
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+
+def test_run_job_uses_mode_cap_for_fetch(monkeypatch):
+    """run_job requests MAX_GAMES_DEEP games for a deep job and MAX_GAMES
+    for a standard one (recorded via a fake fetch — no network, no engine)."""
+    test_session_local = _test_session_factory()
+    monkeypatch.setattr(jobs, "SessionLocal", test_session_local)
+    monkeypatch.setattr(jobs, "StockfishEvaluator", StubEvaluator)
+
+    seen: list[int] = []
+
+    def recording_fetch(platform, username, max_games=settings.MAX_GAMES):
+        seen.append(max_games)
+        return []
+
+    monkeypatch.setattr(jobs, "fetch_games", recording_fetch)
+
+    deep_job, _ = jobs.get_or_create_job("chesscom", "capuser", mode="deep")
+    jobs.run_job(deep_job.job_id)
+    assert seen == [settings.MAX_GAMES_DEEP]
+    assert deep_job.state == "done"
+
+    seen.clear()
+    std_job, _ = jobs.get_or_create_job("chesscom", "capuser")
+    jobs.run_job(std_job.job_id)
+    assert seen == [settings.MAX_GAMES]
+    assert std_job.state == "done"
+
+
+def test_deep_job_acquires_and_releases_deep_semaphore(monkeypatch):
+    """A deep job takes BOTH the main semaphore and the deep semaphore (and
+    releases both in finally); a standard job only takes the main one."""
+    test_session_local = _test_session_factory()
+    monkeypatch.setattr(jobs, "SessionLocal", test_session_local)
+    monkeypatch.setattr(jobs, "StockfishEvaluator", StubEvaluator)
+    monkeypatch.setattr(
+        jobs, "fetch_games", lambda platform, username, max_games=settings.MAX_GAMES: []
+    )
+
+    events: list[str] = []
+
+    class RecordingSemaphore:
+        def __init__(self, name: str):
+            self.name = name
+
+        def acquire(self):
+            events.append(f"acquire:{self.name}")
+
+        def release(self):
+            events.append(f"release:{self.name}")
+
+    monkeypatch.setattr(jobs, "_semaphore", RecordingSemaphore("main"))
+    monkeypatch.setattr(jobs, "_deep_semaphore", RecordingSemaphore("deep"))
+
+    std_job, _ = jobs.get_or_create_job("chesscom", "semuser")
+    jobs.run_job(std_job.job_id)
+    assert "acquire:deep" not in events
+    assert events.count("acquire:main") == 1
+    assert events.count("release:main") == 1
+
+    events.clear()
+    deep_job, _ = jobs.get_or_create_job("chesscom", "semuser", mode="deep")
+    jobs.run_job(deep_job.job_id)
+    assert events.count("acquire:main") == 1
+    assert events.count("acquire:deep") == 1
+    assert events.count("release:deep") == 1
+    assert settings.MAX_CONCURRENT_DEEP_JOBS == 1
 
 
 @respx.mock

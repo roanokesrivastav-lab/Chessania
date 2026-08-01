@@ -233,9 +233,27 @@ Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit re
 Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [x] S14.5 (time-coaching detectors) [x] S15 [x] S16 [x] S17
 Phase 3:  [x] S18 [x] S19 [x] S20 [x] S21 [x] S22
 Phase 4:  [x] S23 [x] S24 [x] S25 🏁 LIVE (chessania.vercel.app) [ ] weekly beta ×4–6
-Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [ ] S33  (post-launch analytics; deferred per 2026-07-27)
+Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (post-launch analytics; deferred per 2026-07-27)
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-08-01 · **Session 33** · Opt-in deep analysis (up to 100 games)
+- Status: AI-verified (pytest green offline + npm build clean; committed locally, not pushed)
+- Changed: opt-in deep mode alongside the untouched fast-20 default. Backend: `config.py`
+  (MAX_GAMES_DEEP=100, MAX_CONCURRENT_DEEP_JOBS=1); `main.py` AnalyzeRequest.mode; `jobs.py`
+  (JobStatus.mode + per-mode dedup, a second deep semaphore capping deep runs to one at a
+  time, run_job fetches MAX_GAMES_DEEP for deep); `ingest.py` max_games threaded through both
+  fetchers (Chess.com now walks archives until the cap, not a fixed 3 months); contract field
+  `Report.analysis_mode` on both sides + Appendix 2. Frontend: deep checkbox on the landing
+  form, a "Deep dive (~100 games)" action + "Deep analysis of N games" copy in the footer,
+  honest longer-wait copy on the progress screen. No migration, no queue (Part G #9 stays).
+- Claims: pytest green incl. new per-mode-dedup / cap / deep-semaphore / max_games tests
+  [AI-verified]; goldens changed ONLY by the added `analysis_mode: "standard"` [AI-verified];
+  npm run build clean [AI-verified].
+- Open bugs: none known.
+- Next: real-timing check of a deep run (inform the Part G #9 queue decision); founder DoD on
+  the live report.
+
 
 ### 2026-08-01 · **Session 32** · Performance-by-Category dashboard
 - Status: AI-verified (build + typecheck clean; committed locally, not pushed)

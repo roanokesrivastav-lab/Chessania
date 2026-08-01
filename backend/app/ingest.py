@@ -82,9 +82,11 @@ def _chesscom_result_to_outcome(result: str) -> str:
     return "loss"
 
 
-def fetch_chesscom(username: str) -> list[NormalizedGame]:
-    """Return up to settings.MAX_GAMES eligible games for a Chess.com
-    username, newest first.
+def fetch_chesscom(username: str, max_games: int | None = None) -> list[NormalizedGame]:
+    """Return up to max_games eligible games for a Chess.com username,
+    newest first. Defaults to the fast 20-game cap; the S33 deep dive
+    passes MAX_GAMES_DEEP (100). (Default resolved at call time, not def
+    time, so tests can monkeypatch settings.MAX_GAMES and have it apply.)
 
     Eligible = time_class in (rapid, blitz) and rules == "chess" — the
     rules check excludes variants (bughouse, chess960, king-of-the-hill,
@@ -92,6 +94,7 @@ def fetch_chesscom(username: str) -> list[NormalizedGame]:
     set entirely, not just a different time control; mixing them into
     "your games" would corrupt every rate the pipeline computes downstream.
     """
+    max_games = settings.MAX_GAMES if max_games is None else max_games
     username = username.lower()  # Chess.com URLs require lowercase
     headers = {"User-Agent": f"Chessania/0.1 (+{settings.CONTACT_EMAIL})"}
 
@@ -110,10 +113,14 @@ def fetch_chesscom(username: str) -> list[NormalizedGame]:
             archive_urls = archives_resp.json().get("archives", [])
             games: list[NormalizedGame] = []
 
-            # Walk at most the last 3 months, newest first, stopping early
-            # once we have enough games — fetched serially (never in
-            # parallel; a polite client to a free public API, Appendix 9).
-            for month_url in reversed(archive_urls[-3:]):
+            # Walk the archives newest first, stopping early once we have
+            # max_games — a standard run usually needs one month; the deep
+            # dive walks back further until it fills its larger cap. Cap the
+            # walk at a year of archives so a sparse account can't trigger a
+            # dozen serial requests for a handful of games (Appendix 9
+            # politeness) — the standard 20-game path is unaffected. Fetched
+            # serially (never in parallel).
+            for month_url in reversed(archive_urls[-12:]):
                 month_resp = client.get(month_url)
                 if month_resp.status_code == 429:
                     raise UpstreamRateLimited(month_url)
@@ -157,9 +164,9 @@ def fetch_chesscom(username: str) -> list[NormalizedGame]:
                             opening_name=None,
                         )
                     )
-                    if len(games) >= settings.MAX_GAMES:
+                    if len(games) >= max_games:
                         break
-                if len(games) >= settings.MAX_GAMES:
+                if len(games) >= max_games:
                     break
     except httpx.RequestError as exc:
         # A real network failure (DNS, connection refused, timeout) rather
@@ -171,23 +178,26 @@ def fetch_chesscom(username: str) -> list[NormalizedGame]:
     if not games:
         raise NoEligibleGames(username)
 
-    return games[: settings.MAX_GAMES]
+    return games[:max_games]
 
 
-def fetch_lichess(username: str) -> list[NormalizedGame]:
-    """Return up to settings.MAX_GAMES eligible games for a Lichess
-    username, newest first.
+def fetch_lichess(username: str, max_games: int | None = None) -> list[NormalizedGame]:
+    """Return up to max_games eligible games for a Lichess username,
+    newest first. Defaults to the fast 20-game cap; the S33 deep dive
+    passes MAX_GAMES_DEEP (100). (Default resolved at call time.)
 
     Unlike Chess.com's multi-request archive walk, this is a single
     request: Lichess streams NDJSON (one JSON object per line, newest
     first) and does the max/perfType filtering server-side (Appendix 9).
     """
+    max_games = settings.MAX_GAMES if max_games is None else max_games
+
     headers = {
         "User-Agent": f"Chessania/0.1 (+{settings.CONTACT_EMAIL})",
         "Accept": "application/x-ndjson",
     }
     params = {
-        "max": settings.MAX_GAMES,
+        "max": max_games,
         "perfType": "blitz,rapid",
         "pgnInJson": "true",
         # Lichess omits the "opening" object entirely unless this is set —
@@ -282,17 +292,21 @@ def fetch_lichess(username: str) -> list[NormalizedGame]:
     if not games:
         raise NoEligibleGames(username)
 
-    return games[: settings.MAX_GAMES]
+    return games[:max_games]
 
 
-def fetch_games(platform: str, username: str) -> list[NormalizedGame]:
+def fetch_games(
+    platform: str, username: str, max_games: int | None = None
+) -> list[NormalizedGame]:
     """Dispatch to the right platform fetcher. Adding a third platform
     someday means adding one more branch here and one more fetch_* function
-    — nothing downstream of NormalizedGame has to change."""
+    — nothing downstream of NormalizedGame has to change. max_games is
+    threaded through so the S33 deep dive can request up to 100; None
+    resolves to settings.MAX_GAMES inside the fetchers (call time)."""
     if platform == "chesscom":
-        return fetch_chesscom(username)
+        return fetch_chesscom(username, max_games=max_games)
     if platform == "lichess":
-        return fetch_lichess(username)
+        return fetch_lichess(username, max_games=max_games)
     raise ValueError(f"unknown platform: {platform!r}")
 
 

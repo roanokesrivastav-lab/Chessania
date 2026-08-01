@@ -11,6 +11,8 @@ interface Props {
   games_analyzed: number;
   engine_depth: number;
   generated_at: string;
+  // S33: old stored reports have no mode — treat as standard when absent.
+  analysis_mode?: "standard" | "deep";
 }
 
 export default function ReportFooter({
@@ -19,6 +21,7 @@ export default function ReportFooter({
   games_analyzed,
   engine_depth,
   generated_at,
+  analysis_mode,
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -27,11 +30,11 @@ export default function ReportFooter({
   const publicUrl =
     typeof window !== "undefined" ? window.location.href : "";
 
-  const handleReanalyze = async () => {
+  const startAnalysis = async (mode: "standard" | "deep") => {
     setError(null);
     setLoading(true);
     try {
-      const data = await analyze(platform, username);
+      const data = await analyze(platform, username, mode);
       router.push(`/analyzing/${data.job_id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
@@ -40,11 +43,14 @@ export default function ReportFooter({
     }
   };
 
+  const isDeep = analysis_mode === "deep";
+
   return (
     <footer className="space-y-3 border-t border-foreground/10 pt-6 text-sm text-foreground/70">
       <p>
-        Analyzed {games_analyzed} games at depth {engine_depth}. Report
-        generated on {new Date(generated_at).toLocaleDateString()}.
+        {isDeep ? "Deep analysis of" : "Analyzed"} {games_analyzed} games at
+        depth {engine_depth}. Report generated on{" "}
+        {new Date(generated_at).toLocaleDateString()}.
       </p>
       <p className="break-words">
         Reports are public at{" "}
@@ -64,13 +70,22 @@ export default function ReportFooter({
         </p>
       )}
 
-      <button
-        onClick={handleReanalyze}
-        disabled={loading}
-        className="rounded-lg bg-foreground px-4 py-2 font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-60"
-      >
-        {loading ? "Starting…" : "Re-analyze"}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => startAnalysis("standard")}
+          disabled={loading}
+          className="rounded-lg bg-foreground px-4 py-2 font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-60"
+        >
+          {loading ? "Starting…" : "Re-analyze"}
+        </button>
+        <button
+          onClick={() => startAnalysis("deep")}
+          disabled={loading}
+          className="rounded-lg border border-foreground/30 px-4 py-2 font-semibold text-foreground transition-colors hover:bg-foreground/5 disabled:opacity-60"
+        >
+          {loading ? "Starting…" : "Deep dive (~100 games)"}
+        </button>
+      </div>
     </footer>
   );
 }

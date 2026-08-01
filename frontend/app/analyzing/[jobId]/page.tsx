@@ -165,6 +165,12 @@ export default function AnalyzingPage() {
             <p className="text-sm text-foreground/70">
               {WAITING_LINES[waitingLineIndex]}
             </p>
+            {job.mode === "deep" && (
+              <p className="mt-3 text-xs text-foreground/50">
+                Deep dive — analyzing up to 100 games. This can take several
+                minutes; the engine is working through every move.
+              </p>
+            )}
           </div>
         )}
 

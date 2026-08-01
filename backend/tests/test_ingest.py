@@ -293,6 +293,59 @@ def test_fetch_games_rejects_unknown_platform():
 
 
 # ---------------------------------------------------------------------------
+# Session 33: max_games caps the fetch (fast 20 default, deep dive 100)
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+def test_fetch_chesscom_honors_max_games():
+    """A max_games cap below the fixture's eligible count truncates the
+    result (and stops fetching further archives once the cap is hit)."""
+    archives = load_json_fixture("api", "chesscom_archives.json")
+    month = load_json_fixture("api", "chesscom_month.json")
+    respx.get("https://api.chess.com/pub/player/fixture_user/games/archives").mock(
+        return_value=httpx.Response(200, json=archives)
+    )
+    respx.get("https://api.chess.com/pub/player/fixture_user/games/2026/06").mock(
+        return_value=httpx.Response(200, json=month)
+    )
+
+    games = fetch_chesscom("fixture_user", max_games=2)
+
+    assert len(games) == 2  # the fixture month has 3 eligible games; capped at 2
+    assert [g.result for g in games] == ["draw", "loss"]  # newest-first, truncated
+
+
+@respx.mock
+def test_fetch_lichess_honors_max_games():
+    """Lichess sends max=max_games upstream and slices the stream to the cap."""
+    ndjson_body = load_fixture("api", "lichess_games.ndjson")
+    route = respx.get("https://lichess.org/api/games/user/fixture_user").mock(
+        return_value=httpx.Response(200, text=ndjson_body)
+    )
+
+    games = fetch_lichess("fixture_user", max_games=2)
+
+    assert route.calls[0].request.url.params["max"] == "2"
+    assert len(games) == 2  # the fixture has 4 eligible lines; capped at 2
+    assert [g.result for g in games] == ["win", "draw"]
+
+
+@respx.mock
+def test_fetch_games_passes_max_games_through():
+    """The dispatcher threads max_games to the platform fetcher."""
+    ndjson_body = load_fixture("api", "lichess_games.ndjson")
+    route = respx.get("https://lichess.org/api/games/user/fixture_user").mock(
+        return_value=httpx.Response(200, text=ndjson_body)
+    )
+
+    games = fetch_games("lichess", "fixture_user", max_games=3)
+
+    assert route.calls[0].request.url.params["max"] == "3"
+    assert len(games) == 3
+
+
+# ---------------------------------------------------------------------------
 # Persistence + dedupe
 # ---------------------------------------------------------------------------
 

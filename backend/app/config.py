@@ -42,10 +42,12 @@ class Settings(BaseSettings):
 
     # Ingestion (Session 5+).
     MAX_GAMES: int = 20
+    MAX_GAMES_DEEP: int = 100  # Session 33: the opt-in deep-dive cap
     CONTACT_EMAIL: str = "contact@example.com"  # goes in the Chess.com User-Agent
 
     # Jobs (Session 10+). In-memory registry, no external queue (Locked 9).
     MAX_CONCURRENT_JOBS: int = 2
+    MAX_CONCURRENT_DEEP_JOBS: int = 1  # Session 33: deep runs are long — never run two at once
 
     # CORS (wired into main.py once routes exist). Comma-separated origins.
     CORS_ORIGINS: str = "http://localhost:3000"

@@ -42,6 +42,7 @@ class JobStatus:
     username: str
     state: str  # queued | running | done | error
     stage: str  # fetching | analyzing | coaching
+    mode: str = "standard"  # standard (fast 20-game default) | deep (opt-in ~100, S33)
     current_game: int = 0
     total_games: int = 0
     error_message: str | None = None
@@ -54,6 +55,7 @@ class JobStatus:
             "username": self.username,
             "state": self.state,
             "stage": self.stage,
+            "mode": self.mode,
             "current_game": self.current_game,
             "total_games": self.total_games,
             "error_message": self.error_message,
@@ -66,6 +68,9 @@ class JobStatus:
 _registry: dict[str, JobStatus] = {}
 _lock = threading.Lock()
 _semaphore = threading.Semaphore(settings.MAX_CONCURRENT_JOBS)
+# S33: deep runs are long and Stockfish-heavy — only one runs at a time,
+# on top of (not instead of) the main concurrency semaphore.
+_deep_semaphore = threading.Semaphore(settings.MAX_CONCURRENT_DEEP_JOBS)
 
 _LIVE_STATES = ("queued", "running")
 
@@ -74,16 +79,22 @@ def _platform_label(platform: str) -> str:
     return "Chess.com" if platform == "chesscom" else "Lichess"
 
 
-def get_or_create_job(platform: str, username: str) -> tuple[JobStatus, bool]:
+def get_or_create_job(
+    platform: str, username: str, mode: str = "standard"
+) -> tuple[JobStatus, bool]:
     """Return (job, deduped). If a live (queued/running) job already exists
-    for this (platform, username) pair, return it with deduped=True instead
-    of starting a second one — two browser tabs hitting analyze for the same
-    account should share one job, not race two."""
+    for this (platform, username, mode) triple, return it with deduped=True
+    instead of starting a second one — two browser tabs hitting analyze for
+    the same account should share one job, not race two.
+
+    Mode is part of the dedup match (S33): a deep request must NOT join a
+    live standard job — it's a different (much longer) analysis."""
     with _lock:
         for job in _registry.values():
             if (
                 job.platform == platform
                 and job.username.lower() == username.lower()
+                and job.mode == mode
                 and job.state in _LIVE_STATES
             ):
                 return job, True
@@ -94,6 +105,7 @@ def get_or_create_job(platform: str, username: str) -> tuple[JobStatus, bool]:
             username=username,
             state="queued",
             stage="fetching",
+            mode=mode,
         )
         _registry[job.job_id] = job
         return job, False
@@ -108,12 +120,18 @@ def run_job(job_id: str) -> None:
     (BackgroundTasks), one call per job. Acquires the concurrency semaphore
     FIRST so that jobs beyond MAX_CONCURRENT_JOBS sit blocked here — still
     reporting state="queued" to anyone polling — rather than all running at
-    once and hammering Stockfish/the upstream APIs simultaneously."""
+    once and hammering Stockfish/the upstream APIs simultaneously.
+
+    S33: a "deep" job also acquires the deep semaphore (one deep run at a
+    time) and fetches up to MAX_GAMES_DEEP games instead of MAX_GAMES."""
     job = get_job(job_id)
     if job is None:
         return
 
     _semaphore.acquire()
+    deep = job.mode == "deep"
+    if deep:
+        _deep_semaphore.acquire()
     # session/evaluator are created INSIDE the try so that a failure to open
     # the engine (bad SF_PATH) or the DB is caught like any other error and
     # lands the job in state="error" — never leaving it stuck "running" with a
@@ -126,7 +144,8 @@ def run_job(job_id: str) -> None:
         evaluator = StockfishEvaluator(cache_session=session)
 
         job.stage = "fetching"
-        games = fetch_games(job.platform, job.username)
+        max_games = settings.MAX_GAMES_DEEP if deep else settings.MAX_GAMES
+        games = fetch_games(job.platform, job.username, max_games=max_games)
         player = upsert_player(
             session,
             job.platform,
@@ -148,7 +167,7 @@ def run_job(job_id: str) -> None:
         job.stage = "coaching"
         features = load_features(session, job.platform, job.username)
         if features is not None:
-            report = build_report(features, session, player)
+            report = build_report(features, session, player, mode=job.mode)
             # Persist the report so /api/reports can serve it instantly.
             games = list(
                 session.scalars(
@@ -199,3 +218,5 @@ def run_job(job_id: str) -> None:
         if session is not None:
             session.close()
         _semaphore.release()
+        if deep:
+            _deep_semaphore.release()

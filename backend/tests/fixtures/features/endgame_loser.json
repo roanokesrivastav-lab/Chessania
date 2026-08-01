@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "analysis_mode": "standard",
   "player_summary": {
     "platform": "chesscom",
     "username": "endgame_loser",

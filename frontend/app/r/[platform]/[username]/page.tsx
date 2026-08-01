@@ -91,6 +91,7 @@ export default async function ReportPage({ params }: PageParams) {
           games_analyzed={report.player_summary.games_analyzed}
           engine_depth={report.engine_depth}
           generated_at={report.generated_at}
+          analysis_mode={report.analysis_mode}
         />
       </div>
     </main>

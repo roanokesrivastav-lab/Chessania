@@ -424,6 +424,21 @@ def test_clean_player_produces_valid_strength_and_empty_issues(db_session):
 # ---------------------------------------------------------------------------
 
 
+def test_build_report_stamps_analysis_mode(db_session):
+    """S33: build_report defaults to "standard" and stamps "deep" when asked
+    — the mode is carried into report_json but changes no rules or numbers."""
+    player, _game = _insert_player_and_game(db_session)
+    features = _base_features()
+
+    std = build_report(features, db_session, player)
+    assert std.analysis_mode == "standard"
+    assert std.model_dump(mode="json")["analysis_mode"] == "standard"
+
+    deep = build_report(features, db_session, player, mode="deep")
+    assert deep.analysis_mode == "deep"
+    assert deep.model_dump(mode="json")["analysis_mode"] == "deep"
+
+
 def test_report_serializes_and_validates(db_session):
     player, game = _insert_player_and_game(db_session)
     gid = str(game.id)
