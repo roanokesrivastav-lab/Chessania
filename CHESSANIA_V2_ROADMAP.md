@@ -100,6 +100,11 @@ A8. Tests offline: fixture FENs + canned engine lines; stockfish.wasm mocked in
 A9. Schema changes live in Appendix V2-1; appendix-first discipline.
 A10. NO server realtime in v2 (D3/D4). If a v2 session finds itself wanting a
     websocket, it's a v3 feature — stop and flag it.
+A11. UI follows DESIGN.md (adopted 2026-08-01) — the dark-first navy + gold/coral
+    "performance terminal" system: its palette tokens, type roles (serif
+    headings / sans body / mono data), component vocabulary, and DO/DON'T (no
+    composite grade, no opening TEACHING in the UI, both themes, mobile-first).
+    Every v2 screen is built to it; V2-S1 establishes the tokens in code.
 
 ________________
 
@@ -152,10 +157,13 @@ V2-S1 — The board component
   Goal: ONE reusable Board wrapper on chessground + chessops: FEN in, legal
   moves enforced, onMove callback, flip, promotion picker, last-move + check
   highlight, phone-width perfect, keyboard-accessible.
-  Steps: add chessground + chessops; build components/board/Board.tsx; a
-  /train/board-demo dev page proves both sides + flip + illegal-move rejection.
-  DoD: founder plays both sides of a Philidor position on their phone; no
-  trainer logic yet; illegal moves impossible.
+  Steps: FIRST establish the DESIGN.md tokens in code (globals.css custom
+  properties + type roles, both themes, killing the Arial override) so every
+  later v2 screen inherits them; add chessground + chessops themed to the
+  system; build components/board/Board.tsx; a /train/board-demo dev page proves
+  both sides + flip + illegal-move rejection.
+  DoD: founder plays both sides of a Philidor position on their phone, styled to
+  DESIGN.md; no trainer logic yet; illegal moves impossible.
 
 V2-S2 — Accounts (thin, magic-link primary)  [REFINE: email provider]
   Est: 4h · Prereq: V2-S1
