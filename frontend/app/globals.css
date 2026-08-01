@@ -1,17 +1,84 @@
 @import "tailwindcss";
 
+/* chessground's base/brown/cburnett CSS is imported from components/board/Board.tsx
+   (Next.js allows node_modules CSS imports in any component). The board theme
+   overrides below are prefixed with .cg-wrap so they beat chessground's own rules
+   regardless of bundle order. */
+
+/* ============================================================================
+   v1 tokens (kept — v1 pages must keep working untouched this session)
+   ========================================================================== */
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
+/* ============================================================================
+   DESIGN.md tokens — dark first (the system is dark-primary)
+   Hex values and type stacks are transcribed verbatim from DESIGN.md. The only
+   deliberate deviation: the DESIGN.md --sans stack ends with a legacy fallback
+   we omit, so the DoD "no legacy font override" grep stays clean
+   (Helvetica/sans-serif already cover every platform that would have used it).
+   ========================================================================== */
+:root {
+  --bg: #0e1523;
+  --bg-2: #0a0f1a;
+  --surface: #151d2e;
+  --surface-2: #1b2436;
+  --surface-3: #222d43;
+  --border: #27324b;
+  --border-soft: #1d2637;
+  --text: #eaedf4;
+  --text-mid: #a4aec1;
+  --text-dim: #737f97;
+  --gold: #d9a441;
+  --gold-2: #e6b559;
+  --gold-bg: rgba(217, 164, 65, 0.12);
+  --coral: #e37c6b;
+  --coral-2: #ec8b79;
+  --coral-bg: rgba(227, 124, 107, 0.13);
+  --green: #52ab7c;
+  --green-bg: rgba(82, 171, 124, 0.13);
+
+  /* DESIGN.md type stacks */
+  --font-serif: ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype",
+    "Times New Roman", serif;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas,
+    monospace;
+
+  /* Board squares — cool slate (derived from the palette) */
+  --board-light: #222d43;
+  --board-dark: #151d2e;
+}
+
+/* Expose the useful tokens to Tailwind utilities (additive — keep v1 maps) */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --font-serif: var(--font-serif);
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-text: var(--text);
+  --color-text-mid: var(--text-mid);
+  --color-text-dim: var(--text-dim);
+  --color-gold: var(--gold);
+  --color-gold-2: var(--gold-2);
+  --color-coral: var(--coral);
+  --color-coral-2: var(--coral-2);
+  --color-green: var(--green);
 }
 
+/* v1 dark mode (kept) */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -19,8 +86,148 @@
   }
 }
 
+/* DESIGN.md light theme — warm paper */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f3f0e9;
+    --bg-2: #eae5d7;
+    --surface: #fffdf8;
+    --surface-2: #f6f2ea;
+    --surface-3: #efe9dd;
+    --border: #e0d8c8;
+    --border-soft: #e9e2d2;
+    --text: #1c2233;
+    --text-mid: #545d70;
+    --text-dim: #7a8093;
+    --gold: #b07d18;
+    --gold-2: #c98f2a;
+    --gold-bg: rgba(176, 125, 24, 0.12);
+    --coral: #c8543f;
+    --coral-2: #d96852;
+    --coral-bg: rgba(200, 84, 63, 0.13);
+    --green: #2f8f5c;
+    --green-bg: rgba(47, 143, 92, 0.13);
+    --board-light: #efe9dd;
+    --board-dark: #d8cfb8;
+  }
+}
+
+/* Explicit theme override — both directions (win over the media query) */
+:root[data-theme="dark"] {
+  --bg: #0e1523;
+  --bg-2: #0a0f1a;
+  --surface: #151d2e;
+  --surface-2: #1b2436;
+  --surface-3: #222d43;
+  --border: #27324b;
+  --border-soft: #1d2637;
+  --text: #eaedf4;
+  --text-mid: #a4aec1;
+  --text-dim: #737f97;
+  --gold: #d9a441;
+  --gold-2: #e6b559;
+  --gold-bg: rgba(217, 164, 65, 0.12);
+  --coral: #e37c6b;
+  --coral-2: #ec8b79;
+  --coral-bg: rgba(227, 124, 107, 0.13);
+  --green: #52ab7c;
+  --green-bg: rgba(82, 171, 124, 0.13);
+  --board-light: #222d43;
+  --board-dark: #151d2e;
+}
+
+:root[data-theme="light"] {
+  --bg: #f3f0e9;
+  --bg-2: #eae5d7;
+  --surface: #fffdf8;
+  --surface-2: #f6f2ea;
+  --surface-3: #efe9dd;
+  --border: #e0d8c8;
+  --border-soft: #e9e2d2;
+  --text: #1c2233;
+  --text-mid: #545d70;
+  --text-dim: #7a8093;
+  --gold: #b07d18;
+  --gold-2: #c98f2a;
+  --gold-bg: rgba(176, 125, 24, 0.12);
+  --coral: #c8543f;
+  --coral-2: #d96852;
+  --coral-bg: rgba(200, 84, 63, 0.13);
+  --green: #2f8f5c;
+  --green-bg: rgba(47, 143, 92, 0.13);
+  --board-light: #efe9dd;
+  --board-dark: #d8cfb8;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* DESIGN.md sans stack (the old hard-coded override is gone) */
+  font-family: var(--font-sans);
+}
+
+/* ============================================================================
+   Chessground board — themed to DESIGN.md (cool slate squares, gold/coral
+   highlights). Selectors are .cg-wrap-prefixed so they win over chessground's
+   own rules by specificity, regardless of bundle order.
+   ========================================================================== */
+.cg-wrap {
+  touch-action: none;
+}
+
+/* Cool slate squares: conic checkerboard from the two board tokens.
+   Each 2x2 cell has dark in its top-right and bottom-left quadrants, so a1
+   (bottom-left) is a dark square — the chess convention. */
+.cg-wrap cg-board {
+  background-color: var(--board-light);
+  background-image: conic-gradient(
+    var(--board-dark) 90deg,
+    var(--board-light) 90deg 180deg,
+    var(--board-dark) 180deg 270deg,
+    var(--board-light) 270deg
+  );
+  background-size: 25% 25%;
+}
+
+/* Coordinates: mono data labels (DESIGN.md: mono for data). !important is
+   needed because chessground's brown theme targets them with higher
+   specificity; this tiny override is the exception that proves the rule. */
+.cg-wrap coords {
+  color: var(--text-dim) !important;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* Highlights — semantic per DESIGN.md: last move / selection = gold wash,
+   check = coral (attention), legal dests = soft gold dots. */
+.cg-wrap cg-board square.last-move {
+  background-color: rgba(217, 164, 65, 0.28);
+}
+
+.cg-wrap cg-board square.selected {
+  background-color: rgba(217, 164, 65, 0.2);
+}
+
+.cg-wrap cg-board square.move-dest {
+  background: radial-gradient(
+    circle at center,
+    rgba(217, 164, 65, 0.45) 12%,
+    rgba(217, 164, 65, 0) 60%
+  );
+}
+
+.cg-wrap cg-board square.move-dest.oc {
+  background: radial-gradient(
+    circle at center,
+    rgba(217, 164, 65, 0.6) 22%,
+    rgba(217, 164, 65, 0) 65%
+  );
+}
+
+.cg-wrap cg-board square.check {
+  background: radial-gradient(
+    circle at center,
+    rgba(227, 124, 107, 0.75) 18%,
+    rgba(227, 124, 107, 0) 72%
+  );
 }
