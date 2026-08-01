@@ -233,9 +233,83 @@ Phase 1:  [x] S1 [x] S2 [x] S3 [x] S4 [x] S5 [x] S6 [x] S7  🏁 Phase 1 exit re
 Phase 2:  [x] S8 [x] S9 [x] S10 [x] S11 [x] S12 [x] S13 [x] S14 [x] S14.5 (time-coaching detectors) [x] S15 [x] S16 [x] S17
 Phase 3:  [x] S18 [x] S19 [x] S20 [x] S21 [x] S22
 Phase 4:  [x] S23 [x] S24 [x] S25 🏁 LIVE (chessania.vercel.app) [ ] weekly beta ×4–6
-Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [ ] S31 [ ] S32 [ ] S33  (post-launch analytics; deferred per 2026-07-27)
+Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [ ] S32 [ ] S33  (post-launch analytics; deferred per 2026-07-27)
 
 ## SESSION LOG (newest first; honesty tags mandatory)
+
+### 2026-07-31 · Session 31 · Opening performance by variation
+
+- Status: AI-verified (commits local)
+- Goal: One level finer than family-level `opening_leak` — per-variation opening
+  performance, surfacing the "you come out of this line FINE but lose anyway"
+  insight (Part G #10, self-evaluation not teaching). Builds on S31a's derived
+  ECO/names so it works for Chess.com games too.
+- Changes:
+  - Appendix-first: `CHESSANIA_ROADMAP.md` — Appendix 2 gains `OpeningLineStat` +
+    `Report.opening_performance`; Appendix 3 gains the `opening_variation` copy
+    template (with the LOCKED RULE: a line that comes out worse is opening_leak's
+    seat, never this rule's); Appendix 4 gains the per-variation read note.
+  - `backend/app/config.py`: `FEATURE_OPENING_LINE_MIN_GAMES=3`,
+    `FEATURE_OPENING_FINE_CP=50`, `COACH_OPENING_VARIATION_LOSS=0.50`.
+  - `backend/app/features.py`: new `OpeningLineStat` dataclass +
+    `_opening_variation_stats(...)` — groups games by (player_color, opening_eco),
+    reuses the EXACT ply-20 read (`_opening_leak_pov_eval`) so per-variation and
+    opening_leak never contradict, keeps only lines >= min-games, computes W/L/D +
+    avg player-POV eval, flags `low_signal` at exactly-min, cites lost games at
+    ply 20 as evidence, and sorts by concern (fine-but-losing first, then loss
+    share / games / eco — deterministic). Wired into `PlayerFeatures` +
+    `build_features`.
+  - Contract both sides: `backend/app/schemas.py` `OpeningLineStat` +
+    `Report.opening_performance`; `frontend/lib/types.ts` mirror.
+  - `backend/app/coach.py`: `_rule_opening_variation()` (fires when a qualifying
+    line has avg eval >= -FINE_CP AND loss share >= LOSS; renders the worst 1-3
+    lines with their numbers; counter-evidence distinguishes it from
+    opening_leak; evidence = the lost games). Registered in `_all_rules()` AFTER
+    `tilt` so a same-priority tie keeps tilt in a heavy-blunder profile's top-3.
+    `build_report` assembles `opening_performance`.
+  - Frontend: NEW `frontend/components/report/OpeningPerformance.tsx` (server
+    component, renders only when non-empty: name · color · W-L-D · avg eval out
+    of book · verdict chip · low_signal hedge), wired into the report page after
+    OpeningRecCards; `frontend/lib/statInfo.ts` gains the `opening_performance`
+    explainer.
+  - Tests: unit tests for `_opening_variation_stats` (grouping by color+eco,
+    min-games guard, name fallback, avg/WLD/evidence, concern sort, empty case)
+    and `_rule_opening_variation` (fires on fine-but-losing, NOT when the line
+    comes out worse, NOT below the loss threshold, digit-rich render) +
+    rule_configs entry in the S15 individual-rule audit. Regenerated the S17
+    goldens (`REGEN_GOLDENS=1`) and hand-reviewed the diff.
+- Verification:
+  - `pytest -q` → **205 passed, 3 deselected**, OFFLINE, `pgrep -f stockfish` flat.
+  - `npm run build` → clean, TypeScript passes.
+  - Golden diff review: all three profiles gain `opening_performance`
+    (positional_leaker: B07, 12 games, avg −163.3 — comes out worse, so no new
+    issue, correctly opening_leak's seat; tactical_blunderer: C40/C50/B10, +250
+    out of book; endgame_loser: E60/E70/E80, +100 out of book and 50% losses →
+    the new `opening_variation` issue appears with its numbers + evidence). The
+    two rules never double-report a line: a line either comes out fine (this
+    rule) or worse (opening_leak) — provably exclusive per line.
+- Commit: `feat: opening performance by variation` — DO NOT push (per session rule).
+- **AI review — clean after one copy bug fixed.** `_opening_variation_stats` is
+  correct and deterministic; evidence = lost games at ply 20 (same citation
+  discipline as opening_leak); `low_signal` at exactly the min bar; concern sort
+  puts the fine-but-losing gap first. The rule is provably exclusive from
+  opening_leak (opposite eval condition) and its copy carries the player's
+  numbers. Two issues caught and fixed during review: (1) the diagnosis used
+  `str.capitalize()`, which LOWERCASES the rest of the string — "Pirc Defense"
+  would render "pirc defense"; fixed to uppercase only the first character; (2) a
+  frontend `statInfo.ts` edit left a duplicated `accuracy_trend:` key (build
+  error) — removed. Contract mirrored on both sides + Appendix 2; goldens
+  regenerated and reviewed.
+- **Honest empty-state note (by design):** with a 20-game sample and a 3-game
+  minimum, usually only the player's 1–3 most-played lines qualify — often
+  nothing, which is an honest empty state. The metric blooms under S33's ~100-game
+  deep dive.
+- **[founder-to-verify] DoD**: on your live report (after the prod opening
+  backfill from S31a), your most-played lines show honest per-variation W-L-D +
+  avg eval, and any "fine but losing" issue points at real games where you were
+  OK out of the opening and still lost.
+- Next: **Session 32** — Performance-by-Category dashboard (the click-through
+  hub), which reads `opening_performance` + the S28–S31 metrics.
 
 ### 2026-07-28 · Session 31a · Opening derivation from PGN (backfill)
 

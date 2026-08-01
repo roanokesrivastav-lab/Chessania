@@ -1593,6 +1593,30 @@ class OpeningRec(BaseModel):
     already_plays: bool      # flips copy to deepen-don't-switch
 
 
+class OpeningLineStat(BaseModel):
+
+
+    color: Literal["white","black"]
+
+
+    eco: str                 # full ECO code, e.g. "B07" — finer than the 2-char family
+
+
+    name: str                # opening_name, or the ECO code when unnamed
+
+
+    games: int
+
+
+    results: WLD
+
+
+    avg_opening_eval: float  # mean player-POV eval at the ply-20 read (same point as opening_leak)
+
+
+    low_signal: bool         # exactly at the min-games bar -> copy hedges
+
+
 class Playstyle(BaseModel):
 
 
@@ -1756,6 +1780,9 @@ class Report(BaseModel):
     opening_recs: list[OpeningRec]       # exactly 2 (white, black)
 
 
+    opening_performance: list[OpeningLineStat]  # qualifying (color, ECO) lines — Session 31; may be []
+
+
     stats_block: StatsBlock
 
 
@@ -1825,6 +1852,7 @@ Copy templates (structural shapes — full strings live in code, matching these 
 * late_collapse — H: "Your games are decided after move 30 — against you." D: "Past move 30 you blunder {late_ratio}× as often as before it." P: the 5-second blunder-check habit + clock framing (keep 25% of your clock for the last 15 moves).
 * blitz_gap — H: "You don't have a chess problem — you have a blitz problem." D: "{blitz_bpg} blunders/game in blitz vs {rapid_bpg} in rapid." P: shift the ratio toward rapid for a month; blitz is testing, rapid is training.
 * opening_general — the softer variant when no single family is guilty: D cites {leak_rate}% of games worse by move 20; P: opening principles (development, king safety) — not lines — with one link.
+* opening_variation (Session 31, Part G #10) — H: "You're fine out of the opening — and losing anyway." D: names the worst 1–3 qualifying lines: "in your {name} you average {avg} cp out of the opening but lose {loss_pct}% of {games} games — the opening isn't the problem, the follow-up is." Fires when a line with ≥ FEATURE_OPENING_LINE_MIN_GAMES games has avg ply-20 player-POV eval ≥ −FEATURE_OPENING_FINE_CP AND a loss rate ≥ COACH_OPENING_VARIATION_LOSS. P: middlegame planning — when the opening works the game still has to be won; spend {minutes} a day on plans, not more theory. M (success_metric): "turn at least {target}% of your {name} games into wins over your next 10 games (you're at {win_pct}%)." Counter-evidence: this flags lines you come out FINE but still lose — coming out worse is opening_leak's job. LOCKED RULE: a line that comes out worse (below −FEATURE_OPENING_FINE_CP) never fires here — that's opening_leak's seat.
 * overextension — hedged (low-confidence detector): "There are signs you push pawns past their support — in {k} spots a big advance preceded a slide within 3 moves…" P: before any pawn push past the 5th, ask who guards the square it leaves behind?
 * rushed_blunders (time-coaching, 2026-07-26) — H: "You don't have a blunder problem — you have a rushing problem." D: "{rushed_pct}% of your blunders came with under {rush_seconds}s on your clock — you're moving before you've finished looking." P: on every move where you still have time, before you touch a piece, name every check and capture your opponent has. M (success_metric): "cut rushed blunders from {rushed_pct}% to under {target_pct}% over your next 10 games." Counter_evidence when most of those rushed moves were already-decided positions. LOCKED RULE: a SLOW move that still blundered is never counted here — that's good judgment, not rushing.
 * time_trouble_collapse (time-coaching, 2026-07-26) — H: "Your clock, not the board, is losing these." D: "Your error rate climbs from {early_rate} to {late_rate} per move once you drop under {low_clock}s — the mistakes cluster in time trouble, not across the whole game." P: budget the clock — keep {reserve_pct}% for the last 15 moves, and play known opening lines faster to bank time for the moves that decide the game. M: "keep your under-{low_clock}s error rate within {target_ratio}× your normal rate over your next 10 games."
@@ -1858,6 +1886,16 @@ opening name from the stored PGN via a vendored public-domain opening book
 (lichess-org/chess-openings, CC0). The derivation is longest-prefix matching on
 canonical UCI move tuples and runs only when the columns are null; existing
 Lichess data is never overwritten.
+
+Note (Session 31): per-variation read — `Report.opening_performance` groups the
+analyzed games by (player_color, opening_eco) and reports each line's W/L/D and
+average player-POV eval at the ply-20 read (the SAME read point as the
+opening_leak family detector, so the two never contradict). Only lines with ≥
+FEATURE_OPENING_LINE_MIN_GAMES games appear; lines exactly at the bar are
+flagged low_signal and hedged. The opening_variation issue fires on lines that
+come out FINE (avg ≥ −FEATURE_OPENING_FINE_CP) but lose ≥
+COACH_OPENING_VARIATION_LOSS — the opposite signal from opening_leak (coming
+out worse), and the two are provably exclusive per line.
 
 
 bucket

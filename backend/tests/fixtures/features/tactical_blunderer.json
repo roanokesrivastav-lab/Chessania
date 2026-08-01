@@ -178,6 +178,47 @@
       "already_plays": false
     }
   ],
+  "opening_performance": [
+    {
+      "color": "white",
+      "eco": "C40",
+      "name": "C40",
+      "games": 3,
+      "results": {
+        "win": 1,
+        "loss": 2,
+        "draw": 0
+      },
+      "avg_opening_eval": 250.0,
+      "low_signal": true
+    },
+    {
+      "color": "white",
+      "eco": "C50",
+      "name": "C50",
+      "games": 3,
+      "results": {
+        "win": 1,
+        "loss": 2,
+        "draw": 0
+      },
+      "avg_opening_eval": 250.0,
+      "low_signal": true
+    },
+    {
+      "color": "white",
+      "eco": "B10",
+      "name": "B10",
+      "games": 3,
+      "results": {
+        "win": 2,
+        "loss": 0,
+        "draw": 1
+      },
+      "avg_opening_eval": 250.0,
+      "low_signal": true
+    }
+  ],
   "stats_block": {
     "blunders_per_game": 12.2,
     "mistakes_per_game": 0.0,

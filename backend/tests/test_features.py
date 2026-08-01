@@ -35,6 +35,8 @@ def _insert_player_and_game(
     time_class: str = "blitz",
     played_at: dt.datetime | None = None,
     username: str = "tester",
+    opening_eco: str | None = None,
+    opening_name: str | None = None,
 ) -> Game:
     """Insert (or reuse) a throwaway Player for `username`, then insert one
     Game row for it with the given color/result. `platform_game_id` is a
@@ -60,6 +62,8 @@ def _insert_player_and_game(
         result=result,
         played_at=played_at,
         analyzed_at=dt.datetime.now(dt.timezone.utc),
+        opening_eco=opening_eco,
+        opening_name=opening_name,
     )
     db_session.add(game)
     db_session.commit()
@@ -453,6 +457,138 @@ def test_resourcefulness_evidence_fallback_uses_worst_player_ply(db_session):
     assert features.resourcefulness == 0.0
     assert features.resource_trouble_games == 1
     assert features.missed_save_evidence == [(str(game.id), 21)]
+
+
+# ---------------------------------------------------------------------------
+# 5c. opening_variation_stats (S31)
+# ---------------------------------------------------------------------------
+
+
+def _insert_line_games(
+    db_session,
+    *,
+    eco: str,
+    evals_at_20: list[int],
+    results: list[str],
+    username: str,
+    color: str = "white",
+    opening_name: str | None = None,
+) -> list[Game]:
+    """Insert games sharing one (color, eco) line, each with a ply-20 row
+    whose eval_cp_after is given (player is white, so player-POV = value)."""
+    games = []
+    for i, (eval_val, result) in enumerate(zip(evals_at_20, results)):
+        game = _insert_player_and_game(
+            db_session,
+            color=color,
+            result=result,
+            played_at=_BASE_TIME + dt.timedelta(minutes=i),
+            username=username,
+            opening_eco=eco,
+            opening_name=opening_name,
+        )
+        _insert_rows(
+            db_session,
+            game,
+            [{"ply": 20, "cp_loss": 0, "classification": "ok", "eval_cp_after": eval_val}],
+        )
+        games.append(game)
+    return games
+
+
+def test_opening_variation_stats_groups_by_color_and_eco(db_session):
+    white = _insert_line_games(
+        db_session,
+        eco="B07",
+        evals_at_20=[-200, -200, 0, 50],
+        results=["loss", "loss", "win", "win"],
+        username="ov_a",
+    )
+    # Same eco but different color -> a SEPARATE line. Stored evals are
+    # White-POV, so a BLACK player needs a stored -100 to be +100 from their
+    # own side (player_pov_eval flips the sign).
+    black = _insert_line_games(
+        db_session,
+        eco="B07",
+        evals_at_20=[-100, -100, -100],
+        results=["loss", "loss", "win"],
+        username="ov_a",
+        color="black",
+    )
+    # A different eco under the min -> dropped.
+    tiny = _insert_line_games(
+        db_session,
+        eco="C50",
+        evals_at_20=[0, 0],
+        results=["win", "win"],
+        username="ov_a",
+    )
+
+    features = build_features(
+        white + black + tiny, _evals_for(db_session, *(white + black + tiny)), rating_snapshot=None
+    )
+
+    assert len(features.opening_variation_stats) == 2  # B07-white, B07-black; C50 dropped
+    by_key = {(s.color, s.eco): s for s in features.opening_variation_stats}
+
+    # White line: avg = (-200 + -200 + 0 + 50) / 4 = -87.5; 2 losses cited.
+    white_line = by_key[("white", "B07")]
+    assert white_line.games == 4
+    assert white_line.name == "B07"  # falls back to eco when opening_name is None
+    assert white_line.results.win == 2 and white_line.results.loss == 2 and white_line.results.draw == 0
+    assert white_line.avg_opening_eval == -87.5
+    assert white_line.low_signal is False
+    assert white_line.evidence == [(str(white[0].id), 20), (str(white[1].id), 20)]
+
+    black_line = by_key[("black", "B07")]
+    assert black_line.games == 3
+    assert black_line.low_signal is True  # exactly at the min-games bar
+    assert black_line.avg_opening_eval == 100.0
+
+
+def test_opening_variation_stats_name_from_opening_name(db_session):
+    games = _insert_line_games(
+        db_session,
+        eco="B07",
+        evals_at_20=[100, 100, 100],
+        results=["win", "loss", "win"],
+        username="ov_b",
+        opening_name="Pirc Defense",
+    )
+    features = build_features(games, _evals_for(db_session, *games), rating_snapshot=None)
+    assert features.opening_variation_stats[0].name == "Pirc Defense"
+
+
+def test_opening_variation_stats_sorts_concern_lines_first(db_session):
+    # Line A: fine (+50) but losing 2/3 -> concern. Line B: also fine but 1/3.
+    a = _insert_line_games(
+        db_session,
+        eco="A10",
+        evals_at_20=[50, 50, 50],
+        results=["loss", "loss", "win"],
+        username="ov_c",
+    )
+    b = _insert_line_games(
+        db_session,
+        eco="B20",
+        evals_at_20=[50, 50, 50],
+        results=["loss", "win", "win"],
+        username="ov_c",
+    )
+    features = build_features(a + b, _evals_for(db_session, *(a + b)), rating_snapshot=None)
+    assert [s.eco for s in features.opening_variation_stats] == ["A10", "B20"]
+
+
+def test_opening_variation_stats_empty_when_no_qualifying_lines(db_session):
+    game = _insert_line_games(
+        db_session,
+        eco="C50",
+        evals_at_20=[0, 0],
+        results=["win", "win"],
+        username="ov_d",
+    )
+    features = build_features(game, _evals_for(db_session, *game), rating_snapshot=None)
+    assert features.opening_variation_stats == []
 
 
 # ---------------------------------------------------------------------------

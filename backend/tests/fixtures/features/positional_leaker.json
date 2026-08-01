@@ -94,6 +94,21 @@
       "already_plays": false
     }
   ],
+  "opening_performance": [
+    {
+      "color": "white",
+      "eco": "B07",
+      "name": "B07",
+      "games": 12,
+      "results": {
+        "win": 9,
+        "loss": 3,
+        "draw": 0
+      },
+      "avg_opening_eval": -163.3,
+      "low_signal": false
+    }
+  ],
   "stats_block": {
     "blunders_per_game": 0.0,
     "mistakes_per_game": 0.0,

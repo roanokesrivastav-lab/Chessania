@@ -60,6 +60,16 @@ export interface OpeningRec {
   already_plays: boolean;
 }
 
+export interface OpeningLineStat {
+  color: "white" | "black";
+  eco: string;
+  name: string;
+  games: number;
+  results: WLD;
+  avg_opening_eval: number;
+  low_signal: boolean;
+}
+
 export interface Playstyle {
   label: "tactical" | "positional" | "balanced";
   score: number;
@@ -134,6 +144,7 @@ export interface Report {
   strengths: Strength[];
   issues: Issue[];
   opening_recs: OpeningRec[];
+  opening_performance: OpeningLineStat[];
   stats_block: StatsBlock;
   progress: Progress | null;
   generated_at: string;

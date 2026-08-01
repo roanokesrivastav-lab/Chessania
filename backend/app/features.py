@@ -75,6 +75,28 @@ class PhaseACPL:
 
 
 @dataclass
+class OpeningLineStat:
+    """Per-(color, ECO) opening line performance (Session 31, Part G #10).
+
+    Groups the player's games by (player_color, opening_eco) — one level
+    finer than the family-level opening_leak detector — and reports each
+    line's W/L/D plus the average player-POV eval at the ply-20 read. The
+    evidence is the line's lost games, cited at ply 20 (the read point), so
+    a coach rule can point at exactly the "fine out of the book but lost"
+    games. Mirrors the Report contract's OpeningLineStat plus the internal
+    evidence tuples the coach consumes."""
+
+    color: str
+    eco: str
+    name: str
+    games: int
+    results: WLD
+    avg_opening_eval: float
+    low_signal: bool
+    evidence: list[tuple[str, int]] = field(default_factory=list)
+
+
+@dataclass
 class ColorStats:
     """The same weakness numbers as PlayerFeatures, recomputed over just one
     color's games — mirrors roadmap Appendix 2's ColorStats exactly, so a real
@@ -150,6 +172,10 @@ class PlayerFeatures:
     detectors: dict | None = None  # S13: pattern-matched named weaknesses (see app/detectors.py)
     playstyle: Playstyle | None = None  # S14: tactical/positional/balanced index (see app/playstyle.py)
     top_eco_by_color: dict[str, str | None] = field(default_factory=dict)  # S16: most-frequent ECO per color
+
+    # S31: per-variation opening performance. Qualifying (color, ECO) lines,
+    # each with per-line W/L/D, average ply-20 eval, and lost-game evidence.
+    opening_variation_stats: list[OpeningLineStat] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -286,6 +312,70 @@ def _accuracy_trend(per_game_acpl: list[float]) -> str:
     if s > f * (1 + band):
         return "declining"
     return "flat"
+
+
+def _opening_variation_stats(
+    games: list[Game], evals: dict[str, list[MoveEval]]
+) -> list[OpeningLineStat]:
+    """Group the player's games by (player_color, opening_eco) and compute
+    per-line W/L/D + average player-POV eval at the ply-20 read (the SAME
+    read point `_opening_leak_pov_eval` uses, so the two never contradict).
+
+    Only lines with >= FEATURE_OPENING_LINE_MIN_GAMES games are reported;
+    a line exactly at the minimum is flagged `low_signal` so the frontend
+    can hedge it. Lines are sorted by concern: the "fine out of the book
+    but losing anyway" gap first (that's the Part G #10 insight), then by
+    loss share descending, then games, then eco — fully deterministic.
+
+    Evidence is each line's lost games cited at ply 20 (the read point),
+    up to 3, mirroring `_opening_leak_stats`' citation discipline."""
+    groups: dict[tuple[str, str], list[Game]] = {}
+    for game in games:
+        if not game.opening_eco:
+            continue
+        key = (game.player_color, game.opening_eco)
+        groups.setdefault(key, []).append(game)
+
+    lines: list[OpeningLineStat] = []
+    for (color, eco), group in groups.items():
+        if len(group) < settings.FEATURE_OPENING_LINE_MIN_GAMES:
+            continue
+        povs: list[int] = []
+        for game in group:
+            pov = _opening_leak_pov_eval(game, evals.get(str(game.id), []))
+            if pov is not None:
+                povs.append(pov)
+        if not povs:
+            continue
+        avg_eval = round(sum(povs) / len(povs), 1)
+        results = _wld(group)
+        name = next((g.opening_name for g in group if g.opening_name), eco)
+        lost_evidence = [(str(g.id), 20) for g in group if g.result == "loss"][:3]
+        lines.append(
+            OpeningLineStat(
+                color=color,
+                eco=eco,
+                name=name,
+                games=len(group),
+                results=results,
+                avg_opening_eval=avg_eval,
+                low_signal=len(group) == settings.FEATURE_OPENING_LINE_MIN_GAMES,
+                evidence=lost_evidence,
+            )
+        )
+
+    def _concern(line: OpeningLineStat) -> tuple:
+        fine = line.avg_opening_eval >= -settings.FEATURE_OPENING_FINE_CP
+        losing = line.results.loss / line.games >= settings.COACH_OPENING_VARIATION_LOSS
+        return (
+            0 if (fine and losing) else 1,
+            -(line.results.loss / line.games),
+            -line.games,
+            line.eco,
+        )
+
+    lines.sort(key=_concern)
+    return lines
 
 
 def _opening_leak_pov_eval(game: Game, rows: list[MoveEval]) -> int | None:
@@ -650,6 +740,7 @@ def build_features(
     accuracy_trend = _accuracy_trend(per_game_acpl)
 
     opening_leak_rate, opening_leak_evidence = _opening_leak_stats(games_sorted, evals)
+    opening_variation_stats = _opening_variation_stats(games_sorted, evals)
     endgame_conversion, endgame_conversion_evidence = _endgame_conversion(games_sorted, evals)
     (
         advantage_capitalization,
@@ -693,6 +784,7 @@ def build_features(
         per_game_acpl=per_game_acpl,
         opening_leak_rate=opening_leak_rate,
         opening_leak_evidence=opening_leak_evidence,
+        opening_variation_stats=opening_variation_stats,
         endgame_conversion=endgame_conversion,
         endgame_conversion_evidence=endgame_conversion_evidence,
         advantage_capitalization=advantage_capitalization,

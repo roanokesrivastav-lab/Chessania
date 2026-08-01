@@ -109,6 +109,12 @@ class Settings(BaseSettings):
     COACH_ENDGAME_CONVERSION: float = 0.60  # endgame_conversion rule fires when conversion is below this
     COACH_ADVANTAGE_CAPITALIZATION: float = 0.60  # advantage_capitalization rule fires when conversion is below this
 
+    # Opening performance by variation (Session 31). Per-(color, ECO) line stats
+    # with the "fine out of the book but losing anyway" insight (Part G #10).
+    FEATURE_OPENING_LINE_MIN_GAMES: int = 3  # min games in a (color, ECO) line before it is reported
+    FEATURE_OPENING_FINE_CP: int = 50  # a line is "fine out of the opening" when avg ply-20 eval >= -this
+    COACH_OPENING_VARIATION_LOSS: float = 0.50  # opening_variation fires when a fine line loses >= this share
+
     # Progress tracking (Session 22). Pure DB/JSON math; no engine.
     PROGRESS_MIN_NEW_GAMES: int = 5
     PROGRESS_FLAT_EPSILON: float = 0.02  # relative fraction for "flat" direction

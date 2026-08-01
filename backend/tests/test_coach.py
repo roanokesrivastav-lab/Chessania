@@ -10,7 +10,7 @@ import uuid
 import pytest
 
 from app.coach import build_report
-from app.features import PlayerFeatures, PhaseACPL, WLD
+from app.features import OpeningLineStat, PlayerFeatures, PhaseACPL, WLD
 from app.models import Game, MoveEval, Player
 from app.playstyle import Playstyle
 
@@ -201,6 +201,23 @@ def test_each_individual_rule_renders_a_valid_issue(db_session):
             _base_features(
                 endgame_conversion=0.50,
                 endgame_conversion_evidence=[(gid, endgame_row.ply)],
+            ),
+        ),
+        (
+            "opening_variation",
+            _base_features(
+                opening_variation_stats=[
+                    OpeningLineStat(
+                        color="white",
+                        eco="B07",
+                        name="Pirc Defense",
+                        games=3,
+                        results=WLD(win=1, loss=2, draw=0),
+                        avg_opening_eval=50.0,
+                        low_signal=True,
+                        evidence=[(gid, 20)],
+                    )
+                ],
             ),
         ),
         (
@@ -453,6 +470,90 @@ def test_advantage_capitalization_does_not_fire_below_min_games(db_session):
     report = build_report(features, db_session, player)
     keys = [issue.key for issue in report.issues]
     assert "advantage_capitalization" not in keys
+
+
+# ---------------------------------------------------------------------------
+# Opening performance by variation (S31)
+# ---------------------------------------------------------------------------
+
+def test_opening_variation_fires_on_fine_but_losing_line(db_session):
+    player, game = _insert_player_and_game(db_session)
+    opening_row = _insert_row(db_session, game, ply=20, classification="ok")
+
+    features = _base_features(
+        opening_variation_stats=[
+            OpeningLineStat(
+                color="white",
+                eco="B07",
+                name="Pirc Defense",
+                games=3,
+                results=WLD(win=0, loss=3, draw=0),
+                avg_opening_eval=50.0,  # fine out of the opening
+                low_signal=True,
+                evidence=[(str(game.id), opening_row.ply)],
+            )
+        ],
+    )
+
+    report = build_report(features, db_session, player)
+    keys = [issue.key for issue in report.issues]
+    assert "opening_variation" in keys
+    issue = next(i for i in report.issues if i.key == "opening_variation")
+    assert "Pirc Defense" in issue.diagnosis
+    assert "100.0%" in issue.diagnosis  # 3 losses / 3 games
+    assert issue.counter_evidence
+    assert len(issue.evidence) == 1
+    assert issue.rating_impact == "medium"
+    assert _has_digit(issue.diagnosis)
+    assert _has_digit(issue.prescription)
+    assert _has_digit(issue.success_metric)
+
+
+def test_opening_variation_does_not_fire_when_line_comes_out_worse(db_session):
+    """A line with avg eval below -FEATURE_OPENING_FINE_CP is opening_leak's
+    seat, never opening_variation's — the two are provably exclusive."""
+    player, _game = _insert_player_and_game(db_session)
+    features = _base_features(
+        opening_variation_stats=[
+            OpeningLineStat(
+                color="white",
+                eco="B07",
+                name="Pirc Defense",
+                games=3,
+                results=WLD(win=0, loss=3, draw=0),
+                avg_opening_eval=-150.0,  # clearly worse out of the book
+                low_signal=True,
+                evidence=[],
+            )
+        ],
+    )
+
+    report = build_report(features, db_session, player)
+    keys = [issue.key for issue in report.issues]
+    assert "opening_variation" not in keys
+
+
+def test_opening_variation_does_not_fire_when_loss_share_below_threshold(db_session):
+    """Fine line but losing under COACH_OPENING_VARIATION_LOSS -> no fire."""
+    player, _game = _insert_player_and_game(db_session)
+    features = _base_features(
+        opening_variation_stats=[
+            OpeningLineStat(
+                color="white",
+                eco="B07",
+                name="Pirc Defense",
+                games=3,
+                results=WLD(win=2, loss=1, draw=0),
+                avg_opening_eval=50.0,
+                low_signal=True,
+                evidence=[],
+            )
+        ],
+    )
+
+    report = build_report(features, db_session, player)
+    keys = [issue.key for issue in report.issues]
+    assert "opening_variation" not in keys
 
 
 # ---------------------------------------------------------------------------

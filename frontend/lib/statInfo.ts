@@ -61,6 +61,13 @@ export const statInfo: Record<string, StatInfo> = {
     atYourLevel:
       "Sub-1800 players often leak points in the first 10 moves. If this is above 35%, tightening your openings is high-value work.",
   },
+  opening_performance: {
+    term: "Opening performance by variation",
+    definition:
+      "Your record in each opening variation you actually play — wins, losses, draws, and how good your position is when you come out of the book (a positive eval means you're ahead).",
+    atYourLevel:
+      "With a 20-game sample only your most-played lines show up, and that's expected. The valuable signal is a line where you come out fine but still lose most of them — that means the problem is the follow-up, not the opening.",
+  },
   accuracy_trend: {
     term: "Accuracy trend",
     definition:

@@ -68,6 +68,21 @@ class OpeningRec(BaseModel):
     already_plays: bool
 
 
+class OpeningLineStat(BaseModel):
+    """Per-(color, ECO) opening line performance (Session 31, Part G #10).
+    One level finer than the family-level opening_leak detector: how the
+    player comes out of each named variation (avg player-POV eval at the
+    ply-20 read) and what they score there (W/L/D)."""
+
+    color: Literal["white", "black"]
+    eco: str
+    name: str
+    games: int
+    results: WLD
+    avg_opening_eval: float
+    low_signal: bool
+
+
 class Playstyle(BaseModel):
     """The tactical/positional/balanced index from Session 14."""
 
@@ -160,6 +175,7 @@ class Report(BaseModel):
     strengths: list[Strength]
     issues: list[Issue]
     opening_recs: list[OpeningRec] = Field(default_factory=list)
+    opening_performance: list[OpeningLineStat] = Field(default_factory=list)
     stats_block: StatsBlock
     progress: Progress | None
     generated_at: dt.datetime

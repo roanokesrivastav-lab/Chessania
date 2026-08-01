@@ -110,6 +110,48 @@
           "detail": "you were winning at move 45 but did not win"
         }
       ]
+    },
+    {
+      "key": "opening_variation",
+      "headline": "You're fine out of the opening \u2014 and losing anyway.",
+      "diagnosis": "In your E60 (E60) you average +100 centipawns out of the opening but lose 50.0% of 4 games; in your E70 (E70) you average +100 centipawns out of the opening but lose 50.0% of 4 games; in your E80 (E80) you average +100 centipawns out of the opening but lose 50.0% of 4 games \u2014 the opening isn't the problem, the follow-up is.",
+      "prescription": "When you come out of the opening fine, switch from memorizing theory to middlegame planning: before every move, ask what your opponent's best reply is \u2014 and spend 10 minutes a day on the plans for your worst lines.",
+      "success_metric": "Turn at least 50.0% of your E60 games into wins over your next 10 games (you're at 25.0%).",
+      "counter_evidence": "This flags lines where you come out FINE but still lose \u2014 if you come out worse, that's the opening_leak issue instead.",
+      "rating_impact": "medium",
+      "refresh_after": "re-check after 20 new games",
+      "links": [
+        {
+          "label": "Lichess opening explorer",
+          "url": "https://lichess.org/opening"
+        }
+      ],
+      "evidence": [
+        {
+          "game_url": "https://www.chess.com/game/live/4000",
+          "played_at": "2026-01-01T00:00:00",
+          "opponent_rating": 1650,
+          "ply": 20,
+          "move_san": "c4",
+          "detail": "came out of the opening fine at move 20 but lost the game"
+        },
+        {
+          "game_url": "https://www.chess.com/game/live/4003",
+          "played_at": "2026-01-01T03:00:00",
+          "opponent_rating": 1653,
+          "ply": 20,
+          "move_san": "c4",
+          "detail": "came out of the opening fine at move 20 but lost the game"
+        },
+        {
+          "game_url": "https://www.chess.com/game/live/4001",
+          "played_at": "2026-01-01T01:00:00",
+          "opponent_rating": 1651,
+          "ply": 20,
+          "move_san": "c4",
+          "detail": "came out of the opening fine at move 20 but lost the game"
+        }
+      ]
     }
   ],
   "opening_recs": [
@@ -134,6 +176,47 @@
         "url": "https://lichess.org/opening/Caro-Kann_Defense"
       },
       "already_plays": false
+    }
+  ],
+  "opening_performance": [
+    {
+      "color": "white",
+      "eco": "E60",
+      "name": "E60",
+      "games": 4,
+      "results": {
+        "win": 1,
+        "loss": 2,
+        "draw": 1
+      },
+      "avg_opening_eval": 100.0,
+      "low_signal": false
+    },
+    {
+      "color": "white",
+      "eco": "E70",
+      "name": "E70",
+      "games": 4,
+      "results": {
+        "win": 1,
+        "loss": 2,
+        "draw": 1
+      },
+      "avg_opening_eval": 100.0,
+      "low_signal": false
+    },
+    {
+      "color": "white",
+      "eco": "E80",
+      "name": "E80",
+      "games": 4,
+      "results": {
+        "win": 1,
+        "loss": 2,
+        "draw": 1
+      },
+      "avg_opening_eval": 100.0,
+      "low_signal": false
     }
   ],
   "stats_block": {

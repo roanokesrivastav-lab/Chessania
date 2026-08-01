@@ -392,6 +392,91 @@ def _rule_opening_leak() -> _Rule:
     return _Rule("opening_leak", 3, "high", fires, render)
 
 
+def _rule_opening_variation() -> _Rule:
+    """Session 31, Part G #10: per-variation opening performance.
+
+    One level finer than the family-level opening_leak: a named (color, ECO)
+    line where the player comes out FINE (avg ply-20 eval >=
+    -FEATURE_OPENING_FINE_CP) but loses a high share of the games
+    (>= COACH_OPENING_VARIATION_LOSS). The insight is self-evaluation, not
+    teaching: "the opening isn't the problem, the follow-up is." This is the
+    OPPOSITE signal from opening_leak (which fires on coming out worse), so
+    the two are provably exclusive per line.
+    """
+
+    def _qualifying_lines(f: PlayerFeatures) -> list:
+        """The concern lines, already sorted by concern in features.py."""
+        return [
+            line
+            for line in f.opening_variation_stats
+            if line.avg_opening_eval >= -settings.FEATURE_OPENING_FINE_CP
+            and (line.results.loss / line.games) >= settings.COACH_OPENING_VARIATION_LOSS
+        ]
+
+    def fires(f: PlayerFeatures) -> bool:
+        return bool(_qualifying_lines(f))
+
+    def render(f: PlayerFeatures, session, player: Player | None) -> schemas.Issue:
+        lines = _qualifying_lines(f)[:3]
+        evidence: list[tuple[str, int]] = []
+        for line in lines:
+            evidence.extend(line.evidence)
+        evidence = evidence[:3]
+
+        # NOTE: never .capitalize() the whole string — it lowercases the rest
+        # ("Pirc Defense" -> "pirc defense"). Uppercase just the first char.
+        named = "; ".join(
+            f"in your {line.name} ({line.eco}) you average {line.avg_opening_eval:+.0f} "
+            f"centipawns out of the opening but lose "
+            f"{round(100 * line.results.loss / line.games, 1)}% of {line.games} games"
+            for line in lines
+        )
+        diagnosis = (
+            f"{named[:1].upper()}{named[1:]} — the opening isn't the problem, the follow-up is."
+        )
+        prescription = (
+            "When you come out of the opening fine, switch from memorizing theory to "
+            "middlegame planning: before every move, ask what your opponent's best "
+            "reply is — and spend 10 minutes a day on the plans for your worst lines."
+        )
+        worst = lines[0]
+        win_pct = round(100 * worst.results.win / worst.games, 1)
+        target = round(settings.COACH_OPENING_VARIATION_LOSS * 100, 1)
+        success_metric = (
+            f"Turn at least {target}% of your {worst.name} games into wins over your "
+            f"next 10 games (you're at {win_pct}%)."
+        )
+        counter = (
+            "This flags lines where you come out FINE but still lose — if you come "
+            "out worse, that's the opening_leak issue instead."
+        )
+
+        return schemas.Issue(
+            key="opening_variation",
+            headline="You're fine out of the opening — and losing anyway.",
+            diagnosis=diagnosis,
+            prescription=prescription,
+            success_metric=success_metric,
+            counter_evidence=counter,
+            rating_impact="medium",
+            refresh_after="re-check after 20 new games",
+            links=[
+                schemas.Link(
+                    label="Lichess opening explorer",
+                    url="https://lichess.org/opening",
+                )
+            ],
+            evidence=_resolve_evidence(
+                session,
+                player,
+                evidence,
+                lambda g, r: f"came out of the opening fine at move {r.ply} but lost the game",
+            ),
+        )
+
+    return _Rule("opening_variation", 4, "medium", fires, render)
+
+
 def _rule_endgame_conversion() -> _Rule:
     def fires(f: PlayerFeatures) -> bool:
         return f.endgame_conversion is not None and f.endgame_conversion < settings.COACH_ENDGAME_CONVERSION
@@ -1025,6 +1110,9 @@ def _all_rules() -> list[_Rule]:
         _rule_advantage_capitalization(),
         _rule_missed_saves(),
         _rule_tilt(),
+        # S31: opening_variation sits AFTER tilt so a same-priority tie keeps
+        # tilt in the top-3 for a heavy-blunder profile (stable sort order).
+        _rule_opening_variation(),
         _rule_late_collapse(),
         _rule_blitz_gap(),
         _rule_opening_general(),
@@ -1156,6 +1244,25 @@ def build_report(
     if session and player:
         progress = build_progress(session, player, features, games)
 
+    # S31: per-variation opening performance (qualifying lines only; the
+    # feature layer already enforces the min-games guard and concern sort).
+    opening_performance = [
+        schemas.OpeningLineStat(
+            color=line.color,
+            eco=line.eco,
+            name=line.name,
+            games=line.games,
+            results=schemas.WLD(
+                win=line.results.win,
+                loss=line.results.loss,
+                draw=line.results.draw,
+            ),
+            avg_opening_eval=line.avg_opening_eval,
+            low_signal=line.low_signal,
+        )
+        for line in features.opening_variation_stats
+    ]
+
     return schemas.Report(
         schema_version=1,
         player_summary=_player_summary(features, player, games),
@@ -1163,6 +1270,7 @@ def build_report(
         strengths=[strength],
         issues=issues,
         opening_recs=build_opening_recs(features),
+        opening_performance=opening_performance,
         stats_block=_stats_block(features),
         progress=progress,
         generated_at=dt.datetime.now(dt.timezone.utc),
