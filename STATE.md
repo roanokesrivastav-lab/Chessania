@@ -253,6 +253,22 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [ ] S33  (pos
   blitz_gap → Time; endgame_conversion/late_collapse → Endgame)
   [AI-verified by code review].
 - Open bugs: none known.
+- **Opus review — clean, no bugs.** Verified: all 15 issue keys routed (matches `_all_rules` exactly)
+  with an `unroutedIssues` safety net so a future backend key renders under "Other" instead of
+  vanishing; the refactor DISTRIBUTED category stats to their cards (blunders/mistakes → Tactics,
+  conversions → their cards) and KEPT the cross-cutting stats (ACPL, phase ACPLs, accuracy trend, full
+  by_color block — all with S27 `?` explainers) in the Overall card, so nothing is lost and nothing is
+  duplicated. Headlines use the same `formatNumber`/`formatConversion` (no recompute); scoring is the
+  honest hybrid (real % for Advantage/Resourcefulness/Endgame, verdict+number elsewhere, no composite
+  scores). `npm run build` clean; frontend-only; backend/goldens untouched. Two minor watch-items (not
+  bugs): (1) `categories.ts` mirrors backend thresholds + strength-copy keywords in TS — only affects
+  the strong-vs-solid label when no issue fired ("needs work" stays backend-authoritative); documented
+  with a "re-mirror if you tune backend" caveat. (2) Mistakes/game now lives behind the Tactics
+  expander (was always visible). Both fine for a functional dashboard; revisit in the deferred visual
+  pass. Pushed.
+- **[founder-to-verify] DoD**: your live report now reads as a click-through category dashboard; every
+  category's numbers match what you saw before (pure re-layout), and expanding a category shows its
+  issues + evidence.
 - Next: Session 33 — tiered deep analysis (opt-in ~100 games).
 
 
