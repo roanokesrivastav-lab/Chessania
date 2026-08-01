@@ -117,7 +117,7 @@
       "diagnosis": "In your E60 (E60) you average +100 centipawns out of the opening but lose 50.0% of 4 games; in your E70 (E70) you average +100 centipawns out of the opening but lose 50.0% of 4 games; in your E80 (E80) you average +100 centipawns out of the opening but lose 50.0% of 4 games \u2014 the opening isn't the problem, the follow-up is.",
       "prescription": "When you come out of the opening fine, switch from memorizing theory to middlegame planning: before every move, ask what your opponent's best reply is \u2014 and spend 10 minutes a day on the plans for your worst lines.",
       "success_metric": "Turn at least 50.0% of your E60 games into wins over your next 10 games (you're at 25.0%).",
-      "counter_evidence": "This flags lines where you come out FINE but still lose \u2014 if you come out worse, that's the opening_leak issue instead.",
+      "counter_evidence": "This flags lines where you come out of the opening FINE but still lose \u2014 lines where you come out of the opening worse are covered separately.",
       "rating_impact": "medium",
       "refresh_after": "re-check after 20 new games",
       "links": [

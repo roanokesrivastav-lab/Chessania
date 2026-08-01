@@ -237,7 +237,7 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [ ] S32 [ ] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
-### 2026-07-31 · Session 31 · Opening performance by variation
+### 2026-08-01 · Session 31 · Opening performance by variation
 
 - Status: AI-verified (commits local)
 - Goal: One level finer than family-level `opening_leak` — per-variation opening
@@ -288,7 +288,25 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [ ] S32 [ ] S33  (pos
     the new `opening_variation` issue appears with its numbers + evidence). The
     two rules never double-report a line: a line either comes out fine (this
     rule) or worse (opening_leak) — provably exclusive per line.
-- Commit: `feat: opening performance by variation` — DO NOT push (per session rule).
+- Commit: `feat: opening performance by variation` (`f919116`).
+- **Opus review — logic correct, one copy bug fixed.** Feature reuses `_opening_leak_pov_eval` + `_wld`,
+  groups by (color, eco), correct evidence; the rule is provably exclusive with `opening_leak` (opposite
+  eval condition), confirmed in the goldens (positional_leaker B07 avg −163 → opening_leak, not this;
+  endgame_loser E60/E70/E80 avg +100 / 50% loss → opening_variation fires). 8 dedicated tests cover
+  grouping + all firing/non-firing branches. 205 passed offline, build clean. **Fixed:** the fired
+  issue's `counter_evidence` said "that's the **opening_leak** issue instead" — leaking an INTERNAL rule
+  key into user copy AND using the word "leak" the founder removed from copy (2026-07-27). Reworded to
+  "lines where you come out of the opening worse are covered separately" (no key, no "leak"); regenerated
+  the one affected golden (endgame_loser), 205 still pass.
+- **Minor watch-item (not fixed):** when the display name equals the ECO (unnamed/fixture lines) the
+  diagnosis prints "E60 (E60)"; harmless and only happens without a derived name (real games show
+  "King's Indian (E60)"). And with the 20-game sample only heavily-repeated lines qualify — the metric
+  blooms under the S33 deep-dive, as expected.
+- **[founder-to-verify] DoD**: on your live report (post prod opening-backfill), your most-played lines
+  show honest per-variation W-L-D + avg eval, and any "fine but losing" issue points at real games where
+  you were OK out of the opening and still lost.
+- Next: **Session 32** — Performance-by-Category dashboard (the click-through hub over S28–S31 + the
+  existing stats).
 - **AI review — clean after one copy bug fixed.** `_opening_variation_stats` is
   correct and deterministic; evidence = lost games at ply 20 (same citation
   discipline as opening_leak); `low_signal` at exactly the min bar; concern sort

@@ -447,8 +447,8 @@ def _rule_opening_variation() -> _Rule:
             f"next 10 games (you're at {win_pct}%)."
         )
         counter = (
-            "This flags lines where you come out FINE but still lose — if you come "
-            "out worse, that's the opening_leak issue instead."
+            "This flags lines where you come out of the opening FINE but still lose — "
+            "lines where you come out of the opening worse are covered separately."
         )
 
         return schemas.Issue(
