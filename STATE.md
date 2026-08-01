@@ -237,6 +237,29 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-01 · **V2-S1** · Board component + design tokens  🎬 v2 begins
+- The first v2 session: DESIGN.md tokens in code + the reusable chessboard. Kimi coded + committed
+  (`55a2a04`, no push); Opus reviewed + pushed. `frontend/app/globals.css` now carries the full
+  DESIGN.md token set (navy/gold/coral, both themes via `prefers-color-scheme` + `data-theme` overrides
+  both directions), the serif/sans/mono type-role vars, Tailwind `@theme` exposure — ADDITIVE (the v1
+  `--background`/`--foreground` tokens kept intact so v1 pages are untouched), and the **Arial body
+  override is FIXED** (body → `var(--font-sans)`). NEW `frontend/components/board/Board.tsx` (`"use
+  client"`) — the ONE reusable wrapper on `chessground` + `chessops`: legal `movable.dests` come from
+  `chessgroundDests` (never bespoke math), moves validated via `pos.isLegal`, a Q/R/B/N promotion
+  overlay, FEN/orientation re-sync effect (graceful on parse errors), and `cg.destroy()` on unmount.
+  NEW `frontend/app/train/board-demo/page.tsx` demo (Philidor, flip, move log) in a DESIGN.md card.
+  Deps: `chessground@^9.2.1`, `chessops@^0.15.1`.
+- **Opus review — clean, no bugs.** Verified: Arial gone (`grep` empty); tokens present for BOTH themes
+  and additive (v1 tokens kept, v1 pages untouched — diff is `frontend/` board+globals+demo only, no
+  backend); the board is chessops-driven so **illegal moves are impossible**; chessground is **destroyed
+  on unmount** (no leak); mount effect recreates only on `viewOnly` flip; a `handleAfterRef` avoids
+  stale-closure bugs in the chessground callback; promotion + re-sync handled. `npm run build` clean,
+  `/train/board-demo` route present.
+- **[founder-to-verify] DoD:** on your phone open `/train/board-demo`, play both sides of the Philidor,
+  flip it, confirm illegal moves won't go and promotion offers Q/R/B/N — and that it reads like
+  DESIGN.md.
+- Next: **V2-S2** — thin accounts (magic-link primary + Lichess OAuth, guest mode).
+
 ### 2026-08-01 · **Session 33** · Opt-in deep analysis (up to 100 games)
 - Status: AI-verified (pytest green offline + npm build clean; committed locally, not pushed)
 - Changed: opt-in deep mode alongside the untouched fast-20 default. Backend: `config.py`
