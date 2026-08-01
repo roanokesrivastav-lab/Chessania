@@ -264,8 +264,10 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
   honest longer-wait progress; confirm the report is visibly richer (more opening variations qualify)
   and labeled a deep analysis; **log the real prod timing** — that's the data that decides whether Part
   G #9 (durable queue) ever gets triggered. Fast-20 path must be unchanged.
-- 🏁 **Phase 5 (deeper analytics) code-complete** (S27–S33). Remaining: founder-verify the deep run,
-  then decide next direction (beta feedback loop, the deferred UI redesign, or v2 scoping).
+- **FOUNDER-VERIFIED (2026-08-01):** deep-dive run on prod — worked. Phase 5's D7 gate is now CLEARED.
+- 🏁 **Phase 5 (deeper analytics) COMPLETE** (S27–S33), founder-verified. v2 scope finalized
+  (CHESSANIA_V2_ROADMAP.md), UI design adopted (DESIGN.md). Next: **v2 begins — V2-S1** (board component
+  + design-system tokens in code).
 
 
 ### 2026-08-01 · **Session 32** · Performance-by-Category dashboard
