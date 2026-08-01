@@ -251,8 +251,21 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
   [AI-verified]; goldens changed ONLY by the added `analysis_mode: "standard"` [AI-verified];
   npm run build clean [AI-verified].
 - Open bugs: none known.
-- Next: real-timing check of a deep run (inform the Part G #9 queue decision); founder DoD on
-  the live report.
+- **Opus review — clean, no bugs.** Verified: goldens changed ONLY by `analysis_mode: "standard"` (all
+  three, one line each → the fast-default path is byte-identical); `get_or_create_job` dedup key
+  includes mode (deep ≠ standard are distinct jobs); the deep semaphore (limit 1) is acquired on top of
+  the main one and both released in `finally` (deadlock-free — acquire order is always main→deep);
+  `ingest` fetchers thread `max_games` through (Chess.com walks archives until the cap); `build_report(...,
+  mode)` sets `analysis_mode`; the frontend footer defensively treats mode-less old reports as standard.
+  213 passed offline, no Stockfish; `npm run build` clean; default fast-20 path untouched. Minor
+  note (not a bug): a 2nd deep request blocks on the deep semaphore while still holding a main slot —
+  a slight inefficiency in the 2-deep edge case, harmless for the beta. Pushed.
+- **[founder-to-verify] DoD:** run a deep dive on your own account from the report footer; watch the
+  honest longer-wait progress; confirm the report is visibly richer (more opening variations qualify)
+  and labeled a deep analysis; **log the real prod timing** — that's the data that decides whether Part
+  G #9 (durable queue) ever gets triggered. Fast-20 path must be unchanged.
+- 🏁 **Phase 5 (deeper analytics) code-complete** (S27–S33). Remaining: founder-verify the deep run,
+  then decide next direction (beta feedback loop, the deferred UI redesign, or v2 scoping).
 
 
 ### 2026-08-01 · **Session 32** · Performance-by-Category dashboard
