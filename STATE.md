@@ -237,6 +237,44 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-02 · **V2-S8** · Checkmate challenges — curated mate self-tests  🎯 Phase T2 begins
+- `/train/mate` — mate-in-N from a committed curated set (D5: no puzzle pool), played out against a
+  defending stockfish.wasm, two-tier graded (found the mate / found it in optimal moves). DeepSeek
+  coded + committed (`2f46e7a`, no push); Opus reviewed, found + fixed a critical bug and data
+  errors, pushed (`3a347ae`). New `frontend/lib/mateSet.ts` (10 curated positions), `/train/mate`
+  page (its own play-until-mate loop reusing Board + engine, like convert), `EvalResult.mateIn`
+  (mate distance, for detecting a thrown-away mate), and `attempts.ref_id` GUID→Text (migration
+  `0006`, batch mode, so curated string ids fit alongside position uuids).
+- **Opus review — a CRITICAL latent bug found (affecting every engine trainer), 3 mislabeled FENs,
+  and a board-lock bug. All fixed + verified live end-to-end.**
+  1. **[critical] `StockfishWasmEngine._init()` never resolved.** It waits for both `uciok` AND
+     `readyok` but only ever sent `uci` — `readyok` only follows an `isready`, which was never sent.
+     So `initialized` never resolved and **every `evaluate()`/`configureStrength()` hung forever.**
+     Latent since V2-S4: retry/preventer non-perfect grading, convert's opponent moves, and mate's
+     defense all silently hang. It escaped my OWN prior "live" reviews because those drove a RAW
+     worker (I sent `isready` myself) and never the real `StockfishWasmEngine` class end-to-end —
+     a real lesson: exercise the actual class, not a hand-rolled stand-in. Confirmed empirically
+     (`uci` alone → `uciok`, never `readyok`); fixed by sending `isready` in `_init`. **Re-verified
+     live through the real class:** 3 mate-in-1s graded Perfect, a mate-in-3 smothered runs its
+     engine-defense loop, a wrong move triggers the kind retry.
+  2. **[data] 3 of 10 curated mate FENs were mislabeled** — DeepSeek shipped a verify script but
+     committed wrong labels anyway (its "every FEN verified" claim was false). I independently
+     re-verified all 10 with Stockfish: `arabian-1` was labeled **mate-in-23** and wasn't even an
+     Arabian mate → replaced with a real Rh7# mate-in-1; `kr-vs-k` 3→**2**; `battery-1` 6→**5**
+     (its firstMove Qe8+ was also wrong → Qe7). All 10 now verify exactly.
+  3. **[bug] the mate page left `engineThinking=true`** on the win/lostMate branches and didn't
+     reset it in `initPosition` — the board stayed locked after Retry and "Engine thinking…"
+     lingered on the result panels. Reset in both terminal paths + on (re)init.
+  4. Moved the stray `backend/verify_fens.py` → `scripts/verify_mate_fens.py` with the sys.path
+     bootstrap + cwd-independent path so it actually runs. Migration `0006` up/down clean; 255
+     tests pass; build clean.
+- **[founder-to-verify] DoD:** solve a few mates at `/train/mate` on your phone; confirm the
+  wrong-move UX reads kindly and "Perfect" only shows on the optimal move count. **Also worth a
+  re-check now that the engine actually initializes:** retry/preventer non-perfect grading and a
+  full convert playout (those were silently broken by the `_init` hang until this fix — your
+  earlier DoD checks on them likely never completed a non-perfect move).
+- Next: **V2-S9** — Endgame self-tests (win-or-hold a curated endgame vs stockfish.wasm).
+
 ### 2026-08-02 · **Opus audit fixes** · three pre-existing v2 bugs (`43137f0`)
 - Founder asked Opus to re-audit the v2 code Sonnet had been per-session-reviewing. Three real
   bugs surfaced — all cross-session (introduced in one session, consumed/exposed in a later one),
