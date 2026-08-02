@@ -71,16 +71,18 @@ def test_positions_returns_empty_list_for_player_with_no_positions(shared_sessio
 
 
 def test_positions_returns_seeded_rows(shared_session):
-    """Seeded training_positions are returned with game_url and fen."""
+    """Seeded training_positions are returned with game_url, fen, and
+    opponent_move_san/uci derived from the source PGN."""
     player = Player(platform="chesscom", username="seededplayer", rating_snapshot=1200)
     shared_session.add(player)
     shared_session.commit()
 
+    # A real short PGN: 1. e4 e5 2. Nf3 Nc6
     game = Game(
         player_id=player.id,
         platform_game_id="g1",
         game_url="https://www.chess.com/game/live/g1",
-        pgn="1. e4 e5",
+        pgn='[Event "?"]\n[Site "?"]\n[Date "2025.01.01"]\n[Round "?"]\n[White "Player"]\n[Black "Opponent"]\n[Result "*"]\n\n1. e4 e5 2. Nf3 Nc6 *',
         time_class="blitz",
         player_color="white",
         result="loss",
@@ -89,18 +91,31 @@ def test_positions_returns_seeded_rows(shared_session):
     shared_session.add(game)
     shared_session.commit()
 
-    pos = TrainingPosition(
+    # ply=1 (White's e4): no prior move.
+    pos1 = TrainingPosition(
         player_id=player.id,
         source_game_id=game.id,
-        ply=5,
-        fen="rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        ply=1,
+        fen="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
         category="blunder",
-        best_line_uci="g1f3",
-        eval_before_cp=50,
+        best_line_uci="e7e5",
+        eval_before_cp=20,
         mined_at=datetime.now(timezone.utc),
         last_seen=datetime.now(timezone.utc),
     )
-    shared_session.add(pos)
+    # ply=3 (White's Nf3): prior move was Black's e5 (ply=2).
+    pos2 = TrainingPosition(
+        player_id=player.id,
+        source_game_id=game.id,
+        ply=3,
+        fen="rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2",
+        category="blunder",
+        best_line_uci="d7d6",
+        eval_before_cp=15,
+        mined_at=datetime.now(timezone.utc),
+        last_seen=datetime.now(timezone.utc),
+    )
+    shared_session.add_all([pos1, pos2])
     shared_session.commit()
 
     def override():
@@ -114,11 +129,19 @@ def test_positions_returns_seeded_rows(shared_session):
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data) == 1
-        row = data[0]
-        assert row["fen"].startswith("rnbqkbnr")
-        assert row["best_line_uci"] == "g1f3"
-        assert row["game_url"] == "https://www.chess.com/game/live/g1"
+        assert len(data) == 2
+
+        # ply=1: no prior move.
+        row1 = data[0]
+        assert row1["ply"] == 1
+        assert row1["opponent_move_san"] is None
+        assert row1["opponent_move_uci"] is None
+
+        # ply=3: opponent played e5.
+        row2 = data[1]
+        assert row2["ply"] == 3
+        assert row2["opponent_move_san"] == "e5"
+        assert row2["opponent_move_uci"] == "e7e5"
     finally:
         app.dependency_overrides.pop(get_session, None)
 

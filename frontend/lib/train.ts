@@ -12,6 +12,8 @@ export interface PositionItem {
   eval_before_cp: number;
   game_url: string;
   played_at: string | null;
+  opponent_move_san: string | null;
+  opponent_move_uci: string | null;
 }
 
 export async function fetchRetryPositions(

@@ -361,7 +361,14 @@ def get_training_positions(
 ) -> list[dict]:
     """Return up to `limit` training positions for the given player+category.
     Empty list (not 404) if the player exists but has zero positions — the
-    frontend renders the empty-state UI."""
+    frontend renders the empty-state UI.
+
+    V2-S5: derives opponent_move_san / opponent_move_uci by replaying the
+    source game's PGN up to ply-1. null when ply == 1 (no prior move)."""
+    import io
+
+    import chess.pgn
+
     from app.models import Game, Player, TrainingPosition
 
     player = session.scalars(
@@ -382,7 +389,7 @@ def get_training_positions(
         .limit(limit)
     ).all()
 
-    # Join Game for game_url/played_at so the frontend can deep-link.
+    # Join Game for game_url/played_at + PGN for opponent_move derivation.
     game_ids = {r.source_game_id for r in rows}
     games = {
         str(g.id): g
@@ -390,6 +397,39 @@ def get_training_positions(
             select(Game).where(Game.id.in_(game_ids))
         ).all()
     }
+
+    # Per-request PGN parse cache so positions from the same game don't re-parse.
+    _pgn_cache: dict[str, chess.pgn.GameNode | None] = {}
+
+    def _prior_move(game_id: str, ply: int) -> tuple[str | None, str | None]:
+        """Return (san, uci) of the move immediately before `ply`, or (None, None).
+        Mirrors analysis.py's replay pattern: san(move) BEFORE push(move)."""
+        if ply <= 1:
+            return None, None
+        game = games.get(game_id)
+        if game is None or not game.pgn:
+            return None, None
+        if game_id not in _pgn_cache:
+            try:
+                _pgn_cache[game_id] = chess.pgn.read_game(io.StringIO(game.pgn))
+            except Exception:
+                _pgn_cache[game_id] = None
+        parsed = _pgn_cache[game_id]
+        if parsed is None:
+            return None, None
+        board = parsed.board()
+        target = ply - 1
+        idx = 0
+        for move in parsed.mainline_moves():
+            idx += 1
+            if idx == target:
+                try:
+                    san = board.san(move)  # BEFORE push (mirrors analysis.py)
+                except Exception:
+                    san = move.uci()
+                return san, move.uci()
+            board.push(move)
+        return None, None
 
     return [
         {
@@ -404,6 +444,8 @@ def get_training_positions(
                 if str(r.source_game_id) in games and games[str(r.source_game_id)].played_at
                 else None
             ),
+            "opponent_move_san": _prior_move(str(r.source_game_id), r.ply)[0],
+            "opponent_move_uci": _prior_move(str(r.source_game_id), r.ply)[1],
         }
         for r in rows
     ]

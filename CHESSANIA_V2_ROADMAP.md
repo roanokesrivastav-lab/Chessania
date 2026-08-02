@@ -379,11 +379,47 @@ Appendix V2-1 — Schema deltas  [REFINE exact types before V2-S2/S3]
   duels(id, creator_user_id?, fen, source, lichess_urls_json, result?,
     created_at)
 
-Appendix V2-2 — Trainer spec template  [Opus fills per session]
-  name · route · seed source (bank category / curated FEN set) · mode (solve |
-  playout-vs-wasm) · GRADE (two-tier band from M1; the shared grade() helper) ·
-  attempt record · empty-state copy (thin bank / new account) · guest behavior ·
-  phone-first layout notes.
+Appendix V2-2 — Trainer specs (shipped)  [V2-S4 / V2-S5]
+
+  ── Retry Your Mistakes ──
+  route:         /train/retry?platform=&username=
+  seed source:   player's own training_positions, category "blunder"
+  mode:          solve — one move at a time
+  GRADE:         two-tier via lib/engine.ts gradeMove(): perfect (match best_line_uci),
+                 pass (cp_loss < 200), fail (cp_loss ≥ 200). Exactly one engine
+                 call per non-perfect move; StockfishWasmEngine at depth 12.
+  attempt:       Attempt(ref_type="position", trainer="retry", grade, seconds)
+  streak:        Streak(trainer="retry", current, best, last_active_date)
+  empty-state:   "Run a v1 analysis first to mine positions from your games."
+  guest:         full grading + tally live in browser; no attempt/streak persisted.
+  layout:        mobile-first, 560px max-width Board; top bar (progress + tally +
+                 streak); optional prompt slot above board (unused); feedback panel
+                 below board (Perfect gold / Pass green / Fail coral); source-game
+                 deep-link; inline form when ?platform=&username= are absent.
+
+  ── Blunder Preventer ──
+  route:         /train/preventer?platform=&username=
+  seed source:   player's own training_positions, category "danger"
+  mode:          solve — one defensive move at a time
+  GRADE:         same two-tier gradeMove() as retry (perfect/pass/fail, BLUNDER_CP=200).
+                 Softer wrong-answer UX: fail label = "Missed it" with a hint
+                 ("Here's the idea — see the best line below…") — grading math unchanged.
+  attempt:       Attempt(ref_type="position", trainer="preventer", grade, seconds)
+  streak:        Streak(trainer="preventer", …) — DISTINCT streak counter from retry.
+  opponent_move: derived server-side from the source game's PGN (ply-1), cached
+                 per game_id in the request. null when ply == 1. Displayed above the
+                 board + as lastMove highlight on chessground.
+  empty-state:   "No danger positions yet. Run a fresh v1 analysis first to mine
+                 defensive positions, then come back."
+  guest:         same as retry — full live grading, no persist.
+  layout:        same TrainerShell layout as retry; adds the opponent-move prompt
+                 (coral-highlighted SAN) above the board.
+
+  shared shell:  components/train/TrainerShell.tsx — TrainerShellProps { trainer,
+                 category, title, description, emptyStateText?, failCopy?,
+                 renderPrompt? }. Extracted from retry/page.tsx (V2-S4 → V2-S5),
+                 no behavior change to retry. All future solve-mode trainers reuse
+                 this shell.
 
 Appendix V2-3 — Report → trainer mapping  [complete before V2-S7]
   hung_pieces / blunder_rate / tilt → retry + preventer
