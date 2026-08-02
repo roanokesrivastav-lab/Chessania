@@ -493,6 +493,44 @@ Appendix V2-2 — Trainer specs (shipped)  [V2-S4 / V2-S5]
                  gold / Pass green); Session-complete panel with perfect%.
   engine lifecycle: closed on unmount AND between positions.
 
+  ── Endgame Self-Tests ──
+  route:         /train/endgame?platform=&username=
+  seed source:   frontend/lib/endgameSet.ts — 6 curated FENs (Appendix V2-4)
+  mode:          playout-vs-wasm — the full position is played out against
+                 stockfish.wasm at FULL strength (no Elo cap, unlike convert).
+  ENGINE:        one StockfishWasmEngine per position at full strength.
+                 Opponent moves use evaluate(fen, {movetimeMs: 500}).
+  ADJUDICATION   Per spec (checked in order after each engine reply, AFTER
+  (per Hard      natural terminal):
+  Rules):        (1) target="win" + player-POV mateIn > 0 → pass
+                 (2) target="win" + playerPovEval >= 900cp → pass (converted)
+                 (3) target="win" + playerPovEval <= 150cp → fail (threw win)
+                 (4) target="draw" + playerPovEval <= -300cp → fail (lost hold)
+                 (5) Move cap 30 full moves with no resolution →
+                     draw target → pass (held); win target → fail (not converted)
+                 mateIn is negated from the engine result since the side-to-move
+                 flips after the engine's move (engine-POV → player-POV).
+  GRADE:         binary: pass/fail. Never "perfect". Grade mapped to existing
+                 enum: win target converted → pass, draw target held → pass;
+                 threw win / lost hold / gave up → fail.
+  GIVE UP:       button visible during play → immediate fail.
+  attempt:       Attempt(ref_type="curated", ref_id=<endgamePosition.id string>,
+                 trainer="endgame", grade, seconds).
+  streak:        Streak(trainer="endgame", …) — DISTINCT counter from all other
+                 trainers.
+  intro copy:    reads the v1 report's stats_block.endgame_conversion (0-1
+                 fraction, multiplied by 100 for display) when available.
+                 Own-Numbers pattern (A7).
+  guest:         full playout + adjudication live; no attempt/streak persisted.
+  layout:        standalone page (NOT TrainerShell — playout mode). Mobile-first,
+                 560px max-width Board; top bar (progress + tally + streak);
+                 position info (pattern, target, player color); Board with
+                 correct orientation; engine-thinking indicator; Give-up button;
+                 game-over result panel (Passed green / Failed coral) with the
+                 position's "why" explanation; Session-complete panel with pass%
+                 + streak.
+  engine lifecycle: closed on unmount AND between positions.
+
 Appendix V2-3 — Report → trainer mapping  [complete before V2-S7]
   hung_pieces / blunder_rate / tilt → retry + preventer
   advantage_capitalization → convert trainer
@@ -521,9 +559,19 @@ Appendix V2-4 — Curated FEN sets (committed in the repo)  [V2-S8]
   #9  corridor-1      mate in 1  — 6k1/5ppp/8/8/8/8/4R3/6K1 w  (Re8#)
   #10 battery-1       mate in 6  — 6k1/5p1p/6p1/8/8/6B1/8/4Q1K1 w  (Qe8+)
 
-  Endgame set: K+P conversions, Lucena, Philidor, R+4v3, opposite bishops, Q vs
-    R — each with a one-line "why this matters at your level" + color to move.
-    [V2-S9 fills]
+  ── Endgame set (frontend/lib/endgameSet.ts — 6 verified positions) ──
+  Construction strategy: verified theoretical endgames at minimal material.
+  Each position targets a specific endgame technique the user must demonstrate
+  against a full-strength stockfish.wasm. EVERY FEN verified by Stockfish
+  (depth 25+) confirming the labeled target (win=clearly positive, draw=near 0);
+  verify_endgame_fens.py gates every commit.
+
+  #1  kp-vs-k           win   — 4k3/8/4K3/4P3/8/8/8/8 w  (K+P vs K)
+  #2  lucena            win   — 1K6/1P1k4/8/8/8/8/r7/2R5 w  (Lucena position)
+  #3  philidor          draw  — 1k6/1P6/2K5/8/8/8/1r6/R7 w  (Philidor defense)
+  #4  opposite-bishops  draw  — 8/8/4k3/3p1p2/3B1P2/4K3/8/8 w  (Opposite bishops fortress)
+  #5  rp-draw           draw  — 8/8/8/8/1r3k2/5R2/4PK2/8 w  (R+P vs R draw)
+  #6  kp-draw           draw  — 8/8/8/8/4k3/8/3P4/3K4 w  (K+P vs K draw)
   Duel seed set: the endgame set + the player's own unconverted positions.
     [V2-S10 fills]
 
