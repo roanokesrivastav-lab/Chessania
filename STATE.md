@@ -237,6 +237,38 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-02 · **V2-S7** · Report ↔ trainer deep links  🏁 Phase T1 complete
+- The loop-closer: every v1 issue-card gets a "Train this" button routing into the right T1 trainer,
+  pre-filtered to the exact games that issue cited. DeepSeek coded + committed (`b52dfaa`, no push);
+  Opus reviewed clean + pushed. Backend: `GET /api/train/positions` gains an optional
+  `game_urls` (comma-separated) filter — narrows to positions whose source game's `game_url` is in
+  the set (matched against `Game.game_url` for the resolved player; the exact column
+  `EvidenceRef.game_url` is built from, verified `coach.py:87`), short-circuiting to `[]` on no
+  match (same "empty, not 404" contract). New `frontend/lib/trainerRouting.ts` is the code mirror of
+  Appendix V2-3: `hung_pieces`/`blunder_rate`/`tilt`→retry, `missed_saves`→preventer,
+  `advantage_capitalization`→convert; every other key → NO button (no live trainer yet). `IssueCard`
+  renders "Train this" only when a route exists AND evidence is non-empty, linking with
+  `?platform=&username=&games=<cited urls>`. All three trainer surfaces read the optional `games`
+  param and, when a filter returns empty, re-fetch the full bank with an honest "no drills from those
+  specific games" note (distinct from the true empty-bank state).
+- **Opus review — clean, no bugs.** Backend filter correct + short-circuits; routing map matches
+  Appendix V2-3 exactly with every unmapped key correctly button-less; the fallback logic properly
+  distinguishes filtered-to-empty from genuinely-empty; the manual picker form even preserves the
+  `games` param. 252 tests pass offline (incl. 2 new game_urls filter tests — filter-to-one,
+  unknown-url-returns-empty), `npm run build` clean, `git diff --stat` scoped to the planned files.
+- **[founder-to-verify] DoD:** from your live report, tap "Train this" on a real fired issue and
+  confirm you land in a drill seeded by the exact games that issue cited.
+- 🏁 **Phase T1 (Your Mistakes) COMPLETE** (V2-S4 retry · S5 preventer · S6 convert · S7 deep links).
+  The core v2 wedge — report → drill on your own mistakes — is wired end to end.
+- **⚠️ Opus audit (2026-08-02, separate from V2-S7): TWO pre-existing cross-session bugs found**, to
+  be fixed next (both predate V2-S7; V2-S7 itself is correct): (1) 🔴 `gradeMove` (retry+preventer)
+  treats the wasm `score cp` as White-POV, but UCI reports it side-to-move — so White players'
+  non-exact moves are mis-graded (empirically confirmed: Black-to-move dead-lost position →
+  `score cp -787`). (2) 🟠 `unconverted` mining doesn't filter on `is_player_ply` (blunder/danger
+  do), so ~half its positions are opponent-to-move and the convert trainer hands the player the
+  losing side (confirmed: 1/5 of eleven_14's unconverted rows). Also 🟡 no rate limit on
+  `/api/auth/magic-link`. See the fix session below once applied.
+
 ### 2026-08-02 · **V2-S6** · Advantage Capitalization Trainer — playout vs stockfish.wasm
 - The first structurally different trainer: `/train/convert` does NOT use `TrainerShell` (it's not a
   solve-mode trainer — it's a full playout game against the engine). Frontend-only — zero backend
