@@ -415,7 +415,48 @@ Appendix V2-2 — Trainer specs (shipped)  [V2-S4 / V2-S5]
   layout:        same TrainerShell layout as retry; adds the opponent-move prompt
                  (coral-highlighted SAN) above the board.
 
-  shared shell:  components/train/TrainerShell.tsx — TrainerShellProps { trainer,
+  ── Advantage Capitalization (Convert) ──
+  route:         /train/convert?platform=&username=
+  seed source:   player's own training_positions, category "unconverted"
+  mode:          playout-vs-wasm — the full position is played out against
+                 stockfish.wasm at capped strength until mate/draw/resign.
+  ENGINE:        one StockfishWasmEngine per position, configured via
+                 configureStrength(elo) once before the first opponent move.
+                 UCI_LimitStrength true, UCI_Elo = player's rating clamped to
+                 [1320, 3190] (the engine's advertised range). Confirmed via
+                 isready/readyok round-trip.
+                 Opponent moves use go movetime 500ms (not go depth N).
+                 User moves are NOT engine-validated — the whole game is
+                 self-play.
+  TERMINAL:      checkmate (winner determined by side to move in mate),
+                 stalemate (no legals + not in check → draw), insufficient
+                 material (KvK, KvK+minor), 50-move rule (halfmove clock ≥100).
+                 Threefold repetition is explicitly OUT of scope (V2-S6 DoD) —
+                 the Resign button is the escape hatch for dragging games.
+  GRADE:         mapped to the existing enum: win → "pass", draw/loss/resign →
+                 "fail". Never sends "perfect". Single game-ending outcome.
+  attempt:       Attempt(ref_type="position", trainer="convert", grade, seconds)
+  streak:        Streak(trainer="convert", …) — DISTINCT streak counter from
+                 retry and preventer.
+  intro copy:    reads the v1 report's stats_block.advantage_capitalization
+                 (0-1 fraction, multiplied by 100 for display) + the player's
+                 rating for the capped Elo line. Common Own-Numbers pattern (A7).
+  empty-state:   "No unconverted positions yet. Run a v1 analysis first to mine
+                 unconverted positions from your games."
+  guest:         full playout live in browser; no attempt/streak persisted.
+  layout:        standalone page (NOT TrainerShell — convert is a playout mode,
+                 structurally different from solve-mode trainers). Mobile-first,
+                 560px max-width Board; top bar (progress + tally + streak);
+                 source-position info + game link; Board with correct orientation;
+                 engine-thinking indicator; Resign button always visible during
+                 play; game-over result panel (Converted green / Lost coral /
+                 Drawn or Resigned dim); Session-complete panel with conversion
+                 percentage.
+  engine lifecycle: closed on unmount AND between positions (new position =
+                 fresh engine with re-confirmed strength).
+
+  shared shell:  (not used by convert — Trainershell is solve-mode only).
+                 components/train/TrainerShell.tsx — TrainerShellProps { trainer,
                  category, title, description, emptyStateText?, failCopy?,
                  renderPrompt? }. Extracted from retry/page.tsx (V2-S4 → V2-S5),
                  no behavior change to retry. All future solve-mode trainers reuse

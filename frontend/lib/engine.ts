@@ -38,8 +38,17 @@ export interface EvalResult {
   bestMoveUci: string;
 }
 
+export interface EvaluateOptions {
+  /** When set, sends `go movetime <n>` instead of the default `go depth N`.
+   *  Used for real-time opponent moves (V2-S6). */
+  movetimeMs?: number;
+}
+
 export interface Engine {
-  evaluate(fen: string): Promise<EvalResult>;
+  evaluate(fen: string, opts?: EvaluateOptions): Promise<EvalResult>;
+  /** Configure the engine's UCI_LimitStrength + UCI_Elo. Confirms via
+   *  isready/readyok before resolving. V2-S6. */
+  configureStrength?(elo: number): Promise<void>;
   close(): void;
 }
 
@@ -92,16 +101,18 @@ export class StockfishWasmEngine implements Engine {
     });
   }
 
-  async evaluate(fen: string): Promise<EvalResult> {
+  async evaluate(fen: string, opts?: EvaluateOptions): Promise<EvalResult> {
     await this.initialized;
     if (!this.worker || !this.ready) {
       throw new Error("Stockfish engine not ready");
     }
 
+    const useMovetime = opts?.movetimeMs != null;
+
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error("Engine timeout"));
-      }, 30000);
+      }, useMovetime ? opts!.movetimeMs! * 3 + 10000 : 30000);
 
       const handler = (e: MessageEvent) => {
         const line = (e.data ?? "") as string;
@@ -127,7 +138,41 @@ export class StockfishWasmEngine implements Engine {
 
       this.worker!.addEventListener("message", handler);
       this.worker!.postMessage(`position fen ${fen}`);
-      this.worker!.postMessage(`go depth ${ENGINE_DEPTH}`);
+      if (useMovetime) {
+        this.worker!.postMessage(`go movetime ${opts!.movetimeMs}`);
+      } else {
+        this.worker!.postMessage(`go depth ${ENGINE_DEPTH}`);
+      }
+    });
+  }
+
+  /** Configure UCI_LimitStrength + UCI_Elo for a capped-strength opponent.
+   *  Must be called after the engine is initialized, once per game.
+   *  Confirms via isready/readyok before resolving. V2-S6. */
+  async configureStrength(elo: number): Promise<void> {
+    await this.initialized;
+    if (!this.worker || !this.ready) {
+      throw new Error("Stockfish engine not ready");
+    }
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error("configureStrength timeout"));
+      }, 5000);
+
+      const handler = (e: MessageEvent) => {
+        const line = (e.data ?? "") as string;
+        if (line === "readyok") {
+          clearTimeout(timeout);
+          this.worker!.removeEventListener("message", handler);
+          resolve();
+        }
+      };
+
+      this.worker!.addEventListener("message", handler);
+      this.worker!.postMessage("setoption name UCI_LimitStrength value true");
+      this.worker!.postMessage(`setoption name UCI_Elo value ${elo}`);
+      this.worker!.postMessage("isready");
     });
   }
 
@@ -149,7 +194,7 @@ export class FixtureEngine implements Engine {
     this.answers = answers;
   }
 
-  async evaluate(fen: string): Promise<EvalResult> {
+  async evaluate(fen: string, _opts?: EvaluateOptions): Promise<EvalResult> {
     const result = this.answers.get(fen);
     if (!result) {
       throw new Error(
@@ -157,6 +202,10 @@ export class FixtureEngine implements Engine {
       );
     }
     return result;
+  }
+
+  async configureStrength(_elo: number): Promise<void> {
+    // No-op: fixture engine doesn't support strength configuration.
   }
 
   close(): void {}

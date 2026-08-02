@@ -237,6 +237,28 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-02 · **V2-S6** · Advantage Capitalization Trainer — playout vs stockfish.wasm
+- The first structurally different trainer: `/train/convert` does NOT use `TrainerShell` (it's not a
+  solve-mode trainer — it's a full playout game against the engine). Frontend-only — zero backend
+  changes (every API needed already exists: positions from V2-S3, attempts/streaks from V2-S4, the
+  report from v1). New `StockfishWasmEngine.configureStrength(elo)` sets UCI_LimitStrength + UCI_Elo
+  (clamped to the engine's own [1320, 3190] range, confirmed via isready/readyok). `evaluate()`
+  extended with optional `movetimeMs` — opponent moves use `go movetime 500ms` (snappy real-time),
+  existing no-opts call sites in `TrainerShell` are byte-identical and compile clean. Terminal
+  detection per half-move: `pos.isCheckmate()` (winner determined by side to move), stalemate (no
+  legals + not in check), insufficient material (KvK, KvK+minor), 50-move rule (halfmove clock ≥100).
+  Threefold repetition is explicitly OUT of scope (the Resign button is the escape hatch).
+  Engine lifecycle: created fresh per position, `configureStrength()` called once before the first
+  opponent move, `close()` on unmount and between positions. Attempt grading: win→pass,
+  draw/loss/resign→fail (never perfect). Guest = full playout, no persist. Intro copy ties to the
+  v1 report's `advantage_capitalization` metric (A7: own numbers). Buffy coded; Kimi absent.
+- **[founder-to-verify] DoD:** actually play at least one full game from an `unconverted` position on
+  `/train/convert` in a real browser — reach a real terminal state (checkmate, stalemate, or resign)
+  and confirm the result panel looks right; confirm the Resign button works separately; confirm
+  `/train/retry` (TrainerShell) still works and calls `evaluate(fen)` with zero arguments with no
+  errors (backward compatible).
+- Next: **V2-S7** — Report ↔ trainer deep links (issue cards gain "Train this" → the right trainer).
+
 ### 2026-08-02 · **V2-S5** · Blunder Preventer — shared trainer shell
 - The roadmap's own instruction was "same shell, same two-tier grading" — so the real job this
   session was extracting V2-S4's 373-line inline retry trainer into a reusable
