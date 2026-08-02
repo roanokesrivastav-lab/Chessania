@@ -357,6 +357,7 @@ def get_training_positions(
     username: str,
     category: str = "blunder",
     limit: int = 10,
+    game_urls: str | None = None,
     session: Session = Depends(get_session),
 ) -> list[dict]:
     """Return up to `limit` training positions for the given player+category.
@@ -364,7 +365,12 @@ def get_training_positions(
     frontend renders the empty-state UI.
 
     V2-S5: derives opponent_move_san / opponent_move_uci by replaying the
-    source game's PGN up to ply-1. null when ply == 1 (no prior move)."""
+    source game's PGN up to ply-1. null when ply == 1 (no prior move).
+
+    V2-S7: optional game_urls (comma-separated) filters positions to those
+    whose source game's URL is in the given list. Matches against
+    Game.game_url for the resolved player. No match → empty list (same
+    "empty, not 404" contract as the unfiltered path)."""
     import io
 
     import chess.pgn
@@ -379,14 +385,30 @@ def get_training_positions(
     if player is None:
         raise HTTPException(status_code=404, detail="No analyzed games found for that account.")
 
+    # V2-S7: optional game_urls filter — narrow to positions from specific games.
+    filtered_game_ids: set | None = None
+    if game_urls is not None:
+        parsed_urls = [u.strip() for u in game_urls.split(",") if u.strip()]
+        if parsed_urls:
+            matching_games = session.scalars(
+                select(Game.id).where(
+                    Game.player_id == player.id,
+                    Game.game_url.in_(parsed_urls),
+                )
+            ).all()
+            filtered_game_ids = set(matching_games)
+            if not filtered_game_ids:
+                # No games matched — short-circuit to empty list.
+                return []
+
+    query = select(TrainingPosition).where(
+        TrainingPosition.player_id == player.id,
+        TrainingPosition.category == category,
+    )
+    if filtered_game_ids is not None:
+        query = query.where(TrainingPosition.source_game_id.in_(filtered_game_ids))
     rows = session.scalars(
-        select(TrainingPosition)
-        .where(
-            TrainingPosition.player_id == player.id,
-            TrainingPosition.category == category,
-        )
-        .order_by(TrainingPosition.ply)
-        .limit(limit)
+        query.order_by(TrainingPosition.ply).limit(limit)
     ).all()
 
     # Join Game for game_url/played_at + PGN for opponent_move derivation.

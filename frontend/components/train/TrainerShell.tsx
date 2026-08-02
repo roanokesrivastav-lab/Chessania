@@ -77,6 +77,13 @@ export default function TrainerShell({
   const platform = searchParams.get("platform") ?? "";
   const username = searchParams.get("username") ?? "";
 
+  // V2-S7: optional game-urls filter from deep links.
+  const gamesParam = searchParams.get("games") ?? "";
+  const gameUrls: string[] | undefined = gamesParam
+    ? gamesParam.split(",").filter(Boolean)
+    : undefined;
+  const wasFiltered = gameUrls !== undefined && gameUrls.length > 0;
+
   const [positions, setPositions] = useState<PositionItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -85,6 +92,7 @@ export default function TrainerShell({
   const [user, setUser] = useState<SessionUser | null>(null);
   const [streak, setStreak] = useState<StreakInfo>({ current: 0, best: 0 });
   const [grading, setGrading] = useState(false);
+  const [fallbackNote, setFallbackNote] = useState(false);
   const startTimeRef = useRef(Date.now());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const engineRef = useRef<any>(null);
@@ -107,11 +115,21 @@ export default function TrainerShell({
 
   useEffect(() => {
     if (!platform || !username) return;
-    fetchRetryPositions(platform, username, category).then((data) => {
+    fetchRetryPositions(platform, username, category, 10, gameUrls).then((data) => {
+      // V2-S7: if we had a game filter and it returned empty, fall back to
+      // the full unfiltered bank with a small honest note.
+      if (wasFiltered && data.length === 0) {
+        fetchRetryPositions(platform, username, category).then((unfiltered) => {
+          setPositions(unfiltered);
+          setFallbackNote(true);
+          setLoading(false);
+        });
+        return;
+      }
       setPositions(data);
       setLoading(false);
     });
-  }, [platform, username, category]);
+  }, [platform, username, category, gameUrls, wasFiltered]);
 
   // ── Engine cleanup ───────────────────────────────────────────────
 
@@ -240,11 +258,11 @@ export default function TrainerShell({
       <TrainerForm
         title={title}
         description={description}
-        onSubmit={(p, u) =>
-          router.push(
-            `${routePath}?platform=${encodeURIComponent(p)}&username=${encodeURIComponent(u.trim())}`,
-          )
-        }
+        onSubmit={(p, u) => {
+          const base = `${routePath}?platform=${encodeURIComponent(p)}&username=${encodeURIComponent(u.trim())}`;
+          const url = gamesParam ? `${base}&games=${encodeURIComponent(gamesParam)}` : base;
+          router.push(url);
+        }}
       />
     );
 
@@ -352,6 +370,25 @@ export default function TrainerShell({
       className="flex min-h-screen flex-col items-center p-4"
       style={{ backgroundColor: "var(--bg)", color: "var(--text)" }}
     >
+      {/* V2-S7: fallback note when game filter had no matches */}
+      {fallbackNote && (
+        <div
+          className="w-full max-w-[560px] mb-3"
+          style={{
+            fontFamily: "var(--font-sans)",
+            fontSize: "0.8rem",
+            color: "var(--text-dim)",
+            padding: "0.5rem 0.75rem",
+            borderRadius: "8px",
+            border: "1px solid var(--border)",
+            backgroundColor: "var(--surface-2)",
+            textAlign: "center",
+          }}
+        >
+          No drills from those specific games — here&rsquo;s your full bank instead.
+        </div>
+      )}
+
       {/* Top bar */}
       <div
         className="w-full max-w-[560px] mb-3 flex items-center justify-between"

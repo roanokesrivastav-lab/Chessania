@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Issue } from "@/lib/types";
 import { formatPlayedAt } from "@/lib/format";
+import { trainerForIssue } from "@/lib/trainerRouting";
 
 function EmphasizedDiagnosis({ text }: { text: string }) {
   const parts = text.split(/(-?\d+(?:\.\d+)?%?)/g);
@@ -23,9 +24,11 @@ function EmphasizedDiagnosis({ text }: { text: string }) {
 
 interface Props {
   issue: Issue;
+  platform: string;
+  username: string;
 }
 
-export default function IssueCard({ issue }: Props) {
+export default function IssueCard({ issue, platform, username }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   const impactColor =
@@ -77,6 +80,26 @@ export default function IssueCard({ issue }: Props) {
           Note: {issue.counter_evidence}
         </p>
       )}
+
+      {/* V2-S7: "Train this" button — deep-links to the right v2 trainer
+          pre-filtered to the exact games this issue cited. Only renders
+          for issue keys that have a live trainer destination. */}
+      {(() => {
+        const route = trainerForIssue(issue.key);
+        if (route === null || issue.evidence.length === 0) return null;
+        const gameUrls = issue.evidence.map((ev) => ev.game_url).join(",");
+        const href = `/train/${route.trainer}?platform=${encodeURIComponent(platform)}&username=${encodeURIComponent(username)}&games=${encodeURIComponent(gameUrls)}`;
+        return (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a
+              href={href}
+              className="inline-flex items-center rounded-md bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition-opacity hover:opacity-80"
+            >
+              Train this
+            </a>
+          </div>
+        );
+      })()}
 
       {issue.evidence.length > 0 && (
         <div className="mt-4">

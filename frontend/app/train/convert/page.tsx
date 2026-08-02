@@ -455,6 +455,13 @@ function ConvertPageInner() {
   const platform = searchParams.get("platform") ?? "";
   const username = searchParams.get("username") ?? "";
 
+  // V2-S7: optional game-urls filter from deep links.
+  const gamesParam = searchParams.get("games") ?? "";
+  const gameUrls: string[] | undefined = gamesParam
+    ? gamesParam.split(",").filter(Boolean)
+    : undefined;
+  const wasFiltered = gameUrls !== undefined && gameUrls.length > 0;
+
   // ── Data state ──────────────────────────────────────────────────
   const [positions, setPositions] = useState<PositionItem[]>([]);
   const [report, setReport] = useState<Report | null>(null);
@@ -468,6 +475,7 @@ function ConvertPageInner() {
   const [currentFen, setCurrentFen] = useState("");
   const [engineThinking, setEngineThinking] = useState(false);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
+  const [fallbackNote, setFallbackNote] = useState(false);
   const [moveCount, setMoveCount] = useState(0);
 
   // ── Session tally ───────────────────────────────────────────────
@@ -500,14 +508,24 @@ function ConvertPageInner() {
       return;
     }
     Promise.all([
-      fetchRetryPositions(platform, username, "unconverted", 10),
+      fetchRetryPositions(platform, username, "unconverted", 10, gameUrls),
       getReport(platform as "chesscom" | "lichess", username).catch(() => null),
     ]).then(([posData, reportData]) => {
+      // V2-S7: if we had a game filter and it returned empty, fall back.
+      if (wasFiltered && posData.length === 0) {
+        fetchRetryPositions(platform, username, "unconverted").then((unfiltered) => {
+          setPositions(unfiltered);
+          setFallbackNote(true);
+          setReport(reportData);
+          setLoading(false);
+        });
+        return;
+      }
       setPositions(posData);
       setReport(reportData);
       setLoading(false);
     });
-  }, [platform, username]);
+  }, [platform, username, gameUrls, wasFiltered]);
 
   // ── Engine cleanup ──────────────────────────────────────────────
   useEffect(() => {
@@ -753,6 +771,24 @@ function ConvertPageInner() {
       className="flex min-h-screen flex-col items-center p-4"
       style={{ backgroundColor: "var(--bg)", color: "var(--text)" }}
     >
+      {fallbackNote && (
+        <div
+          className="w-full max-w-[560px] mb-3"
+          style={{
+            fontFamily: "var(--font-sans)",
+            fontSize: "0.8rem",
+            color: "var(--text-dim)",
+            padding: "0.5rem 0.75rem",
+            borderRadius: "8px",
+            border: "1px solid var(--border)",
+            backgroundColor: "var(--surface-2)",
+            textAlign: "center",
+          }}
+        >
+          No drills from those specific games — here&rsquo;s your full bank instead.
+        </div>
+      )}
+
       {/* Top bar */}
       <div
         className="w-full max-w-[560px] mb-3 flex items-center justify-between"

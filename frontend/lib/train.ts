@@ -20,7 +20,8 @@ export async function fetchRetryPositions(
   platform: string,
   username: string,
   category: string = "blunder",
-  limit: number = 10
+  limit: number = 10,
+  gameUrls?: string[],
 ): Promise<PositionItem[]> {
   try {
     const params = new URLSearchParams({
@@ -29,6 +30,9 @@ export async function fetchRetryPositions(
       category,
       limit: String(limit),
     });
+    if (gameUrls && gameUrls.length > 0) {
+      params.set("game_urls", gameUrls.join(","));
+    }
     const resp = await fetch(
       `${BACKEND}/api/train/positions?${params}`
     );

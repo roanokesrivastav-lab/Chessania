@@ -67,7 +67,7 @@ export default function CategoryDashboard({ report }: Props) {
               Other
             </h3>
             {unrouted.map((issue) => (
-              <IssueCard key={issue.key} issue={issue} />
+              <IssueCard key={issue.key} issue={issue} platform={report.player_summary.platform} username={report.player_summary.username} />
             ))}
           </div>
         )}
@@ -137,7 +137,7 @@ function CategoryCard({ report, def }: { report: Report; def: CategoryDef }) {
           )}
 
           {issues.map((issue) => (
-            <IssueCard key={issue.key} issue={issue} />
+            <IssueCard key={issue.key} issue={issue} platform={report.player_summary.platform} username={report.player_summary.username} />
           ))}
 
           {tiles.length > 0 && (

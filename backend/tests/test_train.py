@@ -290,3 +290,145 @@ def test_streak_gap_day_resets_current(shared_session):
     shared_session.commit()
     assert s2.current == 1  # reset
     assert s2.best == 7     # preserved
+
+
+# ── V2-S7: game_urls filter ───────────────────────────────────────────
+
+
+def test_positions_game_urls_filter_returns_only_matching_game(shared_session):
+    """game_urls=one game's URL → only that game's positions returned."""
+    player = Player(platform="chesscom", username="filterplayer", rating_snapshot=1200)
+    shared_session.add(player)
+    shared_session.commit()
+
+    game1 = Game(
+        player_id=player.id,
+        platform_game_id="g1",
+        game_url="https://www.chess.com/game/live/filter1",
+        pgn='[Event "?"]\n1. e4 e5 *',
+        time_class="blitz",
+        player_color="white",
+        result="loss",
+        analyzed_at=datetime.now(timezone.utc),
+    )
+    game2 = Game(
+        player_id=player.id,
+        platform_game_id="g2",
+        game_url="https://www.chess.com/game/live/filter2",
+        pgn='[Event "?"]\n1. d4 d5 *',
+        time_class="blitz",
+        player_color="white",
+        result="win",
+        analyzed_at=datetime.now(timezone.utc),
+    )
+    shared_session.add_all([game1, game2])
+    shared_session.commit()
+
+    pos1 = TrainingPosition(
+        player_id=player.id,
+        source_game_id=game1.id,
+        ply=1,
+        fen="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+        category="blunder",
+        best_line_uci="e7e5",
+        eval_before_cp=20,
+        mined_at=datetime.now(timezone.utc),
+        last_seen=datetime.now(timezone.utc),
+    )
+    pos2 = TrainingPosition(
+        player_id=player.id,
+        source_game_id=game2.id,
+        ply=1,
+        fen="rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1",
+        category="blunder",
+        best_line_uci="d7d5",
+        eval_before_cp=15,
+        mined_at=datetime.now(timezone.utc),
+        last_seen=datetime.now(timezone.utc),
+    )
+    shared_session.add_all([pos1, pos2])
+    shared_session.commit()
+
+    def override():
+        yield shared_session
+
+    app.dependency_overrides[get_session] = override
+    client = TestClient(app)
+    try:
+        # Filter by game1's URL → only pos1 returned.
+        resp = client.get(
+            "/api/train/positions?platform=chesscom&username=filterplayer"
+            "&game_urls=https%3A%2F%2Fwww.chess.com%2Fgame%2Flive%2Ffilter1"
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["game_url"] == "https://www.chess.com/game/live/filter1"
+
+        # Filter by game2's URL → only pos2 returned.
+        resp2 = client.get(
+            "/api/train/positions?platform=chesscom&username=filterplayer"
+            "&game_urls=https%3A%2F%2Fwww.chess.com%2Fgame%2Flive%2Ffilter2"
+        )
+        assert resp2.status_code == 200
+        data2 = resp2.json()
+        assert len(data2) == 1
+        assert data2[0]["game_url"] == "https://www.chess.com/game/live/filter2"
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+
+def test_positions_game_urls_no_match_returns_empty(shared_session):
+    """game_urls matching neither seeded game → empty list, not error."""
+    player = Player(platform="chesscom", username="nomatchplayer", rating_snapshot=1200)
+    shared_session.add(player)
+    shared_session.commit()
+
+    game = Game(
+        player_id=player.id,
+        platform_game_id="g1",
+        game_url="https://www.chess.com/game/live/known",
+        pgn='[Event "?"]\n1. e4 e5 *',
+        time_class="blitz",
+        player_color="white",
+        result="loss",
+        analyzed_at=datetime.now(timezone.utc),
+    )
+    shared_session.add(game)
+    shared_session.commit()
+
+    pos = TrainingPosition(
+        player_id=player.id,
+        source_game_id=game.id,
+        ply=1,
+        fen="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+        category="blunder",
+        best_line_uci="e7e5",
+        eval_before_cp=20,
+        mined_at=datetime.now(timezone.utc),
+        last_seen=datetime.now(timezone.utc),
+    )
+    shared_session.add(pos)
+    shared_session.commit()
+
+    def override():
+        yield shared_session
+
+    app.dependency_overrides[get_session] = override
+    client = TestClient(app)
+    try:
+        resp = client.get(
+            "/api/train/positions?platform=chesscom&username=nomatchplayer"
+            "&game_urls=https%3A%2F%2Fwww.chess.com%2Fgame%2Flive%2Funknown"
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+        # No game_urls param → unfiltered returns the position.
+        resp2 = client.get(
+            "/api/train/positions?platform=chesscom&username=nomatchplayer"
+        )
+        assert resp2.status_code == 200
+        assert len(resp2.json()) == 1
+    finally:
+        app.dependency_overrides.pop(get_session, None)
