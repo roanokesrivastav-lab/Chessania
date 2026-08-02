@@ -237,6 +237,28 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-02 · **V2-S11** · The duel library  🏁 Phase T3 complete
+- Made `/duel` browsable: pick a position to duel FROM out of "Classic endgames" (the committed
+  `endgameSet`) or your own analyzed positions ("unconverted" + "recent mistakes/blunder" via the
+  existing `/api/train/positions`), plus a per-user duel history — all layered on S10's create flow,
+  no new duel-creation logic. DeepSeek coded + committed (`1fc281e`, no push); Opus reviewed clean +
+  pushed. New `GET /api/duels` (signed-in history), `listMyDuels()`, and a Paste-FEN/Library tabbed
+  `/duel` page.
+- **Opus review — clean, no bugs.** The security-sensitive part (history) is correct: `GET
+  /api/duels` 401s guests and filters strictly by `creator_user_id == session user` (newest first) —
+  a user can't see another's duels, backed by a new isolation test. Verified live in a browser: the
+  Library tab lists the classic endgames, clicking a position fills the single shared preview +
+  create flow (no per-row chessground instances — the perf trap avoided), the guest history nudge
+  shows, and there are zero console errors. The bank sections reuse `fetchRetryPositions` (already
+  proven in retry/convert). 264 tests pass offline (incl. 3 new history tests: isolation,
+  newest-first, guest-401); S10's duel tests stay green; `npm run build` clean.
+- **[founder-to-verify] DoD:** the friends-beta group runs 3 library duels in a week (pick from the
+  library, not just paste) — confirm the sections populate and duels launch.
+- 🏁 **Phase T3 (play a friend from a position) COMPLETE** (V2-S10 duels · V2-S11 library). Only
+  Phase T4 (dashboard + progress) remains in the v2 plan.
+- Next: **V2-S12** — Training dashboard (`/train` home: streaks, per-trainer progress, weakness
+  categories from the latest report, a "what to drill today" queue).
+
 ### 2026-08-02 · **V2-S10** · Position duels via Lichess challenge links  🤝 Phase T3 begins
 - Pick a position → `POST /api/duels` creates a Lichess open challenge FROM that FEN → hand back the
   two per-color share-links → two friends play on Lichess. ZERO realtime code on our side (D4/A10).
