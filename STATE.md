@@ -237,6 +237,34 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-02 · **V2-S12** · Training dashboard  🎯 Phase T4 begins
+- The `/train` home (previously no index page): a platform+username picker (localStorage-remembered)
+  driving the latest v1 report → a weakness scorecard (reusing S32 `categories.ts`) + a "what to
+  drill today" queue (report issues with a live trainer, ordered by `rating_impact`, S7 deep-links) +
+  a per-trainer progress panel (streaks/attempts) + a grid of all trainers + the duel library.
+  DeepSeek coded + committed (`3538638`, no push); Opus reviewed, fixed a crash + pushed (`56422a4`).
+  New aggregate `GET /api/train/progress` (signed-in, one round-trip).
+- **Opus review — the dashboard code is sound, but it surfaced a pre-existing crash; fixed.**
+  - The new code is good: `GET /api/train/progress` 401s guests and isolates strictly by
+    `user_id` (per-trainer attempt+grade counts left-joined with streaks); the scorecard/queue reuse
+    `categories.ts` + `trainerRouting.ts` (no re-implementation); localStorage picker persists;
+    queue Train buttons carry `&games=`; guest-friendly (progress nudge only); mobile has no
+    horizontal scroll. 3 new progress tests (aggregation, guest-401, cross-user isolation).
+  - **[bug, pre-existing] loading a real report CRASHED the dashboard** — `Cannot read properties of
+    undefined (reading 'length')`. Root cause: `categories.ts` (`headlineForCategory`) AND
+    `CategoryDashboard` both read `report.opening_performance.length` unguarded. That field was added
+    in S31, so any report generated BEFORE then (an older stored JSON — e.g. the dev `eleven_14`
+    report, which has no `opening_performance` key) throws — and this crashed the **report page** on
+    those reports too, not just the new dashboard. Fixed by guarding every access (`?? []` /
+    `?.length ?? 0`) and marking the field optional in `types.ts`. Verified live: the dashboard now
+    populates the scorecard + queue from the real old report with zero console errors.
+  - 267 tests pass offline; `npm run build` clean.
+- **[founder-to-verify] DoD:** after a week of your own use, `/train` honestly reflects it — streaks
+  and attempt counts right, the weakness scorecard matches your latest report, the drill queue points
+  at your real top issues. Phone-first, zero console errors.
+- Next: **V2-S13** — Progress feedback loop (the LAST v2 session: "trained endgames 40×; conversion
+  53% → 61%", with v1's honest low-signal hedges).
+
 ### 2026-08-02 · **V2-S11** · The duel library  🏁 Phase T3 complete
 - Made `/duel` browsable: pick a position to duel FROM out of "Classic endgames" (the committed
   `endgameSet`) or your own analyzed positions ("unconverted" + "recent mistakes/blunder" via the
