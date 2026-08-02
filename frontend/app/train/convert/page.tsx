@@ -82,28 +82,14 @@ function checkTerminal(
   return null; // Game still in progress.
 }
 
-/** Simple insufficient-material check: both sides have only kings,
- *  or one side has a lone minor piece that can't force mate. */
+/** Simple insufficient-material check: KvK, or K+minor vs K. Does not detect
+ *  the same-color-bishops nuance (K+B vs K+B) — that case falls through to
+ *  the 50-move rule instead, which still ends the game correctly, just later. */
 function isInsufficientMaterial(pos: Chess): boolean {
   const board = pos.board;
   const whitePieces = board.white;
   const blackPieces = board.black;
 
-  // KB or KN vs K.
-  if (whitePieces.size() <= 1 && blackPieces.size() <= 1) {
-    // Only kings → draw.
-    if (whitePieces.size() === 1 && blackPieces.size() === 1) return true;
-  }
-
-  // If only one side has a minor piece (and no pawns/rooks/queens), it's insufficient.
-  const whiteHasOnlyKingOrMinor =
-    whitePieces.size() <= 1 ||
-    (whitePieces.size() <= 2 && !whitePieces.intersect(board.rooksAndQueens()).isEmpty());
-  // Actually, count the piece types. Let's be more careful.
-  // Simple heuristic: if both sides have ≤1 non-king piece and neither has mating potential.
-  // For correctness, we check:
-  // - No pawns (pawns promote).
-  // - Each side has at most one minor piece and no major pieces.
   const whiteHasPawns = !board.pawn.intersect(whitePieces).isEmpty();
   const blackHasPawns = !board.pawn.intersect(blackPieces).isEmpty();
   if (whiteHasPawns || blackHasPawns) return false; // Pawns can promote.
