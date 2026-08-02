@@ -223,3 +223,51 @@ class Report(Base):
     )
 
     __table_args__ = (Index("reports_player_idx", "player_id", desc("created_at")),)
+
+
+# ── V2-S2: Auth ───────────────────────────────────────────────────────
+# These two tables are separate from the v1 Player/Game/MoveEval pipeline
+# (Locked 5: v1 routes never require auth). Users are v2-only.
+
+
+class User(Base):
+    """A v2 account — one of email (magic-link verified) or lichess_id
+    (OAuthed) must be set; both can be set when linking accounts."""
+
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    email: Mapped[str | None] = mapped_column(Text, unique=True)
+    lichess_id: Mapped[str | None] = mapped_column(Text, unique=True)
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    last_anon_id: Mapped[str | None] = mapped_column(Text)  # last guest id — lets a sign-in adopt progress
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "email IS NOT NULL OR lichess_id IS NOT NULL",
+            name="users_at_least_one_identity",
+        ),
+    )
+
+
+class MagicLinkToken(Base):
+    """Single-use, short-TTL magic-link token. The raw token is NEVER stored —
+    only its SHA-256 hash (token_hash) is persisted, so a DB leak reveals
+    nothing usable. `used_at` is NULL until the token is consumed; a non-NULL
+    `used_at` + the 15-minute TTL on `expires_at` together enforce single-use."""
+
+    __tablename__ = "magic_link_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    token_hash: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

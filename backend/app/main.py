@@ -2,11 +2,12 @@
 
 import dataclasses
 import re
+import secrets
 from typing import Literal
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
@@ -140,6 +141,180 @@ def debug_features(
             detail="No analyzed games for that account yet — run POST /api/analyze first.",
         )
     return dataclasses.asdict(features)
+
+
+# ── V2-S2: Auth routes ────────────────────────────────────────────────
+
+
+class MagicLinkRequest(BaseModel):
+    email: str
+
+
+@app.post("/api/auth/magic-link")
+def request_magic_link(
+    payload: MagicLinkRequest,
+    session: Session = Depends(get_session),
+) -> dict:
+    """Send (or log) a magic link for the given email.
+
+    Always returns 200 — the same shape whether or not the email has an
+    account, so an attacker can't enumerate users by probing this endpoint."""
+    from app.auth import send_magic_link
+
+    email = payload.email.strip().lower()
+    send_magic_link(session, email)
+    return {"ok": True, "message": "If that email has an account, a sign-in link has been sent."}
+
+
+@app.get("/api/auth/magic-link/verify")
+def verify_magic_link(
+    token: str,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Verify a magic-link token. On success: set the session cookie and
+    redirect to the frontend. On failure: redirect to the frontend with an
+    error query param so the login page can show a message."""
+    from app.auth import create_session_cookie, verify_magic_link as _verify
+
+    frontend = settings.FRONTEND_BASE_URL
+    try:
+        user = _verify(session, token)
+    except HTTPException:
+        return RedirectResponse(
+            url=f"{frontend}/login?error=invalid_link", status_code=302
+        )
+
+    response = RedirectResponse(url=f"{frontend}/train", status_code=302)
+    create_session_cookie(response, user_id=str(user.id))
+    return response
+
+
+@app.get("/api/auth/lichess/start")
+def lichess_start() -> dict[str, str]:
+    """Return the Lichess OAuth authorize URL. The code_verifier is stashed
+    in a short-lived signed cookie so the callback can recover it."""
+    from app.auth import lichess_authorize_url
+
+    state = secrets.token_urlsafe(16)
+    url, code_verifier = lichess_authorize_url(state)
+
+    # We need to pass both state and code_verifier through to the callback.
+    # A simple approach: sign them into a short-lived cookie.
+    from itsdangerous import URLSafeTimedSerializer
+
+    verifier_serializer = URLSafeTimedSerializer(
+        secret_key=settings.SECRET_KEY, salt="lichess_oauth"
+    )
+    verifier_token = verifier_serializer.dumps(
+        {"state": state, "code_verifier": code_verifier}
+    )
+
+    from fastapi.responses import JSONResponse
+
+    resp = JSONResponse(content={"url": url})
+    resp.set_cookie(
+        key="chessania_lichess_oauth",
+        value=verifier_token,
+        max_age=600,  # 10 min to complete the flow
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/api/auth/lichess",
+    )
+    return resp
+
+
+@app.get("/api/auth/lichess/callback")
+def lichess_callback(
+    code: str,
+    state: str,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Handle the Lichess OAuth callback: verify the state param, exchange
+    the code, upsert the user, set the session cookie, redirect home."""
+    from itsdangerous import URLSafeTimedSerializer
+
+    from app.auth import create_session_cookie, exchange_lichess_code
+
+    frontend = settings.FRONTEND_BASE_URL
+
+    # Recover the code_verifier from the short-lived cookie.
+    verifier_cookie = request.cookies.get("chessania_lichess_oauth")
+    if not verifier_cookie:
+        return RedirectResponse(
+            url=f"{frontend}/login?error=oauth_expired", status_code=302
+        )
+
+    verifier_serializer = URLSafeTimedSerializer(
+        secret_key=settings.SECRET_KEY, salt="lichess_oauth"
+    )
+    try:
+        verifier_data = verifier_serializer.loads(verifier_cookie, max_age=600)
+    except Exception:
+        return RedirectResponse(
+            url=f"{frontend}/login?error=oauth_expired", status_code=302
+        )
+
+    if verifier_data.get("state") != state:
+        return RedirectResponse(
+            url=f"{frontend}/login?error=oauth_mismatch", status_code=302
+        )
+
+    try:
+        user = exchange_lichess_code(
+            session, code, verifier_data["code_verifier"]
+        )
+    except HTTPException:
+        return RedirectResponse(
+            url=f"{frontend}/login?error=oauth_failed", status_code=302
+        )
+
+    response = RedirectResponse(url=f"{frontend}/train", status_code=302)
+    create_session_cookie(response, user_id=str(user.id))
+    # Clear the verifier cookie.
+    response.delete_cookie(
+        key="chessania_lichess_oauth",
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/api/auth/lichess",
+    )
+    return response
+
+
+@app.post("/api/auth/logout")
+def logout(response: Response) -> dict:
+    """Clear the session cookie."""
+    from app.auth import clear_session_cookie
+
+    clear_session_cookie(response)
+    return {"ok": True}
+
+
+@app.get("/api/auth/me")
+def auth_me(request: Request, session: Session = Depends(get_session)) -> dict:
+    """Return the signed-in user (or guest=null)."""
+    from app.auth import read_session
+
+    user_id = read_session(request)
+    if user_id is None:
+        return {"user": None}
+
+    from app.models import User
+
+    user = session.get(User, user_id)
+    if user is None:
+        return {"user": None}
+
+    return {
+        "user": {
+            "id": str(user.id),
+            "display_name": user.display_name,
+            "email": user.email,
+            "lichess_id": user.lichess_id,
+        }
+    }
 
 
 @app.get("/api/reports/{platform}/{username}")

@@ -126,5 +126,32 @@ class Settings(BaseSettings):
     # more than a few reports per hour; dev can loosen via env.
     RATE_LIMIT_ANALYZE: str = "3/hour"
 
+    # ── V2-S2: Auth ──────────────────────────────────────────────────
+    # SECRET_KEY seeds the itsdangerous session-cookie serializer and the
+    # magic-link token signer. Insecure dev default so local dev works with
+    # zero env vars; production MUST set a strong unique key via env.
+    SECRET_KEY: str = "chessania-dev-secret-change-in-production"
+
+    # Magic-link email provider (Resend.com). When RESEND_API_KEY is unset,
+    # the magic-link URL is printed to the console instead of sending an
+    # email — local dev works with zero external accounts.
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = "noreply@chessania.com"
+    MAGIC_LINK_TTL_MINUTES: int = 15
+
+    # Session cookie lifetime.
+    SESSION_TTL_DAYS: int = 30
+
+    # Lichess OAuth (bonus auth path, M3).
+    LICHESS_OAUTH_CLIENT_ID: str = "chessania"
+    LICHESS_OAUTH_REDIRECT_URI: str = ""
+
+    # The frontend URL, used to redirect back after magic-link verify.
+    FRONTEND_BASE_URL: str = "http://localhost:3000"
+
+    # The backend's own public URL, used to construct magic-link verify URLs
+    # in production. Defaults to localhost:8000 for dev.
+    BACKEND_BASE_URL: str = "http://localhost:8000"
+
 
 settings = Settings()
