@@ -26,9 +26,11 @@ def _reset_limiter_and_rate():
     """Reset slowapi's in-memory storage and ensure any per-test rate-limit override
     is cleaned up, even if a test raises an exception."""
     original = settings.RATE_LIMIT_ANALYZE
+    original_magic = settings.RATE_LIMIT_MAGIC_LINK
     limiter.reset()
     yield
     settings.RATE_LIMIT_ANALYZE = original
+    settings.RATE_LIMIT_MAGIC_LINK = original_magic
     limiter.reset()
 
 
@@ -88,3 +90,19 @@ def test_analyze_429_detail_is_friendly():
     body = response.json()
     assert "detail" in body
     assert "reports keep" in body["detail"]
+
+
+def test_magic_link_over_limit_returns_429():
+    """The magic-link send endpoint is rate-limited (V2-S2 audit fix) so it
+    can't be used to email-bomb a third party or burn the email quota."""
+    settings.RATE_LIMIT_MAGIC_LINK = "1/minute"
+    limiter.reset()
+
+    payload = {"email": "someone@example.com"}
+    # Patch the send so the test exercises ONLY the limiter, touching no DB/email.
+    with patch("app.auth.send_magic_link", return_value=None):
+        r1 = client.post("/api/auth/magic-link", json=payload)
+        assert r1.status_code == 200
+        # Second within the window is blocked (limiter fires before the handler body).
+        r2 = client.post("/api/auth/magic-link", json=payload)
+        assert r2.status_code == 429

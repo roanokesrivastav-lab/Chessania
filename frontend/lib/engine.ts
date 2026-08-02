@@ -31,6 +31,11 @@ const BLUNDER_CP = 200;
 /** Mirrors v1's SF_DEPTH = 12. */
 const ENGINE_DEPTH = 12;
 
+/** Mate scores are mapped to this magnitude, mirroring the backend's
+ *  EVAL_CLAMP = 1000 so a forced mate reads as ±1000cp on the SAME scale as
+ *  the stored White-POV evals gradeMove() compares against. */
+const MATE_SCORE = 1000;
+
 // ── Types ────────────────────────────────────────────────────────────
 
 export interface EvalResult {
@@ -58,7 +63,6 @@ export class StockfishWasmEngine implements Engine {
   private worker: Worker | null = null;
   private ready = false;
   private initialized: Promise<void>;
-  private lastEvalCp = 0;
 
   constructor() {
     this.worker = new Worker("/stockfish/stockfish-18-lite-single.js");
@@ -85,11 +89,6 @@ export class StockfishWasmEngine implements Engine {
             resolve();
           }
         }
-        // Store the last "info score cp" value.
-        const scoreMatch = line.match(/score cp (-?\d+)/);
-        if (scoreMatch) {
-          this.lastEvalCp = parseInt(scoreMatch[1], 10);
-        }
       };
 
       this.worker.onerror = (err) => {
@@ -109,19 +108,35 @@ export class StockfishWasmEngine implements Engine {
 
     const useMovetime = opts?.movetimeMs != null;
 
+    // UCI reports `score` from the SIDE-TO-MOVE's point of view, not White's.
+    // Every stored eval in this system is White-POV (backend S8 law), and
+    // gradeMove() compares against those — so we convert here: if the searched
+    // position has Black to move, negate. `fen` field 2 is the side to move.
+    const blackToMove = fen.split(" ")[1] === "b";
+
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error("Engine timeout"));
       }, useMovetime ? opts!.movetimeMs! * 3 + 10000 : 30000);
 
+      // Latest score seen this search, in SIDE-TO-MOVE POV (converted at resolve).
+      let lastRawScore = 0;
+
       const handler = (e: MessageEvent) => {
         const line = (e.data ?? "") as string;
         if (!line) return;
 
-        // Keep tracking eval scores.
-        const scoreMatch = line.match(/score cp (-?\d+)/);
-        if (scoreMatch) {
-          this.lastEvalCp = parseInt(scoreMatch[1], 10);
+        // Track the latest eval. A line has EITHER `score cp` OR `score mate`;
+        // a forced mate emits only `score mate`, so both must be handled or a
+        // mating line would leave a stale/zero eval and mis-grade the move.
+        const cpMatch = line.match(/score cp (-?\d+)/);
+        if (cpMatch) {
+          lastRawScore = parseInt(cpMatch[1], 10);
+        } else {
+          const mateMatch = line.match(/score mate (-?\d+)/);
+          if (mateMatch) {
+            lastRawScore = parseInt(mateMatch[1], 10) >= 0 ? MATE_SCORE : -MATE_SCORE;
+          }
         }
 
         // Parse "bestmove" to get the result.
@@ -130,7 +145,7 @@ export class StockfishWasmEngine implements Engine {
           clearTimeout(timeout);
           this.worker!.removeEventListener("message", handler);
           resolve({
-            evalCp: this.lastEvalCp,
+            evalCp: blackToMove ? -lastRawScore : lastRawScore, // → White POV
             bestMoveUci: bestMoveMatch[1],
           });
         }

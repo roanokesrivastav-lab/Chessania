@@ -90,8 +90,15 @@ def mine_positions(session: Session, player: Player) -> dict[str, int]:
         rows = evals_by_game[str(game.id)]
         if not rows:
             continue
-        # Find the FIRST ply (by ply order) where player-POV eval >= threshold.
+        # Find the FIRST *player-to-move* ply where player-POV eval >= threshold.
+        # The is_player_ply guard is essential (blunder/danger have it too): the
+        # convert trainer hands this fen to the player to convert, so it MUST be
+        # the player's move. Without it, ~half of crossings land on an
+        # opponent-to-move ply and the trainer would seat the player on the
+        # losing side of their own winning position.
         for row in sorted(rows, key=lambda r: r.ply):
+            if not is_player_ply(row.ply, game.player_color):
+                continue
             pov = player_pov_eval(row.eval_cp_before, game.player_color)
             if pov >= settings.FEATURE_ADVANTAGE_CP:
                 uci = _san_to_uci(row.fen_before, row.best_move_san)

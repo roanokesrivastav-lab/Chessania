@@ -125,6 +125,10 @@ class Settings(BaseSettings):
     # Rate limiting (Session 23). "3/hour" keeps a single IP from queueing
     # more than a few reports per hour; dev can loosen via env.
     RATE_LIMIT_ANALYZE: str = "3/hour"
+    # Magic-link email send: caps how many sign-in emails one IP can trigger,
+    # so the endpoint can't be used to email-bomb a third party or burn the
+    # Resend quota (each POST sends a real email to whatever address is given).
+    RATE_LIMIT_MAGIC_LINK: str = "5/hour"
 
     # ── V2-S2: Auth ──────────────────────────────────────────────────
     # SECRET_KEY seeds the itsdangerous session-cookie serializer and the

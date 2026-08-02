@@ -159,6 +159,46 @@ def test_mines_unconverted_at_first_crossing_ply(db_session):
     assert rows[0].ply == 5  # First crossing, not the 400 one
 
 
+def test_mines_unconverted_skips_opponent_to_move_crossing(db_session):
+    """The crossing must be a PLAYER-to-move ply. If the eval first crosses on
+    an opponent ply, that position is skipped and the next player-ply crossing
+    is mined — so the convert trainer always seats the player on the winning
+    side (regression test for the opponent-to-move mining bug)."""
+    player = _make_player(db_session)
+    game = _make_game(db_session, player, "g2b", result="loss", player_color="white")
+
+    # Ply 4 (Black to move — opponent): White-POV eval 350 crosses first here,
+    # but it's NOT the player's move → must be skipped.
+    fen4 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
+    _make_move_eval(
+        db_session, game, 4,
+        classification="ok",
+        eval_cp_before=350,
+        best_move_san="Nc6",
+        fen_before=fen4,
+    )
+    # Ply 5 (White to move — player): still crossing at 340 → THIS is mined.
+    fen5 = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3"
+    _make_move_eval(
+        db_session, game, 5,
+        classification="ok",
+        eval_cp_before=340,
+        best_move_san="Bc4",
+        fen_before=fen5,
+    )
+
+    counts = mine_positions(db_session, player)
+    db_session.commit()
+
+    assert counts["unconverted"] == 1
+    rows = db_session.query(TrainingPosition).filter_by(
+        player_id=player.id, category="unconverted"
+    ).all()
+    assert len(rows) == 1
+    assert rows[0].ply == 5  # the player-to-move crossing, not the ply-4 one
+    assert rows[0].fen.split()[1] == "w"  # player (white) to move
+
+
 # ── Danger scenario ───────────────────────────────────────────────────
 
 

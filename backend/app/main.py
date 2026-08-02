@@ -79,6 +79,11 @@ def _analyze_rate_limit() -> str:
     return settings.RATE_LIMIT_ANALYZE
 
 
+def _magic_link_rate_limit() -> str:
+    """Callable limit (see _analyze_rate_limit) for the magic-link send endpoint."""
+    return settings.RATE_LIMIT_MAGIC_LINK
+
+
 @app.post("/api/analyze")
 @limiter.limit(_analyze_rate_limit)
 def analyze(request: Request, payload: AnalyzeRequest, background_tasks: BackgroundTasks) -> dict[str, str]:
@@ -151,14 +156,17 @@ class MagicLinkRequest(BaseModel):
 
 
 @app.post("/api/auth/magic-link")
+@limiter.limit(_magic_link_rate_limit)
 def request_magic_link(
+    request: Request,
     payload: MagicLinkRequest,
     session: Session = Depends(get_session),
 ) -> dict:
     """Send (or log) a magic link for the given email.
 
     Always returns 200 — the same shape whether or not the email has an
-    account, so an attacker can't enumerate users by probing this endpoint."""
+    account, so an attacker can't enumerate users by probing this endpoint.
+    Rate-limited (RATE_LIMIT_MAGIC_LINK) so it can't email-bomb a third party."""
     from app.auth import send_magic_link
 
     email = payload.email.strip().lower()
