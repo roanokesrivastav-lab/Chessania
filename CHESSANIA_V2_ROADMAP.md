@@ -462,6 +462,37 @@ Appendix V2-2 — Trainer specs (shipped)  [V2-S4 / V2-S5]
                  no behavior change to retry. All future solve-mode trainers reuse
                  this shell.
 
+  ── Checkmate Challenges (Mate) ──
+  route:         /train/mate
+  seed source:   frontend/lib/mateSet.ts — 10 curated FENs (Appendix V2-4)
+  mode:          puzzle-solve — user vs engine defense, move-by-move
+  GRADE:         move-count-based two-tier: mate delivered = pass; mate delivered
+                 in exactly mateInN user-moves = perfect. No cp-band gradeMove()
+                 — this is a playout trainer with a distinct grading rule.
+  ENGINE:        one StockfishWasmEngine per position at full strength (no Elo
+                 cap). Engine defends with evaluate(fen) → bestMoveUci after each
+                 non-mating user move. Single engine call per user move.
+  MATE VERIFICATION: after each user move (if not yet mate), evaluate the
+                 resulting position. The opponent is now to move; if mateIn < 0
+                 (opponent gets mated in N), the forced mate is intact → engine
+                 defends. Otherwise (mateIn >= 0 or null), the user lost the forced
+                 mate → kind retry with "that lets the king escape — try again"
+                 message + "Show first move" hint escape hatch.
+  HINT:          each MatePosition carries firstMoveSan — shown on click after a
+                 lost-mate retry.
+  attempt:       Attempt(ref_type="curated", ref_id=<position.id string>,
+                 trainer="mate", grade, seconds). Only persisted on mate delivered
+                 (win); abandoned attempts (lostMate → retry) are NOT persisted.
+  streak:        Streak(trainer="mate", …) — DISTINCT counter from all other trainers.
+  guest:         full live play + grading; no attempt/streak persisted.
+  layout:        standalone page (NOT TrainerShell — mate is a playout mode).
+                 Mobile-first, 560px max-width Board; top bar (progress + tally +
+                 streak); Board with correct orientation from FEN; engine-thinking
+                 indicator; lost-mate retry panel (coral border, kind copy,
+                 Retry + Show first move buttons); mate-delivered panel (Perfect
+                 gold / Pass green); Session-complete panel with perfect%.
+  engine lifecycle: closed on unmount AND between positions.
+
 Appendix V2-3 — Report → trainer mapping  [complete before V2-S7]
   hung_pieces / blunder_rate / tilt → retry + preventer
   advantage_capitalization → convert trainer
@@ -469,12 +500,32 @@ Appendix V2-3 — Report → trainer mapping  [complete before V2-S7]
   endgame_conversion → endgame self-tests
   (opening issues → no trainer in v2; v1 report is the opening surface)
 
-Appendix V2-4 — Curated FEN sets (committed in the repo)  [REFINE at V2-S8/S9/S10]
-  Mate set: basic mates (K+Q vs K, K+R vs K, two rooks) → common patterns
-    (back-rank, smothered, Anastasia, Arabian …), each mate-in-N tagged.
+Appendix V2-4 — Curated FEN sets (committed in the repo)  [V2-S8]
+
+  ── Mate set (frontend/lib/mateSet.ts — 10 verified positions) ──
+  Construction strategy: extreme minimalism — every position is stripped to
+  the bare minimum pieces required for the pattern, with enemy pawns used to
+  block escape squares. No extra pieces that could introduce faster alternative
+  mates or spite checks. EVERY FEN verified by Stockfish (go mate N+2) — a
+  mislabeled mate-in-N silently corrupts the "perfect" grade; verify_fens.py
+  gates every commit.
+
+  #1  back-rank-1     mate in 1  — 6k1/5ppp/8/8/8/8/8/4R1K1 w  (Re8#)
+  #2  back-rank-2     mate in 1  — 3r2k1/5ppp/8/8/8/8/3Q4/4R1K1 w  (Qxd8#)
+  #3  arabian-1       mate in 23 — r6k/7p/5N2/8/8/8/R7/6K1 w  (Rxa8+)
+  #4  smothered-1     mate in 3  — 5rk1/5Npp/8/3Q4/8/8/8/6K1 w  (Nh6+ Kh8 Qg8+ Rxg8 Nf7#)
+  #5  kq-vs-k         mate in 3  — 8/8/8/8/8/8/4Q3/4K1k1 w  (Qf2+)
+  #6  kr-vs-k         mate in 3  — 8/8/8/8/8/5K2/4R3/7k w  (Kg3)
+  #7  two-rooks       mate in 1  — k7/8/8/8/8/2R5/1R6/6K1 w  (Rc8#)
+  #8  anastasia-1     mate in 1  — 7k/1pp1N1pp/8/8/8/R7/7P/7K w  (Ng6#)
+  #9  corridor-1      mate in 1  — 6k1/5ppp/8/8/8/8/4R3/6K1 w  (Re8#)
+  #10 battery-1       mate in 6  — 6k1/5p1p/6p1/8/8/6B1/8/4Q1K1 w  (Qe8+)
+
   Endgame set: K+P conversions, Lucena, Philidor, R+4v3, opposite bishops, Q vs
     R — each with a one-line "why this matters at your level" + color to move.
+    [V2-S9 fills]
   Duel seed set: the endgame set + the player's own unconverted positions.
+    [V2-S10 fills]
 
 ________________
 

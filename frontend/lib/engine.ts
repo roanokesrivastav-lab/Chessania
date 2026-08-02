@@ -41,6 +41,10 @@ const MATE_SCORE = 1000;
 export interface EvalResult {
   evalCp: number; // White POV, clamped
   bestMoveUci: string;
+  /** Side-to-move POV mate distance: positive = side to move mates in N,
+   *  negative = side to move gets mated in N.  null when the latest score
+   *  was a centipawn eval (not a forced mate).  V2-S8. */
+  mateIn: number | null;
 }
 
 export interface EvaluateOptions {
@@ -121,6 +125,8 @@ export class StockfishWasmEngine implements Engine {
 
       // Latest score seen this search, in SIDE-TO-MOVE POV (converted at resolve).
       let lastRawScore = 0;
+      // Latest mate distance, side-to-move POV (null when the score is cp). V2-S8.
+      let lastMateIn: number | null = null;
 
       const handler = (e: MessageEvent) => {
         const line = (e.data ?? "") as string;
@@ -132,10 +138,13 @@ export class StockfishWasmEngine implements Engine {
         const cpMatch = line.match(/score cp (-?\d+)/);
         if (cpMatch) {
           lastRawScore = parseInt(cpMatch[1], 10);
+          lastMateIn = null;
         } else {
           const mateMatch = line.match(/score mate (-?\d+)/);
           if (mateMatch) {
-            lastRawScore = parseInt(mateMatch[1], 10) >= 0 ? MATE_SCORE : -MATE_SCORE;
+            const m = parseInt(mateMatch[1], 10);
+            lastMateIn = m;
+            lastRawScore = m >= 0 ? MATE_SCORE : -MATE_SCORE;
           }
         }
 
@@ -147,6 +156,7 @@ export class StockfishWasmEngine implements Engine {
           resolve({
             evalCp: blackToMove ? -lastRawScore : lastRawScore, // → White POV
             bestMoveUci: bestMoveMatch[1],
+            mateIn: lastMateIn,
           });
         }
       };
@@ -216,7 +226,8 @@ export class FixtureEngine implements Engine {
         `FixtureEngine: no canned answer for FEN: ${fen}`
       );
     }
-    return result;
+    // If the canned result doesn't include mateIn, default to null.
+    return { ...result, mateIn: result.mateIn ?? null };
   }
 
   async configureStrength(_elo: number): Promise<void> {

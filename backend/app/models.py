@@ -343,7 +343,7 @@ class Attempt(Base):
         GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     ref_type: Mapped[str] = mapped_column(Text, nullable=False)
-    ref_id: Mapped[uuid.UUID] = mapped_column(GUID, nullable=False)
+    ref_id: Mapped[str] = mapped_column(Text, nullable=False)  # polymorphic: position uuid / curated string / duel uuid
     trainer: Mapped[str] = mapped_column(Text, nullable=False)
     grade: Mapped[str] = mapped_column(Text, nullable=False)
     seconds: Mapped[int] = mapped_column(Integer, nullable=False)

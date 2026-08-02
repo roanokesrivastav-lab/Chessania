@@ -378,6 +378,52 @@ def test_positions_game_urls_filter_returns_only_matching_game(shared_session):
         app.dependency_overrides.pop(get_session, None)
 
 
+def test_curated_ref_attempt_inserts_with_string_ref_id(shared_session):
+    """V2-S8: curated-ref attempt (ref_type="curated", ref_id="back-rank-1",
+    trainer="mate") inserts and updates the mate streak — proving the Text
+    column accepts a non-uuid id."""
+    user = User(
+        id=uuid.uuid4(),
+        email="matecurated@example.com",
+        display_name="Mate Tester",
+    )
+    shared_session.add(user)
+    shared_session.commit()
+
+    token = _serializer().dumps({"user_id": str(user.id)})
+
+    def override():
+        yield shared_session
+
+    app.dependency_overrides[get_session] = override
+    client = TestClient(app)
+    try:
+        resp = client.post(
+            "/api/train/attempts",
+            json={
+                "ref_id": "back-rank-1",
+                "ref_type": "curated",
+                "trainer": "mate",
+                "grade": "perfect",
+                "seconds": 8,
+            },
+            headers={"Cookie": f"chessania_session={token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["current"] == 1
+        assert data["best"] == 1
+
+        # Verify the Attempt row was created with string ref_id.
+        attempts = shared_session.query(Attempt).filter_by(user_id=user.id).all()
+        assert len(attempts) == 1
+        assert attempts[0].ref_type == "curated"
+        assert attempts[0].ref_id == "back-rank-1"
+        assert attempts[0].trainer == "mate"
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+
 def test_positions_game_urls_no_match_returns_empty(shared_session):
     """game_urls matching neither seeded game → empty list, not error."""
     player = Player(platform="chesscom", username="nomatchplayer", rating_snapshot=1200)
