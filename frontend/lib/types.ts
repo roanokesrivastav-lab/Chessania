@@ -147,7 +147,7 @@ export interface Report {
   strengths: Strength[];
   issues: Issue[];
   opening_recs: OpeningRec[];
-  opening_performance: OpeningLineStat[];
+  opening_performance?: OpeningLineStat[]; // absent on pre-S31 stored reports
   stats_block: StatsBlock;
   progress: Progress | null;
   generated_at: string;

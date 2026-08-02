@@ -86,7 +86,8 @@ function CategoryCard({ report, def }: { report: Report; def: CategoryDef }) {
   const hasDetail =
     issues.length > 0 ||
     tiles.length > 0 ||
-    (def.id === "opening" && report.opening_performance.length > 0);
+    // opening_performance is absent on pre-S31 stored reports — guard it.
+    (def.id === "opening" && (report.opening_performance?.length ?? 0) > 0);
 
   return (
     <section className="rounded-lg border border-foreground/10 bg-background shadow-sm">
@@ -132,8 +133,8 @@ function CategoryCard({ report, def }: { report: Report; def: CategoryDef }) {
             headline ? "" : "border-t border-foreground/10"
           }`}
         >
-          {def.id === "opening" && (
-            <OpeningPerformance lines={report.opening_performance} />
+          {def.id === "opening" && (report.opening_performance?.length ?? 0) > 0 && (
+            <OpeningPerformance lines={report.opening_performance ?? []} />
           )}
 
           {issues.map((issue) => (

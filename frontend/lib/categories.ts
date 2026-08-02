@@ -219,12 +219,18 @@ export function headlineForCategory(
         value: formatConversion(stats.endgame_conversion),
         explainerId: "endgame_conversion",
       };
-    case "opening":
-      if (report.opening_performance.length === 0) return null;
+    case "opening": {
+      // opening_performance was added in S31 — a report generated before then
+      // (an older stored JSON) won't carry it, so guard against undefined
+      // rather than crash on `.length` (this runs for the report page AND the
+      // V2-S12 dashboard, both of which may read an old stored report).
+      const lines = report.opening_performance ?? [];
+      if (lines.length === 0) return null;
       return {
         label: "Variations tracked",
-        value: String(report.opening_performance.length),
+        value: String(lines.length),
       };
+    }
     default:
       return null; // time: verdict only
   }
