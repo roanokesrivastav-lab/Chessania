@@ -237,6 +237,50 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-02 · **V2-S5** · Blunder Preventer — shared trainer shell
+- The roadmap's own instruction was "same shell, same two-tier grading" — so the real job this
+  session was extracting V2-S4's 373-line inline retry trainer into a reusable
+  `frontend/components/train/TrainerShell.tsx` BEFORE building the second trainer on it, then
+  building `/train/preventer` as a thin config wrapper. DeepSeek coded + committed (`95f9a2a`, no
+  push); Opus reviewed clean, no bugs, and pushed. `TrainerShell` is parameterized by `trainer`,
+  `category`, `title`/`description`, `emptyStateText?`, `failCopy?` (kind wrong-answer UX — a
+  softer label/hint, NOT a new grade tier; M1's perfect/pass/fail is unchanged), and
+  `renderPrompt?` (a slot above the board). `/train/retry/page.tsx` shrank to a ~25-line wrapper
+  with zero behavior change (verified by reading the extraction line-by-line — same grading
+  algorithm, same feedback panel, same tally/streak calls). `/train/preventer/page.tsx` configures
+  `category="danger"`, `trainer="preventer"` (a DISTINCT streak counter from retry), softer fail
+  copy ("Missed it" + a hint), and a prompt rendering "Opponent just played **{move}** — what's
+  the threat, and how do you meet it?" Backend: `GET /api/train/positions` now derives
+  `opponent_move_san`/`opponent_move_uci` server-side at READ time by replaying the source game's
+  PGN up to `ply-1` (the exact `chess.pgn.read_game` + mainline-replay pattern `analysis.py` and
+  `detectors.py` already use) — null when `ply == 1`, no migration, no change to V2-S3's mining.
+  Threaded through to `<Board lastMove=...>` for a real highlight, not just text. Appendix V2-2
+  (a stub since it was written) is now filled in honestly for both shipped trainers.
+- **Opus review — clean, no functional bugs, verified live end-to-end.** Read `TrainerShell.tsx`
+  in full and confirmed the retry extraction is behavior-identical to what shipped in V2-S4. Ran
+  the full offline suite (250 passed, no Stockfish spawned) including the new PGN-derivation test
+  (a real 4-ply PGN fixture, asserting `ply=1→null` and `ply=3→"e5"`/`"e7e5"` exactly).
+  `npm run build` clean, both routes present. Given V2-S4's engine bugs last session, didn't stop
+  at a clean build this time: seeded one synthetic `danger` position in the dev DB against a real
+  analyzed game (both real accounts currently have 0 mined `danger` positions — an honest gap, not
+  a bug — `danger` requires a LOST trouble-band game, which neither seeded account happens to
+  have), loaded the real `/train/preventer` page in a real browser, and confirmed the derived
+  prompt ("Opponent just played e3 — what's the threat...") rendered correctly with zero console
+  errors and a real 10-position batch size — then cleaned up the synthetic row. Didn't re-prove
+  the engine/grading call itself live since that logic is untouched from V2-S4, where it was
+  already proven end-to-end (UCI handshake, depth-12 search, correct bestmove). One minor,
+  non-blocking observation: `_prior_move()` is called twice per row (once each for san/uci),
+  redoing the same short PGN replay — negligible at a 10-position batch size, not worth a
+  follow-up commit.
+- **[founder-to-verify] DoD:** complete a 10-position defensive set from your own games at
+  `/train/preventer` on your phone (needs at least one lost, come-from-behind-attempted game in
+  your analyzed history for `danger` positions to exist — if the bank reads empty, that's the
+  honest empty-state, not a bug); confirm the wrong-answer feedback reads kind, not harsh; confirm
+  `/train/retry` still works exactly as before — this also finally covers V2-S4's own still-open
+  DoD if you do both in one sitting.
+- Next: **V2-S6** — Advantage Capitalization Trainer (`/train/convert`, playing out unconverted
+  winning positions against stockfish.wasm to mate/draw/resign).
+
 ### 2026-08-02 · **V2-S4** · Retry Your Mistakes — the first trainer  🎯 T1 begins
 - The first real trainer, and the first thing a friend actually DOES: `/train/retry` pulls a
   batch of the player's own mined `blunder` positions (V2-S3), shows them on the V2-S1 board,
