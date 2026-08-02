@@ -241,22 +241,42 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 - The first structurally different trainer: `/train/convert` does NOT use `TrainerShell` (it's not a
   solve-mode trainer — it's a full playout game against the engine). Frontend-only — zero backend
   changes (every API needed already exists: positions from V2-S3, attempts/streaks from V2-S4, the
-  report from v1). New `StockfishWasmEngine.configureStrength(elo)` sets UCI_LimitStrength + UCI_Elo
-  (clamped to the engine's own [1320, 3190] range, confirmed via isready/readyok). `evaluate()`
-  extended with optional `movetimeMs` — opponent moves use `go movetime 500ms` (snappy real-time),
-  existing no-opts call sites in `TrainerShell` are byte-identical and compile clean. Terminal
-  detection per half-move: `pos.isCheckmate()` (winner determined by side to move), stalemate (no
-  legals + not in check), insufficient material (KvK, KvK+minor), 50-move rule (halfmove clock ≥100).
-  Threefold repetition is explicitly OUT of scope (the Resign button is the escape hatch).
-  Engine lifecycle: created fresh per position, `configureStrength()` called once before the first
-  opponent move, `close()` on unmount and between positions. Attempt grading: win→pass,
-  draw/loss/resign→fail (never perfect). Guest = full playout, no persist. Intro copy ties to the
-  v1 report's `advantage_capitalization` metric (A7: own numbers). Buffy coded; Kimi absent.
-- **[founder-to-verify] DoD:** actually play at least one full game from an `unconverted` position on
-  `/train/convert` in a real browser — reach a real terminal state (checkmate, stalemate, or resign)
-  and confirm the result panel looks right; confirm the Resign button works separately; confirm
-  `/train/retry` (TrainerShell) still works and calls `evaluate(fen)` with zero arguments with no
-  errors (backward compatible).
+  report from v1). DeepSeek coded + committed (`a3d7fa2`, no push); Opus reviewed, made one small
+  cleanup + pushed. New `StockfishWasmEngine.configureStrength(elo)` sets UCI_LimitStrength +
+  UCI_Elo (clamped to the engine's own [1320, 3190] range, confirmed via isready/readyok).
+  `evaluate()` extended with optional `movetimeMs` — opponent moves use `go movetime 500ms` (snappy
+  real-time), existing no-opts call sites in `TrainerShell` are byte-identical and compile clean.
+  Terminal detection per half-move: `pos.isCheckmate()` (winner determined by side to move),
+  stalemate (no legals + not in check), insufficient material (KvK, KvK+minor), 50-move rule
+  (halfmove clock ≥100). Threefold repetition is explicitly OUT of scope (the Resign button is the
+  escape hatch). Engine lifecycle: created fresh per position, `configureStrength()` called once
+  before the first opponent move, `close()` on unmount and between positions. Attempt grading:
+  win→pass, draw/loss/resign→fail (never perfect). Guest = full playout, no persist. Intro copy
+  ties to the v1 report's `advantage_capitalization` metric (A7: own numbers).
+- **Opus review — clean, live-verified end-to-end, pushed as a small follow-up commit
+  (`5782cf3`).** DeepSeek's own DoD write-up left the actual playout entirely as
+  `[founder-to-verify]` rather than running it themselves — a repeat of the same gap flagged in
+  V2-S4's review (a clean build isn't proof a feature depending on the client engine works). Since
+  the whole point of this trainer IS the engine, did the live verification myself: loaded
+  `/train/convert` in a real headless browser against a real account — intro panel rendered
+  correctly, Start transitioned into the playing phase with a genuine position from the bank
+  ("Your turn," a real 1/5 counter), zero console errors; clicked Resign and confirmed the
+  "Resigned" terminal panel rendered correctly. Separately drove the exact new mechanism (not
+  covered by V2-S4's earlier engine proof) directly against the real vendor build: sent
+  `UCI_LimitStrength`+`UCI_Elo 1320`, confirmed via isready/readyok, then `go movetime 500` — the
+  search correctly stopped at ~500ms and returned a valid `bestmove`, proving the capped-strength
+  opponent mechanism genuinely works, not just compiles. Read the full game-loop/terminal-detection
+  logic and confirmed it's correct (checkmate winner-by-side-to-move logic checks out for either
+  color as player; termination checked after every half-move, not just the user's). Found and
+  removed one piece of harmless dead code (`isInsufficientMaterial` had an unused variable and a
+  "let's be more careful" thinking-out-loud comment trail left over from generation — no behavior
+  change). `npm run build` clean, 250 backend tests still pass (untouched, as scoped), `git diff
+  --stat` confirms frontend + the roadmap doc only.
+- **[founder-to-verify] DoD:** actually play at least one full game from an `unconverted` position
+  on `/train/convert` on your phone through to a genuine chess conclusion (not just Resign) —
+  confirm the opponent feels beatable but not trivial at your own rating, confirm the intro copy
+  cites your real conversion rate.
+- Next: **V2-S7** — Report ↔ trainer deep links (issue cards gain "Train this" → the right trainer).
 - Next: **V2-S7** — Report ↔ trainer deep links (issue cards gain "Train this" → the right trainer).
 
 ### 2026-08-02 · **V2-S5** · Blunder Preventer — shared trainer shell
