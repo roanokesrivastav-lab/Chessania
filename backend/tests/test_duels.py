@@ -208,3 +208,87 @@ def test_create_duel_lichess_failure_returns_502(client, shared_session):
     # Confirm no Duel row was persisted (the error prevented store_duel).
     duels = shared_session.query(Duel).all()
     assert len(duels) == 0
+
+
+# ── V2-S11: Duel history ─────────────────────────────────────────────
+
+
+def test_list_duels_guest_returns_401(client):
+    """Without a session cookie, GET /api/duels returns 401."""
+    resp = client.get("/api/duels")
+    assert resp.status_code == 401
+
+
+def test_list_duels_returns_only_own_duels_newest_first(client, shared_session):
+    """A signed-in user sees only their own duels, newest first."""
+    # Two users.
+    user_a = User(
+        id=uuid.uuid4(), email="a@example.com", display_name="A"
+    )
+    user_b = User(
+        id=uuid.uuid4(), email="b@example.com", display_name="B"
+    )
+    shared_session.add_all([user_a, user_b])
+    shared_session.commit()
+
+    # User A creates two duels (older + newer).
+    from datetime import datetime, timedelta, timezone
+
+    older = Duel(
+        fen=VALID_FEN,
+        source="paste",
+        lichess_urls_json=LICHESS_MOCK_RESPONSE,
+        creator_user_id=user_a.id,
+        created_at=datetime.now(timezone.utc) - timedelta(hours=2),
+    )
+    newer = Duel(
+        fen=VALID_FEN,
+        source="curated-endgame",
+        lichess_urls_json=LICHESS_MOCK_RESPONSE,
+        creator_user_id=user_a.id,
+        created_at=datetime.now(timezone.utc),
+    )
+    # User B's duel — should NOT appear for A.
+    other = Duel(
+        fen=VALID_FEN,
+        source="paste",
+        lichess_urls_json=LICHESS_MOCK_RESPONSE,
+        creator_user_id=user_b.id,
+        created_at=datetime.now(timezone.utc),
+    )
+    shared_session.add_all([older, newer, other])
+    shared_session.commit()
+
+    # Sign in as user A.
+    from app.auth import _serializer
+
+    token = _serializer().dumps({"user_id": str(user_a.id)})
+    cookie = f"chessania_session={token}"
+
+    resp = client.get("/api/duels", headers={"Cookie": cookie})
+    assert resp.status_code == 200
+    data = resp.json()
+
+    assert len(data) == 2  # only A's duels, not B's
+    assert data[0]["source"] == "curated-endgame"  # newest first
+    assert data[1]["source"] == "paste"
+    assert data[0]["urlWhite"] == LICHESS_MOCK_RESPONSE["urlWhite"]
+    assert data[0]["urlBlack"] == LICHESS_MOCK_RESPONSE["urlBlack"]
+
+
+def test_list_duels_empty_for_user_with_no_duels(client, shared_session):
+    """A signed-in user with no duels gets an empty list, not an error."""
+    user = User(
+        id=uuid.uuid4(), email="no-duels@example.com", display_name="NoDuels"
+    )
+    shared_session.add(user)
+    shared_session.commit()
+
+    from app.auth import _serializer
+
+    token = _serializer().dumps({"user_id": str(user.id)})
+    cookie = f"chessania_session={token}"
+
+    resp = client.get("/api/duels", headers={"Cookie": cookie})
+    assert resp.status_code == 200
+    assert resp.json() == []

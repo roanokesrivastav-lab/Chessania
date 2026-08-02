@@ -51,3 +51,27 @@ export async function createDuel(
 
   return resp.json();
 }
+
+// ── V2-S11: Duel history ─────────────────────────────────────────────
+
+export interface DuelHistoryItem {
+  id: string;
+  fen: string;
+  source: string;
+  url: string;
+  urlWhite: string;
+  urlBlack: string;
+  created_at: string | null;
+}
+
+export async function listMyDuels(): Promise<DuelHistoryItem[]> {
+  try {
+    const resp = await fetch(`${BACKEND}/api/duels`, {
+      credentials: "include",
+    });
+    if (!resp.ok) return [];
+    return resp.json();
+  } catch {
+    return [];
+  }
+}

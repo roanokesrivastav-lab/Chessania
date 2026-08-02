@@ -666,3 +666,43 @@ def create_duel(
         "urlWhite": lichess_response.get("urlWhite", ""),
         "urlBlack": lichess_response.get("urlBlack", ""),
     }
+
+
+# ── V2-S11: Duel history ─────────────────────────────────────────────
+
+
+@app.get("/api/duels")
+def list_my_duels(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    """Return the signed-in user's own duels, newest first.
+    Guest → 401 (no session → no history to retrieve).
+
+    Each row: {id, fen, source, url, urlWhite, urlBlack, created_at}.
+    URLs pulled from the stored lichess_urls_json."""
+    from app.auth import read_session
+    from app.models import Duel
+
+    user_id = read_session(request)
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Sign in to see your duel history.")
+
+    duels = session.scalars(
+        select(Duel)
+        .where(Duel.creator_user_id == user_id)
+        .order_by(desc(Duel.created_at))
+    ).all()
+
+    return [
+        {
+            "id": str(d.id),
+            "fen": d.fen,
+            "source": d.source,
+            "url": d.lichess_urls_json.get("url") or d.lichess_urls_json.get("challenge", {}).get("url", ""),
+            "urlWhite": d.lichess_urls_json.get("urlWhite", ""),
+            "urlBlack": d.lichess_urls_json.get("urlBlack", ""),
+            "created_at": d.created_at.isoformat() if d.created_at else None,
+        }
+        for d in duels
+    ]
