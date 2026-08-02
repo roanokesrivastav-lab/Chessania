@@ -50,14 +50,14 @@ export const MATE_SET: MatePosition[] = [
     playerColor: "white",
     firstMoveSan: "Qxd8#",
   },
-  // 3. Arabian mate — knight protects rook delivering mate.
+  // 3. Arabian mate — rook mates on h7, knight (f6) guards g8 + h7.
   {
     id: "arabian-1",
-    fen: "r6k/7p/5N2/8/8/8/R7/6K1 w - - 0 1",
-    mateInN: 23,
+    fen: "7k/R7/5N2/8/8/8/8/6K1 w - - 0 1",
+    mateInN: 1,
     pattern: "Arabian mate",
     playerColor: "white",
-    firstMoveSan: "Rxa8+",
+    firstMoveSan: "Rh7#",
   },
   // 4. Smothered mate — knight fork + queen sac.
   {
@@ -81,7 +81,7 @@ export const MATE_SET: MatePosition[] = [
   {
     id: "kr-vs-k",
     fen: "8/8/8/8/8/5K2/4R3/7k w - - 0 1",
-    mateInN: 3,
+    mateInN: 2,
     pattern: "K+R vs K",
     playerColor: "white",
     firstMoveSan: "Kg3",
@@ -117,9 +117,9 @@ export const MATE_SET: MatePosition[] = [
   {
     id: "battery-1",
     fen: "6k1/5p1p/6p1/8/8/6B1/8/4Q1K1 w - - 0 1",
-    mateInN: 6,
+    mateInN: 5,
     pattern: "Queen + bishop battery",
     playerColor: "white",
-    firstMoveSan: "Qe8+",
+    firstMoveSan: "Qe7",
   },
 ];

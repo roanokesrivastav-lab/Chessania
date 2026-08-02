@@ -11,15 +11,23 @@ mateSet.ts — never ship a mislabeled mate-in-N (it silently corrupts the
 Run: cd backend && source venv/bin/activate && python verify_fens.py
 """
 
+import os
 import re
 import sys
+
+# Make app/ importable regardless of cwd (mirrors scripts/backfill_*.py).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import chess
 import chess.engine
 
 from app.config import settings
 
-MATE_SET_TS = "../frontend/lib/mateSet.ts"
+# Resolve mateSet.ts relative to THIS file, not the caller's cwd.
+MATE_SET_TS = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "frontend", "lib", "mateSet.ts",
+)
 
 with open(MATE_SET_TS) as f:
     source = f.read()

@@ -100,7 +100,11 @@ export class StockfishWasmEngine implements Engine {
         reject(err);
       };
 
+      // `uci` triggers the options list + `uciok`; `isready` triggers `readyok`.
+      // BOTH are required — waiting on readyok without ever sending isready
+      // leaves `initialized` unresolved forever, hanging every evaluate().
       this.worker.postMessage("uci");
+      this.worker.postMessage("isready");
     });
   }
 

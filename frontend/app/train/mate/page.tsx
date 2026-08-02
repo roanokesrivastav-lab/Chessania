@@ -289,6 +289,7 @@ function MatePageInner() {
     posRef.current = pos.unwrap();
     setCurrentFen(position.fen);
     setGameResult(null);
+    setEngineThinking(false); // unlock the board for the new/retried position
     startTimeRef.current = Date.now();
 
     const engine = new StockfishWasmEngine();
@@ -354,6 +355,7 @@ function MatePageInner() {
 
       // Check if user delivered checkmate.
       if (pos.isCheckmate()) {
+        setEngineThinking(false);
         setGameResult("win");
         return;
       }
@@ -367,13 +369,15 @@ function MatePageInner() {
           // mateIn is side-to-move POV. After user's move, opponent is to move.
           // mateIn < 0 means opponent (side-to-move) gets mated → still on.
           if (result.mateIn != null && result.mateIn < 0) {
-            // Mate intact — let the engine defend.
+            // Mate intact — let the engine defend (doEngineMove owns the lock).
             setTimeout(() => doEngineMove(), 300);
           } else {
             // Mate lost — user didn't maintain the forced mate.
+            setEngineThinking(false);
             setGameResult("lostMate");
           }
         }).catch(() => {
+          setEngineThinking(false);
           setGameResult("lostMate");
         });
       }
