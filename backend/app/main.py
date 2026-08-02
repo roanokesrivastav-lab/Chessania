@@ -644,7 +644,9 @@ def create_duel(
         fen=payload.fen,
         clock_limit_s=payload.clock_limit_s,
         clock_increment_s=payload.clock_increment_s,
-        days=payload.days if payload.mode == "correspondence" else None,
+        days=(payload.days or settings.DUEL_CORRESPONDENCE_DAYS)
+        if payload.mode == "correspondence"
+        else None,
         name=payload.name,
     )
 

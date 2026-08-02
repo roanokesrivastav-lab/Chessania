@@ -118,6 +118,20 @@ def test_create_duel_invalid_fen_returns_400_no_lichess_call(client):
     assert not route.called
 
 
+@respx.mock
+def test_create_duel_illegal_but_parseable_fen_returns_400(client):
+    """A FEN that parses but is an ILLEGAL position (no kings) is rejected with
+    a clean 400 before Lichess is called — not passed through to a 502."""
+    route = respx.post("https://lichess.org/api/challenge/open")
+
+    resp = client.post(
+        "/api/duels",
+        json={"fen": "8/8/8/8/8/8/8/8 w - - 0 1", "source": "paste", "mode": "realtime"},
+    )
+    assert resp.status_code == 400
+    assert not route.called
+
+
 # ── Guest → creator_user_id null ────────────────────────────────────
 
 

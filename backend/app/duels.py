@@ -45,10 +45,16 @@ def create_lichess_open_challenge(
     """
     import chess
 
-    # Validate the FEN BEFORE calling Lichess (Hard Rule).
+    # Validate the FEN BEFORE calling Lichess (Hard Rule). chess.Board() only
+    # raises on a MALFORMED FEN; a parseable-but-illegal one (no kings, a pawn
+    # on the back rank, …) parses fine but is_valid() is False — catch both here
+    # so an illegal position returns a clean 400 instead of a Lichess 502.
     try:
-        chess.Board(fen)
-    except (ValueError, Exception):
+        board = chess.Board(fen)
+        legal = board.is_valid()
+    except Exception:
+        legal = False
+    if not legal:
         raise HTTPException(
             status_code=400,
             detail="That position doesn't look valid — check the FEN and try again.",

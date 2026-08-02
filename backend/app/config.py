@@ -163,6 +163,7 @@ class Settings(BaseSettings):
     # correspondence mode, but the default values here are for the common case.
     DUEL_CLOCK_LIMIT_S: int = 600   # 10 min per side (real-time default)
     DUEL_CLOCK_INCREMENT_S: int = 5
+    DUEL_CORRESPONDENCE_DAYS: int = 2  # default days/move when correspondence mode is chosen
     # Rate-limit on duel creation — caps how many Lichess open challenges one IP
     # can create per hour so the endpoint can't be used to spam Lichess.
     RATE_LIMIT_DUELS: str = "10/hour"
