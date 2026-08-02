@@ -237,6 +237,40 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-02 · **Opus audit fixes** · three pre-existing v2 bugs (`43137f0`)
+- Founder asked Opus to re-audit the v2 code Sonnet had been per-session-reviewing. Three real
+  bugs surfaced — all cross-session (introduced in one session, consumed/exposed in a later one),
+  which is exactly the blind spot of isolated per-session review. Fixed + live-verified + pushed.
+  1. **[critical] grading POV (retry + preventer).** The wasm engine reports `score cp` from the
+     SIDE-TO-MOVE's POV (standard UCI), but `gradeMove` treated `evalAfterCp` as White-POV to match
+     the DB's White-POV `evalBeforeCp`. The after-move position is always the opponent's turn, so
+     the convention flipped for WHITE players — a real blunder could grade "pass." The "perfect"
+     (exact-match) path always worked, which is why it wasn't visibly dead. Sonnet had checked the
+     formula against `analysis.py`'s `cp_loss()` and it matched — but the two inputs were in
+     different POV conventions, which a formula-only check doesn't catch. Fixed in `engine.ts`
+     `evaluate()`: normalize to White-POV (negate when the searched FEN is black-to-move) + map
+     `score mate ±N` to ±1000 (previously a mating line left a stale eval → also mis-graded).
+     **Verified live**: raw engine on a black-to-move losing position → `-787` (proving
+     side-to-move POV); post-fix a black-winning/black-to-move position → White-POV `-975`,
+     white-winning/white-to-move → `+1031` (correct signs).
+  2. **[high] unconverted mining seated the player on the wrong side.** `blunder` and `danger` both
+     filter `is_player_ply`; `unconverted` didn't — so ~half its positions were opponent-to-move,
+     and the convert trainer (built two sessions later, V2-S6) assigns the player whatever color is
+     to-move, handing them the LOSING side of their own winning position. Confirmed with real data:
+     1/5 of eleven_14's unconverted rows. Fixed in `positions.py`: constrain to the first
+     PLAYER-to-move crossing. Purged the existing opponent-to-move rows in dev + re-mined (0
+     remaining). **⚠️ prod DB needs the same one-time cleanup** (purge opponent-to-move
+     `unconverted` rows, then re-mine — mining only adds, it won't delete the bad rows).
+  3. **[medium] no rate limit on `POST /api/auth/magic-link`** — an unbounded email-to-any-address
+     endpoint (email-bomb a third party / burn the Resend quota). Added
+     `@limiter.limit(RATE_LIMIT_MAGIC_LINK)`, default 5/hour, mirroring `/api/analyze`.
+  - New regression tests: unconverted-skips-opponent-ply, magic-link-429. 254 pass offline;
+    `npm run build` clean. (Also noted but not fixed — low priority: `_prior_move` double-call,
+    streak's local `date.today()`, no `EmailStr` validation, a dead branch in the convert page.)
+- **[founder-to-verify]:** run the prod `unconverted` cleanup (or just let the next analysis
+  re-mine after a manual purge); optionally re-play a White blunder in `/train/retry` and confirm
+  it now grades "fail," not "pass."
+
 ### 2026-08-02 · **V2-S7** · Report ↔ trainer deep links  🏁 Phase T1 complete
 - The loop-closer: every v1 issue-card gets a "Train this" button routing into the right T1 trainer,
   pre-filtered to the exact games that issue cited. DeepSeek coded + committed (`b52dfaa`, no push);
