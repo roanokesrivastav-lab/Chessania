@@ -156,7 +156,14 @@ def mine_positions(session: Session, player: Player) -> dict[str, int]:
                     )
 
     # ── Upsert into training_positions ────────────────────────────────
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    # Timezone-AWARE UTC, matching the rest of the codebase (analysis.py's
+    # analyzed_at, coach.py's generated_at) — see the V2-S2 fix in auth.py:
+    # Postgres's TIMESTAMPTZ always hands back a tz-aware datetime on read
+    # regardless of what's written, so a naive value here would raise
+    # "can't compare offset-naive and offset-aware datetimes" the first time
+    # a future session (e.g. a "mined in the last N days" query) compares
+    # last_seen/mined_at against a fresh datetime.now(timezone.utc) in prod.
+    now = datetime.now(timezone.utc)
     new_counts: dict[str, int] = {"blunder": 0, "unconverted": 0, "danger": 0}
 
     for gid_str, ply, category, fen, uci, eval_before_cp in candidates:
