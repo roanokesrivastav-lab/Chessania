@@ -11,9 +11,12 @@ becomes a real problem; until then this is simpler and it's enough.
 
 from __future__ import annotations
 
+import logging
 import threading
 import uuid
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import select
 
@@ -187,6 +190,30 @@ def run_job(job_id: str) -> None:
             )
             session.commit()
             job.report_ready = True
+
+            # ── V2-S3: Mine training positions from the just-analyzed games.
+            # Wrapped in try/except so a mining bug never fails the analysis
+            # job (the report is already safely persisted by this point).
+            try:
+                from app.positions import mine_positions
+
+                new_counts = mine_positions(session, player)
+                session.commit()
+                total = sum(new_counts.values())
+                if total > 0:
+                    logger.info(
+                        "Mined %d new training positions for %s/%s: %s",
+                        total,
+                        job.platform,
+                        job.username,
+                        new_counts,
+                    )
+            except Exception:
+                logger.exception(
+                    "Position mining failed for %s/%s (report saved)",
+                    job.platform,
+                    job.username,
+                )
 
         job.state = "done"
     except PlayerNotFound:

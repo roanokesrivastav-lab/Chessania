@@ -271,3 +271,56 @@ class MagicLinkToken(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+# ── V2-S3: Position mining ────────────────────────────────────────────
+
+
+class TrainingPosition(Base):
+    """A position mined from the player's own analyzed games, accumulating
+    across every analysis. The bank belongs to the analyzed PLAYER identity
+    (not a v2 User) — it exists independent of accounts/sign-in.
+
+    Dedupe key: (player_id, source_game_id, ply, category). Running mining
+    twice adds zero duplicates — idempotent by design (M2).
+
+    eval_before_cp is stored WHITE-POV, exactly copied from MoveEval —
+    never store a player-POV-converted number (CLAUDE.md rule 7).
+    best_line_uci is the engine's best move in UCI notation, converted from
+    MoveEval.best_move_san at mine time."""
+
+    __tablename__ = "training_positions"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    player_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("players.id", ondelete="CASCADE"), nullable=False
+    )
+    source_game_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("games.id", ondelete="CASCADE"), nullable=False
+    )
+    ply: Mapped[int] = mapped_column(Integer, nullable=False)
+    fen: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str] = mapped_column(Text, nullable=False)
+    best_line_uci: Mapped[str] = mapped_column(Text, nullable=False)
+    eval_before_cp: Mapped[int] = mapped_column(Integer, nullable=False)  # White POV
+    mined_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    last_seen: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "category in ('blunder','unconverted','danger')",
+            name="training_positions_category_check",
+        ),
+        UniqueConstraint(
+            "player_id",
+            "source_game_id",
+            "ply",
+            "category",
+            name="training_positions_dedupe_key",
+        ),
+        Index("training_positions_player_idx", "player_id"),
+    )
