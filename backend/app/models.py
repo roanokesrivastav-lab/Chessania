@@ -324,3 +324,63 @@ class TrainingPosition(Base):
         ),
         Index("training_positions_player_idx", "player_id"),
     )
+
+
+# ── V2-S4: Training attempts & streaks ────────────────────────────────
+
+
+class Attempt(Base):
+    """One graded training attempt by a signed-in user. Guest attempts are
+    graded live in the browser and never persisted (no user_id → no row).
+
+    ref_id has no FK — ref_type says which table it belongs to
+    (position=training_positions, curated/duel=TBD)."""
+
+    __tablename__ = "attempts"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    ref_type: Mapped[str] = mapped_column(Text, nullable=False)
+    ref_id: Mapped[uuid.UUID] = mapped_column(GUID, nullable=False)
+    trainer: Mapped[str] = mapped_column(Text, nullable=False)
+    grade: Mapped[str] = mapped_column(Text, nullable=False)
+    seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "ref_type in ('position','curated','duel')",
+            name="attempts_ref_type_check",
+        ),
+        CheckConstraint(
+            "grade in ('perfect','pass','fail')",
+            name="attempts_grade_check",
+        ),
+    )
+
+
+class Streak(Base):
+    """A DAILY practice streak for one user+trainer pair. Only current and
+    best are stored; the frontend derives the display number from these.
+    One row per (user_id, trainer) — updated in place, never duplicated."""
+
+    __tablename__ = "streaks"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    trainer: Mapped[str] = mapped_column(Text, nullable=False)
+    current: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    best: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    last_active_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "trainer", name="streaks_user_trainer_key"),
+    )

@@ -1,0 +1,238 @@
+"use client";
+// V2-S4: Client-side engine seam — mirrors backend/app/engine_eval.py.
+//
+// Engine interface: evaluate(fen) → {evalCp, bestMoveUci}
+//
+// StockfishWasmEngine: real stockfish-18-lite-single in a Web Worker.
+//   Single-threaded, ~7MB (the "lite" NNUE net) — no SharedArrayBuffer, no
+//   COOP/COEP headers needed. Depth 12 (matching v1's SF_DEPTH).
+//
+//   The vendor file (public/stockfish/stockfish-18-lite-single.js) is
+//   instantiated AS the Worker directly — `new Worker(thatFile)` — never
+//   importScripts()'d from a relay script. The build resolves its .wasm by
+//   replacing the loading script's own URL .js->.wasm, so it MUST be the
+//   worker's own entry point; a relay's importScripts() call leaves
+//   self.location pointed at the RELAY's URL, so the engine looks for a
+//   same-named .wasm next to the relay instead and 404s. Keep the .js/.wasm
+//   pair's basenames identical and in the same directory.
+//
+// FixtureEngine: canned answers from a Map<fen, {evalCp, bestMoveUci}>.
+//   Throws clearly on unmapped FENs. Used for hand-verification of grade().
+//
+// gradeMove(): pure function. Given eval_before_cp (White POV), the player's
+//   color, and eval_after_cp from the engine (White POV), computes cp_loss
+//   using analysis.py's exact formula and returns "perfect" | "pass" | "fail".
+
+// ── Constants ────────────────────────────────────────────────────────
+
+/** Mirrors analysis.py's _BLUNDER_CP = 200. cp_loss < 200 → pass. */
+const BLUNDER_CP = 200;
+
+/** Mirrors v1's SF_DEPTH = 12. */
+const ENGINE_DEPTH = 12;
+
+// ── Types ────────────────────────────────────────────────────────────
+
+export interface EvalResult {
+  evalCp: number; // White POV, clamped
+  bestMoveUci: string;
+}
+
+export interface Engine {
+  evaluate(fen: string): Promise<EvalResult>;
+  close(): void;
+}
+
+// ── Web Worker engine ────────────────────────────────────────────────
+
+export class StockfishWasmEngine implements Engine {
+  private worker: Worker | null = null;
+  private ready = false;
+  private initialized: Promise<void>;
+  private lastEvalCp = 0;
+
+  constructor() {
+    this.worker = new Worker("/stockfish/stockfish-18-lite-single.js");
+    this.initialized = this._init();
+  }
+
+  private _init(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.worker) return reject(new Error("Worker not created"));
+
+      let uciOk = false;
+      let readyOk = false;
+
+      this.worker.onmessage = (e: MessageEvent) => {
+        const line = (e.data ?? "") as string;
+        if (!line) return;
+
+        if (line === "uciok") {
+          uciOk = true;
+        } else if (line === "readyok") {
+          readyOk = true;
+          if (uciOk && readyOk) {
+            this.ready = true;
+            resolve();
+          }
+        }
+        // Store the last "info score cp" value.
+        const scoreMatch = line.match(/score cp (-?\d+)/);
+        if (scoreMatch) {
+          this.lastEvalCp = parseInt(scoreMatch[1], 10);
+        }
+      };
+
+      this.worker.onerror = (err) => {
+        console.error("Stockfish worker error:", err);
+        reject(err);
+      };
+
+      this.worker.postMessage("uci");
+    });
+  }
+
+  async evaluate(fen: string): Promise<EvalResult> {
+    await this.initialized;
+    if (!this.worker || !this.ready) {
+      throw new Error("Stockfish engine not ready");
+    }
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error("Engine timeout"));
+      }, 30000);
+
+      const handler = (e: MessageEvent) => {
+        const line = (e.data ?? "") as string;
+        if (!line) return;
+
+        // Keep tracking eval scores.
+        const scoreMatch = line.match(/score cp (-?\d+)/);
+        if (scoreMatch) {
+          this.lastEvalCp = parseInt(scoreMatch[1], 10);
+        }
+
+        // Parse "bestmove" to get the result.
+        const bestMoveMatch = line.match(/^bestmove (\S+)/);
+        if (bestMoveMatch) {
+          clearTimeout(timeout);
+          this.worker!.removeEventListener("message", handler);
+          resolve({
+            evalCp: this.lastEvalCp,
+            bestMoveUci: bestMoveMatch[1],
+          });
+        }
+      };
+
+      this.worker!.addEventListener("message", handler);
+      this.worker!.postMessage(`position fen ${fen}`);
+      this.worker!.postMessage(`go depth ${ENGINE_DEPTH}`);
+    });
+  }
+
+  close(): void {
+    if (this.worker) {
+      this.worker.postMessage("quit");
+      this.worker.terminate();
+      this.worker = null;
+    }
+  }
+}
+
+// ── Fixture engine (offline verification) ────────────────────────────
+
+export class FixtureEngine implements Engine {
+  private answers: Map<string, EvalResult>;
+
+  constructor(answers: Map<string, EvalResult>) {
+    this.answers = answers;
+  }
+
+  async evaluate(fen: string): Promise<EvalResult> {
+    const result = this.answers.get(fen);
+    if (!result) {
+      throw new Error(
+        `FixtureEngine: no canned answer for FEN: ${fen}`
+      );
+    }
+    return result;
+  }
+
+  close(): void {}
+}
+
+// ── Two-tier grading (pure function) ─────────────────────────────────
+//
+// Algorithm (Hard Rules):
+// 1. If submitted UCI == best_line_uci → "perfect" (no engine call).
+// 2. Otherwise, evaluate the position AFTER the submitted move, get
+//    eval_after_cp (White POV).
+// 3. Compute cp_loss using analysis.py's formula:
+//    - White mover: eval_before - eval_after
+//    - Black mover: eval_after - eval_before
+//    - Floored at 0.
+// 4. cp_loss < BLUNDER_CP (200) → "pass", else "fail".
+
+export type Grade = "perfect" | "pass" | "fail";
+
+export function gradeMove(params: {
+  submittedUci: string;
+  bestLineUci: string;
+  evalBeforeCp: number; // White POV
+  playerColor: "white" | "black";
+  evalAfterCp: number; // White POV, from engine evaluating after the move
+}): Grade {
+  const { submittedUci, bestLineUci, evalBeforeCp, playerColor, evalAfterCp } = params;
+
+  // Perfect: matched the engine's top move.
+  if (submittedUci === bestLineUci) {
+    return "perfect";
+  }
+
+  // Compute cp_loss — exact formula from analysis.py's cp_loss().
+  let cpLoss: number;
+  if (playerColor === "white") {
+    cpLoss = evalBeforeCp - evalAfterCp;
+  } else {
+    cpLoss = evalAfterCp - evalBeforeCp;
+  }
+  cpLoss = Math.max(0, cpLoss);
+
+  return cpLoss < BLUNDER_CP ? "pass" : "fail";
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Derive the player's color from a FEN string.
+ * FEN format: ... <side-to-move> ...
+ * The FEN stored in TrainingPosition is fen_before — the position before
+ * the player's own move. The side-to-move in this FEN is the PLAYER's color.
+ */
+export function playerColorFromFen(fen: string): "white" | "black" {
+  const parts = fen.split(" ");
+  return parts[1] === "w" ? "white" : "black";
+}
+
+/**
+ * Convert a UCI move to SAN using chessops (same libraries Board.tsx uses).
+ */
+export function uciToSan(fen: string, uci: string): string {
+  try {
+    // Dynamic import to stay client-only.
+    const { Chess } = require("chessops/chess");
+    const { parseFen, makeFen } = require("chessops/fen");
+    const { makeSan } = require("chessops/san");
+    const { parseSquare, makeSquare } = require("chessops/util");
+    const { makeUci, parseUci } = require("chessops");
+
+    const setup = parseFen(fen).unwrap();
+    const pos = Chess.fromSetup(setup).unwrap();
+    const move = parseUci(uci);
+    if (!move) return uci; // fallback to UCI
+    return makeSan(pos, move);
+  } catch {
+    return uci; // fallback
+  }
+}

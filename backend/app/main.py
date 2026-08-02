@@ -346,3 +346,185 @@ def get_report(platform: str, username: str, session: Session = Depends(get_sess
         )
 
     return report.report_json
+
+
+# ── V2-S4: Trainer routes ────────────────────────────────────────────
+
+
+@app.get("/api/train/positions")
+def get_training_positions(
+    platform: str,
+    username: str,
+    category: str = "blunder",
+    limit: int = 10,
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    """Return up to `limit` training positions for the given player+category.
+    Empty list (not 404) if the player exists but has zero positions — the
+    frontend renders the empty-state UI."""
+    from app.models import Game, Player, TrainingPosition
+
+    player = session.scalars(
+        select(Player).where(
+            Player.platform == platform, Player.username == username.lower()
+        )
+    ).first()
+    if player is None:
+        raise HTTPException(status_code=404, detail="No analyzed games found for that account.")
+
+    rows = session.scalars(
+        select(TrainingPosition)
+        .where(
+            TrainingPosition.player_id == player.id,
+            TrainingPosition.category == category,
+        )
+        .order_by(TrainingPosition.ply)
+        .limit(limit)
+    ).all()
+
+    # Join Game for game_url/played_at so the frontend can deep-link.
+    game_ids = {r.source_game_id for r in rows}
+    games = {
+        str(g.id): g
+        for g in session.scalars(
+            select(Game).where(Game.id.in_(game_ids))
+        ).all()
+    }
+
+    return [
+        {
+            "id": str(r.id),
+            "fen": r.fen,
+            "best_line_uci": r.best_line_uci,
+            "ply": r.ply,
+            "eval_before_cp": r.eval_before_cp,
+            "game_url": games[str(r.source_game_id)].game_url if str(r.source_game_id) in games else "",
+            "played_at": (
+                games[str(r.source_game_id)].played_at.isoformat()
+                if str(r.source_game_id) in games and games[str(r.source_game_id)].played_at
+                else None
+            ),
+        }
+        for r in rows
+    ]
+
+
+class SubmitAttemptRequest(BaseModel):
+    ref_id: str
+    ref_type: str = "position"
+    trainer: str
+    grade: Literal["perfect", "pass", "fail"]
+    seconds: int
+
+
+@app.post("/api/train/attempts")
+def submit_attempt(
+    payload: SubmitAttemptRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> dict:
+    """Record a graded training attempt. 401 for guests."""
+    from app.auth import read_session
+    from app.models import Attempt, Streak, User
+
+    user_id = read_session(request)
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Sign in to save your progress.")
+
+    user = session.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Sign in to save your progress.")
+
+    # Insert the attempt.
+    attempt = Attempt(
+        user_id=user.id,
+        ref_type=payload.ref_type,
+        ref_id=payload.ref_id,
+        trainer=payload.trainer,
+        grade=payload.grade,
+        seconds=payload.seconds,
+    )
+    session.add(attempt)
+
+    # Upsert the streak (daily practice, not per-answer).
+    streak = _upsert_streak(session, user.id, payload.trainer)
+    session.commit()
+
+    return {"current": streak.current, "best": streak.best}
+
+
+@app.get("/api/train/streak")
+def get_streak(
+    trainer: str,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> dict:
+    """Return the signed-in user's streak for a trainer, or zeros for guest."""
+    from app.auth import read_session
+    from app.models import Streak
+
+    user_id = read_session(request)
+    if user_id is None:
+        return {"current": 0, "best": 0}
+
+    streak = session.scalars(
+        select(Streak).where(Streak.user_id == user_id, Streak.trainer == trainer)
+    ).first()
+    if streak is None:
+        return {"current": 0, "best": 0}
+    return {"current": streak.current, "best": streak.best}
+
+
+def _upsert_streak(session: Session, user_id, trainer: str):
+    """Daily-practice streak upsert algorithm.
+
+    - First attempt ever: create current=1, best=1, today.
+    - Same day: no change.
+    - Consecutive day: current += 1 (bump best if exceeded).
+    - Gap: reset current = 1.
+    Always sets last_active_date = today when it changes."""
+    from datetime import date, datetime, timedelta
+
+    from app.models import Streak
+
+    today = date.today()
+
+    streak = session.scalars(
+        select(Streak).where(Streak.user_id == user_id, Streak.trainer == trainer)
+    ).first()
+
+    if streak is None:
+        streak = Streak(
+            user_id=user_id,
+            trainer=trainer,
+            current=1,
+            best=1,
+            last_active_date=today,
+        )
+        session.add(streak)
+        return streak
+
+    # Extract date from last_active_date.
+    if isinstance(streak.last_active_date, datetime):
+        last_date = streak.last_active_date.date()
+    elif isinstance(streak.last_active_date, date):
+        last_date = streak.last_active_date
+    else:
+        last_date = today
+
+    if last_date == today:
+        # Same day — no change.
+        pass
+    else:
+        delta_days = (today - last_date).days
+        if delta_days == 1:
+            # Consecutive day — bump.
+            streak.current += 1
+            if streak.current > streak.best:
+                streak.best = streak.current
+        else:
+            # Gap — reset.
+            streak.current = 1
+        streak.last_active_date = today
+
+    return streak
