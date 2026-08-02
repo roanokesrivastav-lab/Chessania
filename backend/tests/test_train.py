@@ -609,3 +609,63 @@ def test_progress_does_not_leak_other_users_data(shared_session):
         assert data["retry"]["attempts"] == 1
     finally:
         app.dependency_overrides.pop(get_session, None)
+
+
+# ── V2-S13: Progress since filter ─────────────────────────────────────
+
+
+def test_progress_since_filter_counts_only_newer_attempts(shared_session):
+    """?since= filters to created_at > since; omitting since counts all."""
+    user = User(
+        id=uuid.uuid4(), email="since@example.com", display_name="Since User"
+    )
+    shared_session.add(user)
+    shared_session.commit()
+
+    # Older attempt (2 hours ago).
+    older = Attempt(
+        user_id=user.id, ref_type="position", ref_id=str(uuid.uuid4()),
+        trainer="retry", grade="pass", seconds=5,
+        created_at=datetime.now(timezone.utc) - timedelta(hours=2),
+    )
+    # Newer attempt (30 minutes ago).
+    newer = Attempt(
+        user_id=user.id, ref_type="position", ref_id=str(uuid.uuid4()),
+        trainer="retry", grade="perfect", seconds=8,
+        created_at=datetime.now(timezone.utc) - timedelta(minutes=30),
+    )
+    shared_session.add_all([older, newer])
+    shared_session.commit()
+
+    token = _serializer().dumps({"user_id": str(user.id)})
+    cookie = f"chessania_session={token}"
+
+    def override():
+        yield shared_session
+
+    app.dependency_overrides[get_session] = override
+    client = TestClient(app)
+    try:
+        # Cutoff 1 hour ago → only the newer attempt counted.
+        # Strip tzinfo so the +00:00 isn't URL-decoded to a space.
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(tzinfo=None).isoformat()
+        resp = client.get(
+            f"/api/train/progress?since={cutoff}",
+            headers={"Cookie": cookie},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "retry" in data
+        assert data["retry"]["attempts"] == 1
+        assert data["retry"]["perfect"] == 1
+
+        # No since → both attempts counted (all-time behavior intact).
+        resp2 = client.get(
+            "/api/train/progress",
+            headers={"Cookie": cookie},
+        )
+        assert resp2.status_code == 200
+        data2 = resp2.json()
+        assert data2["retry"]["attempts"] == 2
+    finally:
+        app.dependency_overrides.pop(get_session, None)

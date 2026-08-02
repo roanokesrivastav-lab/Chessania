@@ -101,9 +101,12 @@ export interface TrainerProgress {
   best_streak: number;
 }
 
-export async function fetchProgress(): Promise<Record<string, TrainerProgress> | null> {
+export async function fetchProgress(since?: string): Promise<Record<string, TrainerProgress> | null> {
   try {
-    const resp = await fetch(`${BACKEND}/api/train/progress`, {
+    const url = new URL(`${BACKEND}/api/train/progress`);
+    // URLSearchParams.set() correctly encodes the + in ISO timezone offsets.
+    if (since) url.searchParams.set("since", since);
+    const resp = await fetch(url.toString(), {
       credentials: "include",
     });
     if (!resp.ok) return null;

@@ -715,11 +715,17 @@ def list_my_duels(
 def get_training_progress(
     request: Request,
     session: Session = Depends(get_session),
+    since: str | None = None,
 ) -> dict[str, dict]:
     """Aggregate the signed-in user's attempts + streaks per trainer.
-    Guest → 401. One query: counts grouped by trainer, left-joining streaks.
+    Guest → 401. Optional `since` (ISO datetime) filters attempts to
+    created_at > since — used for the "since your last report" correlation
+    on the dashboard. Parse errors on `since` are silently ignored (the
+    filter is simply not applied). All-time behavior when since is absent.
 
     Returns: { "retry": {attempts, perfect, pass, fail, current_streak, best_streak}, ... }"""
+    from datetime import datetime, timezone
+
     from app.auth import read_session
     from app.models import Attempt, Streak
 
@@ -727,10 +733,22 @@ def get_training_progress(
     if user_id is None:
         raise HTTPException(status_code=401, detail="Sign in to see your progress.")
 
+    # Parse the since filter if provided.
+    since_dt: datetime | None = None
+    if since is not None:
+        try:
+            since_dt = datetime.fromisoformat(since)
+        except (ValueError, TypeError):
+            pass  # silently ignore parse errors — behave all-time
+
     # Aggregate attempts per trainer + per-grade.
-    all_attempts = session.scalars(
-        select(Attempt).where(Attempt.user_id == user_id)
-    ).all()
+    query = select(Attempt).where(Attempt.user_id == user_id)
+    if since_dt is not None:
+        # Make both datetimes timezone-aware for safe comparison.
+        if since_dt.tzinfo is None:
+            since_dt = since_dt.replace(tzinfo=timezone.utc)
+        query = query.where(Attempt.created_at > since_dt)
+    all_attempts = session.scalars(query).all()
 
     # Group by trainer.
     trainer_stats: dict[str, dict] = {}
@@ -740,7 +758,7 @@ def get_training_progress(
         if a.grade in ("perfect", "pass", "fail"):
             stats[a.grade] += 1
 
-    # Left-join streaks.
+    # Left-join streaks (always all-time — streaks are not since-filtered).
     streaks = session.scalars(
         select(Streak).where(Streak.user_id == user_id)
     ).all()

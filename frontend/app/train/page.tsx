@@ -19,6 +19,7 @@ import {
 } from "@/lib/categories";
 import { trainerForIssue, type TrainerRoute } from "@/lib/trainerRouting";
 import { fetchProgress, type TrainerProgress } from "@/lib/train";
+import type { Delta } from "@/lib/types";
 
 // ── localStorage key for persisting the picker ───────────────────────
 
@@ -362,6 +363,218 @@ function ProgressPanel({ progress }: { progress: Record<string, TrainerProgress>
   );
 }
 
+// ── V2-S13: Trainer → Delta metric mapping ──────────────────────────
+
+const TRAINER_METRIC_MAP: Record<string, string[]> = {
+  retry: ["Blunders/game"],
+  preventer: ["Blunders/game"],
+  endgame: ["Endgame conversion"],
+  // convert, mate → no Delta metric (show count only, no movement claim)
+};
+
+function directionArrow(dir: string): string {
+  if (dir === "better") return "↑";
+  if (dir === "worse") return "↓";
+  return "→";
+}
+
+function directionColor(dir: string): string {
+  if (dir === "better") return "var(--green)";
+  if (dir === "worse") return "var(--coral)";
+  return "var(--fg-muted)";
+}
+
+// ── "Is it working?" section ────────────────────────────────────────
+
+function IsItWorking({
+  report,
+  user,
+}: {
+  report: Report | null;
+  user: SessionUser | null;
+}) {
+  const [sinceProgress, setSinceProgress] = useState<Record<string, TrainerProgress> | null>(null);
+  const [deltaLoading, setDeltaLoading] = useState(false);
+
+  useEffect(() => {
+    if (!report?.progress || !user) return;
+    setDeltaLoading(true);
+    fetchProgress(report.progress.previous_report_at)
+      .then((p) => setSinceProgress(p))
+      .finally(() => setDeltaLoading(false));
+  }, [report?.progress?.previous_report_at, user]);
+
+  // Guest → sign-in + re-analyze nudge.
+  if (!user) {
+    return (
+      <Card>
+        <h3 className="font-serif text-sm font-semibold text-fg mb-1">
+          Is it working?
+        </h3>
+        <p className="text-xs text-fg-muted">
+          <a href="/login" className="text-gold underline hover:text-gold/80">
+            Sign in
+          </a>{" "}
+          and re-analyze your games to see whether your training correlates with
+          real improvement.
+        </p>
+      </Card>
+    );
+  }
+
+  // No report loaded yet.
+  if (!report) return null;
+
+  // First/only report → honest re-analyze prompt.
+  if (!report.progress) {
+    return (
+      <Card>
+        <h3 className="font-serif text-sm font-semibold text-fg mb-1">
+          Is it working?
+        </h3>
+        <p className="text-xs text-fg-muted">
+          Re-analyze after playing a few more games to measure whether your
+          training is working — a single report has nothing to compare against.
+        </p>
+      </Card>
+    );
+  }
+
+  const deltas = report.progress.vs_previous;
+  const note = report.progress.note;
+
+  // Build trainer counts for the since-last-report period.
+  const trainerCounts: Record<string, number> = {};
+  if (sinceProgress) {
+    for (const [trainer, stats] of Object.entries(sinceProgress)) {
+      trainerCounts[trainer] = stats.attempts;
+    }
+  }
+
+  // Build correlation lines.
+  const correlationLines: { metric: string; delta: Delta; trainers: string[]; count: number }[] = [];
+  const unmatchedDeltas: Delta[] = [];
+
+  for (const delta of deltas) {
+    const matchingTrainers: string[] = [];
+    for (const [trainer, metrics] of Object.entries(TRAINER_METRIC_MAP)) {
+      if (metrics.includes(delta.metric)) {
+        matchingTrainers.push(trainer);
+      }
+    }
+    if (matchingTrainers.length > 0) {
+      const count = matchingTrainers.reduce((sum, t) => sum + (trainerCounts[t] ?? 0), 0);
+      correlationLines.push({ metric: delta.metric, delta, trainers: matchingTrainers, count });
+    } else {
+      unmatchedDeltas.push(delta);
+    }
+  }
+
+  // Convert/mate: show count, no movement claim.
+  const untrackedTrainers = ["convert", "mate"]
+    .filter((t) => (trainerCounts[t] ?? 0) > 0);
+
+  return (
+    <Card>
+      <h3 className="font-serif text-sm font-semibold text-fg mb-2">
+        Is it working?
+      </h3>
+
+      {deltaLoading && <p className="text-xs text-fg-muted">Loading drill counts…</p>}
+
+      {/* Correlation lines */}
+      {!deltaLoading && correlationLines.length === 0 && unmatchedDeltas.length === 0 && untrackedTrainers.length === 0 && (
+        <p className="text-xs text-fg-muted">
+          Train some drills and re-analyze to see whether your practice
+          correlates with improvement.
+        </p>
+      )}
+
+      <div className="flex flex-col gap-2">
+        {correlationLines.map(({ metric, delta, trainers, count }) => (
+          <div
+            key={metric}
+            className="rounded-lg border border-border bg-surface-2 px-3 py-2"
+          >
+            <p className="text-xs text-fg-muted leading-relaxed">
+              You trained{" "}
+              <strong className="text-fg">
+                {trainers.join(" / ")}
+              </strong>{" "}
+              <strong className="text-fg">{count}×</strong>{" "}
+              since your last report. Meanwhile{" "}
+              <strong className="text-fg">{metric}</strong>{" "}
+              went{" "}
+              <span className="font-mono">
+                {delta.previous.toFixed(1)} → {delta.current.toFixed(1)}
+              </span>{" "}
+              <span
+                className="font-bold"
+                style={{ color: directionColor(delta.direction) }}
+              >
+                {directionArrow(delta.direction)}
+              </span>
+              .
+            </p>
+          </div>
+        ))}
+
+        {/* Untracked metric deltas (no trainer) — show movement only. */}
+        {unmatchedDeltas.map((delta) => (
+          <div
+            key={delta.metric}
+            className="rounded-lg border border-border bg-surface-2 px-3 py-2"
+          >
+            <p className="text-xs text-fg-muted leading-relaxed">
+              Meanwhile{" "}
+              <strong className="text-fg">{delta.metric}</strong>{" "}
+              went{" "}
+              <span className="font-mono">
+                {delta.previous.toFixed(1)} → {delta.current.toFixed(1)}
+              </span>{" "}
+              <span
+                className="font-bold"
+                style={{ color: directionColor(delta.direction) }}
+              >
+                {directionArrow(delta.direction)}
+              </span>
+              .
+            </p>
+          </div>
+        ))}
+
+        {/* Untracked trainers (convert/mate) — count only, no claim. */}
+        {untrackedTrainers.map((trainer) => (
+          <div
+            key={trainer}
+            className="rounded-lg border border-border bg-surface-2 px-3 py-2"
+          >
+            <p className="text-xs text-fg-muted leading-relaxed">
+              You trained{" "}
+              <strong className="text-fg capitalize">{trainer}</strong>{" "}
+              <strong className="text-fg">{trainerCounts[trainer]}×</strong>{" "}
+              since your last report. (No matching report metric — keep practicing!)
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Honesty hedge — always show the note when present. */}
+      {note && (
+        <p className="mt-3 text-xs leading-relaxed" style={{ color: "var(--gold)" }}>
+          ⚠ {note}
+        </p>
+      )}
+
+      {/* Never claim causation. */}
+      <p className="mt-2 text-[0.65rem] text-fg-muted/60 leading-relaxed">
+        Correlation is not causation — these numbers describe what happened, not
+        why. Keep drilling and re-analyzing to build a real picture over time.
+      </p>
+    </Card>
+  );
+}
+
 // ── Trainer Grid ──────────────────────────────────────────────────────
 
 function TrainerGrid({ platform, username }: { platform?: string; username?: string }) {
@@ -512,6 +725,9 @@ export default function TrainPage() {
 
       {/* Progress (always visible; nudge for guests) */}
       <ProgressPanel progress={progress} />
+
+      {/* V2-S13: Is it working? */}
+      <IsItWorking report={report} user={user} />
 
       {/* Trainer grid */}
       <TrainerGrid
