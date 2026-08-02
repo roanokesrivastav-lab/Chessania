@@ -600,3 +600,67 @@ def _upsert_streak(session: Session, user_id, trainer: str):
         streak.last_active_date = today
 
     return streak
+
+
+# ── V2-S10: Position Duels ────────────────────────────────────────────
+
+
+def _duel_rate_limit() -> str:
+    """Callable limit so the rate can be overridden in tests."""
+    return settings.RATE_LIMIT_DUELS
+
+
+class CreateDuelRequest(BaseModel):
+    fen: str
+    source: Literal["paste", "curated-mate", "curated-endgame"]
+    mode: Literal["realtime", "correspondence"] = "realtime"
+    clock_limit_s: int | None = None  # overrides DUEL_CLOCK_LIMIT_S when set
+    clock_increment_s: int | None = None
+    days: int | None = None  # for correspondence mode
+    name: str | None = None
+
+
+@app.post("/api/duels")
+@limiter.limit(_duel_rate_limit)
+def create_duel(
+    request: Request,
+    payload: CreateDuelRequest,
+    session: Session = Depends(get_session),
+) -> dict:
+    """Create a Lichess open challenge from a FEN and return per-color
+    share-links. Rate-limited (RATE_LIMIT_DUELS) to prevent Lichess spam.
+
+    FEN validation happens BEFORE the Lichess call — invalid positions
+    return 400 and never hit the external API.
+
+    Guests can create duels (creator_user_id = null)."""
+    from app.auth import read_session
+    from app.duels import create_lichess_open_challenge, store_duel
+
+    user_id = read_session(request)
+
+    # Create the challenge on Lichess (validates the FEN internally).
+    lichess_response = create_lichess_open_challenge(
+        fen=payload.fen,
+        clock_limit_s=payload.clock_limit_s,
+        clock_increment_s=payload.clock_increment_s,
+        days=payload.days if payload.mode == "correspondence" else None,
+        name=payload.name,
+    )
+
+    # Persist the duel in our DB.
+    duel = store_duel(
+        session,
+        fen=payload.fen,
+        source=payload.source,
+        lichess_response=lichess_response,
+        creator_user_id=user_id,
+    )
+
+    return {
+        "id": str(duel.id),
+        "challenge_id": lichess_response.get("id") or lichess_response.get("challenge", {}).get("id", ""),
+        "url": lichess_response.get("url") or lichess_response.get("challenge", {}).get("url", ""),
+        "urlWhite": lichess_response.get("urlWhite", ""),
+        "urlBlack": lichess_response.get("urlBlack", ""),
+    }

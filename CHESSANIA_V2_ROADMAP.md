@@ -584,6 +584,6 @@ PROGRESS CHECKLIST
 T0: [ ] V2-S1 board  [ ] V2-S2 accounts  [ ] V2-S3 mining
 T1: [ ] V2-S4 retry  [ ] V2-S5 preventer  [ ] V2-S6 convert  [ ] V2-S7 links
 T2: [ ] V2-S8 mate  [ ] V2-S9 endgame
-T3: [ ] V2-S10 duels  [ ] V2-S11 duel library
+T3: [x] V2-S10 duels  [ ] V2-S11 duel library
 T4: [ ] V2-S12 dashboard  [ ] V2-S13 progress loop
 → v2 friends-beta loop → read results → pull from the v3 backlog (Part D)

@@ -384,3 +384,33 @@ class Streak(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "trainer", name="streaks_user_trainer_key"),
     )
+
+
+# ── V2-S10: Position Duels ────────────────────────────────────────────
+
+
+class Duel(Base):
+    """A position duel created on Lichess: one POST to /api/challenge/open,
+    storing the returned per-color share-links. No realtime code on our side —
+    the actual game lives entirely on Lichess.
+
+    creator_user_id is nullable — guests can create duels (no session → null).
+    result stays null in S10 (no game-result polling — out of scope).
+    lichess_urls_json is the full response from Lichess so the frontend has
+    everything it needs (url, urlWhite, urlBlack, challenge id, etc.)."""
+
+    __tablename__ = "duels"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    creator_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    fen: Mapped[str] = mapped_column(Text, nullable=False)
+    source: Mapped[str] = mapped_column(Text, nullable=False)  # "paste", "curated-mate", "curated-endgame"
+    lichess_urls_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    result: Mapped[str | None] = mapped_column(Text)  # null until result polling is built
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (Index("duels_creator_idx", "creator_user_id"),)

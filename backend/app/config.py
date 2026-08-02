@@ -157,5 +157,15 @@ class Settings(BaseSettings):
     # in production. Defaults to localhost:8000 for dev.
     BACKEND_BASE_URL: str = "http://localhost:8000"
 
+    # ── V2-S10: Position Duels ────────────────────────────────────────
+    # Lichess open-challenge parameters. DUEL_CLOCK_LIMIT_S / DUEL_CLOCK_INCREMENT_S
+    # control the realtime default; the frontend also passes a "days" param for
+    # correspondence mode, but the default values here are for the common case.
+    DUEL_CLOCK_LIMIT_S: int = 600   # 10 min per side (real-time default)
+    DUEL_CLOCK_INCREMENT_S: int = 5
+    # Rate-limit on duel creation — caps how many Lichess open challenges one IP
+    # can create per hour so the endpoint can't be used to spam Lichess.
+    RATE_LIMIT_DUELS: str = "10/hour"
+
 
 settings = Settings()
