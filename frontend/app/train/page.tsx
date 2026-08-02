@@ -149,17 +149,17 @@ function PlayerPicker({
 
   return (
     <Card>
-      <h3 className="font-serif text-sm font-semibold text-fg mb-2">
+      <h3 className="font-serif text-sm font-semibold text-text mb-2">
         Your account
       </h3>
-      <p className="text-xs text-fg-muted mb-3">
+      <p className="text-xs text-text-mid mb-3">
         Enter your Chess.com or Lichess username to see your report and drill queue.
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row">
         <select
           value={platform}
           onChange={(e) => setPlatform(e.target.value)}
-          className="rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg"
+          className="rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text"
         >
           <option value="chesscom">Chess.com</option>
           <option value="lichess">Lichess</option>
@@ -169,7 +169,7 @@ function PlayerPicker({
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Username"
-          className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg placeholder:text-fg-muted/40 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold/40"
+          className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text placeholder:text-text-mid/40 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold/40"
         />
         <button
           type="submit"
@@ -205,8 +205,8 @@ function WeaknessScorecard({ report }: { report: Report }) {
               className="flex items-center justify-between rounded-lg border border-border bg-surface-2 px-3 py-2"
             >
               <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium text-fg">{def.name}</span>
-                <span className="text-xs text-fg-muted">
+                <span className="text-sm font-medium text-text">{def.name}</span>
+                <span className="text-xs text-text-mid">
                   {headline ? `${headline.value} ${headline.label}` : `No data`}
                 </span>
               </div>
@@ -254,7 +254,7 @@ function DrillQueue({
       <h2 className="font-serif text-lg font-semibold text-gold">
         What to drill today
       </h2>
-      <p className="text-xs text-fg-muted">
+      <p className="text-xs text-text-mid">
         Issues from your latest report that have a live trainer — ordered by
         impact.
       </p>
@@ -275,10 +275,10 @@ function DrillQueue({
               className="flex items-center justify-between rounded-lg border border-border bg-surface-2 px-3 py-2"
             >
               <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium text-fg">
+                <span className="text-sm font-medium text-text">
                   {issue.headline}
                 </span>
-                <span className="text-xs text-fg-muted">
+                <span className="text-xs text-text-mid">
                   {route.trainer} · {issue.evidence.length} game
                   {issue.evidence.length !== 1 ? "s" : ""}
                 </span>
@@ -306,10 +306,10 @@ function ProgressPanel({ progress }: { progress: Record<string, TrainerProgress>
   if (!progress) {
     return (
       <Card>
-        <h3 className="font-serif text-sm font-semibold text-fg mb-1">
+        <h3 className="font-serif text-sm font-semibold text-text mb-1">
           Your Progress
         </h3>
-        <p className="text-xs text-fg-muted">
+        <p className="text-xs text-text-mid">
           <a href="/login" className="text-gold underline hover:text-gold/80">
             Sign in
           </a>{" "}
@@ -323,10 +323,10 @@ function ProgressPanel({ progress }: { progress: Record<string, TrainerProgress>
   if (trainers.length === 0) {
     return (
       <Card>
-        <h3 className="font-serif text-sm font-semibold text-fg mb-1">
+        <h3 className="font-serif text-sm font-semibold text-text mb-1">
           Your Progress
         </h3>
-        <p className="text-xs text-fg-muted">
+        <p className="text-xs text-text-mid">
           No training attempts yet — start drilling above!
         </p>
       </Card>
@@ -335,7 +335,7 @@ function ProgressPanel({ progress }: { progress: Record<string, TrainerProgress>
 
   return (
     <Card>
-      <h3 className="font-serif text-sm font-semibold text-fg mb-3">
+      <h3 className="font-serif text-sm font-semibold text-text mb-3">
         Your Progress
       </h3>
       <div className="flex flex-col gap-2">
@@ -344,10 +344,10 @@ function ProgressPanel({ progress }: { progress: Record<string, TrainerProgress>
             key={trainer}
             className="flex items-center justify-between rounded-lg border border-border bg-surface-2 px-3 py-2"
           >
-            <span className="text-sm font-medium text-fg capitalize">
+            <span className="text-sm font-medium text-text capitalize">
               {trainer}
             </span>
-            <div className="flex items-center gap-3 text-xs font-mono text-fg-muted">
+            <div className="flex items-center gap-3 text-xs font-mono text-text-mid">
               <span>{stats.attempts} attempts</span>
               <span style={{ color: "var(--gold)" }}>{stats.perfect}P</span>
               <span style={{ color: "var(--green)" }}>{stats.pass}P</span>
@@ -381,7 +381,7 @@ function directionArrow(dir: string): string {
 function directionColor(dir: string): string {
   if (dir === "better") return "var(--green)";
   if (dir === "worse") return "var(--coral)";
-  return "var(--fg-muted)";
+  return "var(--text-dim)";
 }
 
 // ── "Is it working?" section ────────────────────────────────────────
@@ -408,10 +408,10 @@ function IsItWorking({
   if (!user) {
     return (
       <Card>
-        <h3 className="font-serif text-sm font-semibold text-fg mb-1">
+        <h3 className="font-serif text-sm font-semibold text-text mb-1">
           Is it working?
         </h3>
-        <p className="text-xs text-fg-muted">
+        <p className="text-xs text-text-mid">
           <a href="/login" className="text-gold underline hover:text-gold/80">
             Sign in
           </a>{" "}
@@ -429,10 +429,10 @@ function IsItWorking({
   if (!report.progress) {
     return (
       <Card>
-        <h3 className="font-serif text-sm font-semibold text-fg mb-1">
+        <h3 className="font-serif text-sm font-semibold text-text mb-1">
           Is it working?
         </h3>
-        <p className="text-xs text-fg-muted">
+        <p className="text-xs text-text-mid">
           Re-analyze after playing a few more games to measure whether your
           training is working — a single report has nothing to compare against.
         </p>
@@ -476,15 +476,15 @@ function IsItWorking({
 
   return (
     <Card>
-      <h3 className="font-serif text-sm font-semibold text-fg mb-2">
+      <h3 className="font-serif text-sm font-semibold text-text mb-2">
         Is it working?
       </h3>
 
-      {deltaLoading && <p className="text-xs text-fg-muted">Loading drill counts…</p>}
+      {deltaLoading && <p className="text-xs text-text-mid">Loading drill counts…</p>}
 
       {/* Correlation lines */}
       {!deltaLoading && correlationLines.length === 0 && unmatchedDeltas.length === 0 && untrackedTrainers.length === 0 && (
-        <p className="text-xs text-fg-muted">
+        <p className="text-xs text-text-mid">
           Train some drills and re-analyze to see whether your practice
           correlates with improvement.
         </p>
@@ -496,14 +496,14 @@ function IsItWorking({
             key={metric}
             className="rounded-lg border border-border bg-surface-2 px-3 py-2"
           >
-            <p className="text-xs text-fg-muted leading-relaxed">
+            <p className="text-xs text-text-mid leading-relaxed">
               You trained{" "}
-              <strong className="text-fg">
+              <strong className="text-text">
                 {trainers.join(" / ")}
               </strong>{" "}
-              <strong className="text-fg">{count}×</strong>{" "}
+              <strong className="text-text">{count}×</strong>{" "}
               since your last report. Meanwhile{" "}
-              <strong className="text-fg">{metric}</strong>{" "}
+              <strong className="text-text">{metric}</strong>{" "}
               went{" "}
               <span className="font-mono">
                 {delta.previous.toFixed(1)} → {delta.current.toFixed(1)}
@@ -525,9 +525,9 @@ function IsItWorking({
             key={delta.metric}
             className="rounded-lg border border-border bg-surface-2 px-3 py-2"
           >
-            <p className="text-xs text-fg-muted leading-relaxed">
+            <p className="text-xs text-text-mid leading-relaxed">
               Meanwhile{" "}
-              <strong className="text-fg">{delta.metric}</strong>{" "}
+              <strong className="text-text">{delta.metric}</strong>{" "}
               went{" "}
               <span className="font-mono">
                 {delta.previous.toFixed(1)} → {delta.current.toFixed(1)}
@@ -549,10 +549,10 @@ function IsItWorking({
             key={trainer}
             className="rounded-lg border border-border bg-surface-2 px-3 py-2"
           >
-            <p className="text-xs text-fg-muted leading-relaxed">
+            <p className="text-xs text-text-mid leading-relaxed">
               You trained{" "}
-              <strong className="text-fg capitalize">{trainer}</strong>{" "}
-              <strong className="text-fg">{trainerCounts[trainer]}×</strong>{" "}
+              <strong className="text-text capitalize">{trainer}</strong>{" "}
+              <strong className="text-text">{trainerCounts[trainer]}×</strong>{" "}
               since your last report. (No matching report metric — keep practicing!)
             </p>
           </div>
@@ -567,7 +567,7 @@ function IsItWorking({
       )}
 
       {/* Never claim causation. */}
-      <p className="mt-2 text-[0.65rem] text-fg-muted/60 leading-relaxed">
+      <p className="mt-2 text-[0.65rem] text-text-mid/60 leading-relaxed">
         Correlation is not causation — these numbers describe what happened, not
         why. Keep drilling and re-analyzing to build a real picture over time.
       </p>
@@ -594,10 +594,10 @@ function TrainerGrid({ platform, username }: { platform?: string; username?: str
               href={href}
               className="rounded-lg border border-border bg-surface-2 px-4 py-3 transition-colors hover:border-gold/50"
             >
-              <span className="text-sm font-medium text-fg block">
+              <span className="text-sm font-medium text-text block">
                 {t.label}
               </span>
-              <span className="text-xs text-fg-muted">{t.description}</span>
+              <span className="text-xs text-text-mid">{t.description}</span>
             </a>
           );
         })}
@@ -606,8 +606,8 @@ function TrainerGrid({ platform, username }: { platform?: string; username?: str
         href="/duel"
         className="rounded-lg border border-border bg-surface-2 px-4 py-3 transition-colors hover:border-gold/50 text-center"
       >
-        <span className="text-sm font-medium text-fg">Position Duels</span>
-        <span className="block text-xs text-fg-muted">
+        <span className="text-sm font-medium text-text">Position Duels</span>
+        <span className="block text-xs text-text-mid">
           Create Lichess challenges from any position.
         </span>
       </a>
@@ -676,7 +676,7 @@ export default function TrainPage() {
         <h1 className="font-serif text-3xl font-bold tracking-tight text-gold">
           Training
         </h1>
-        <p className="text-sm leading-relaxed text-fg-muted">
+        <p className="text-sm leading-relaxed text-text-mid">
           Drill your own mistakes, test yourself on set positions, or duel a
           friend from a custom position.
         </p>
@@ -689,7 +689,7 @@ export default function TrainPage() {
         <>
           {/* Change player */}
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-fg-muted">
+            <span className="text-xs font-mono text-text-mid">
               {player.username} ({player.platform})
             </span>
             <button
@@ -699,7 +699,7 @@ export default function TrainPage() {
                 setReport(null);
                 setReportError(null);
               }}
-              className="text-xs text-fg-muted underline hover:text-fg"
+              className="text-xs text-text-mid underline hover:text-text"
             >
               Change
             </button>
@@ -707,7 +707,7 @@ export default function TrainPage() {
 
           {/* Loading / error */}
           {reportLoading && (
-            <p className="text-sm text-fg-muted">Loading report…</p>
+            <p className="text-sm text-text-mid">Loading report…</p>
           )}
           {reportError && (
             <p className="text-sm text-coral">{reportError}</p>

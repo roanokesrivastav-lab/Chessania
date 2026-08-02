@@ -49,10 +49,10 @@ function InlinePlayerForm({
   return (
     <div className="flex flex-col gap-3 rounded-[14px] border border-border bg-surface p-4">
       <div>
-        <h3 className="font-serif text-base font-semibold text-fg">
+        <h3 className="font-serif text-base font-semibold text-text">
           {title}
         </h3>
-        <p className="text-xs text-fg-muted">{description}</p>
+        <p className="text-xs text-text-mid">{description}</p>
       </div>
       <form
         onSubmit={(e) => {
@@ -66,7 +66,7 @@ function InlinePlayerForm({
           <select
             value={platform}
             onChange={(e) => setPlatform(e.target.value)}
-            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg"
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text"
           >
             <option value="chesscom">Chess.com</option>
             <option value="lichess">Lichess</option>
@@ -76,7 +76,7 @@ function InlinePlayerForm({
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Username"
-            className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg placeholder:text-fg-muted/40 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold/40"
+            className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text placeholder:text-text-mid/40 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold/40"
           />
           <button
             type="submit"
@@ -107,9 +107,9 @@ function LibraryRow({
       onClick={onSelect}
       className="flex flex-col gap-0.5 rounded-lg border border-border bg-surface-2 px-3 py-2 text-left transition-colors hover:border-gold/50 w-full"
     >
-      <span className="text-sm font-medium text-fg">{label}</span>
+      <span className="text-sm font-medium text-text">{label}</span>
       {sub && (
-        <span className="text-xs text-fg-muted line-clamp-1 overflow-hidden">{sub}</span>
+        <span className="text-xs text-text-mid line-clamp-1 overflow-hidden">{sub}</span>
       )}
     </button>
   );
@@ -126,7 +126,7 @@ function Section({
 }) {
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="font-serif text-sm font-semibold uppercase tracking-wide text-fg-muted">
+      <h3 className="font-serif text-sm font-semibold uppercase tracking-wide text-text-mid">
         {title}
       </h3>
       {children}
@@ -175,8 +175,8 @@ function HistoryRow({ duel }: { duel: DuelHistoryItem }) {
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface-2 p-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-mono text-fg-muted">{date}</span>
-        <span className="text-xs text-fg-muted">
+        <span className="text-xs font-mono text-text-mid">{date}</span>
+        <span className="text-xs text-text-mid">
           {duel.source === "paste"
             ? "Custom FEN"
             : duel.source === "curated-endgame"
@@ -189,7 +189,7 @@ function HistoryRow({ duel }: { duel: DuelHistoryItem }) {
           type="text"
           readOnly
           value={duel.urlWhite}
-          className="flex-1 rounded border border-border bg-bg px-2 py-1 font-mono text-xs text-fg"
+          className="flex-1 rounded border border-border bg-bg px-2 py-1 font-mono text-xs text-text"
         />
         <CopyButton text={duel.urlWhite} label="White" />
       </div>
@@ -198,7 +198,7 @@ function HistoryRow({ duel }: { duel: DuelHistoryItem }) {
           type="text"
           readOnly
           value={duel.urlBlack}
-          className="flex-1 rounded border border-border bg-bg px-2 py-1 font-mono text-xs text-fg"
+          className="flex-1 rounded border border-border bg-bg px-2 py-1 font-mono text-xs text-text"
         />
         <CopyButton text={duel.urlBlack} label="Black" />
       </div>
@@ -322,7 +322,7 @@ export default function DuelPage() {
         <h1 className="font-serif text-3xl font-bold tracking-tight text-gold">
           Position Duels
         </h1>
-        <p className="text-sm leading-relaxed text-fg-muted">
+        <p className="text-sm leading-relaxed text-text-mid">
           Pick a position, create a challenge on Lichess, and hand each player
           their color link. The game lives on Lichess — no account needed to play.
         </p>
@@ -342,7 +342,7 @@ export default function DuelPage() {
             className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               source === "paste"
                 ? "bg-gold text-bg shadow-sm"
-                : "text-fg-muted hover:text-fg"
+                : "text-text-mid hover:text-text"
             }`}
           >
             Paste FEN
@@ -357,7 +357,7 @@ export default function DuelPage() {
             className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               source.startsWith("curated")
                 ? "bg-gold text-bg shadow-sm"
-                : "text-fg-muted hover:text-fg"
+                : "text-text-mid hover:text-text"
             }`}
           >
             Library
@@ -368,7 +368,7 @@ export default function DuelPage() {
         {source === "paste" && (
           <div className="flex flex-col gap-3">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-mono uppercase tracking-wider text-fg-muted">
+              <span className="text-xs font-mono uppercase tracking-wider text-text-mid">
                 FEN
               </span>
               <input
@@ -379,7 +379,7 @@ export default function DuelPage() {
                   validateFen(e.target.value);
                 }}
                 placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-                className="w-full rounded-lg border border-border bg-bg px-3 py-2 font-mono text-sm text-fg placeholder:text-fg-muted/40 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold/40"
+                className="w-full rounded-lg border border-border bg-bg px-3 py-2 font-mono text-sm text-text placeholder:text-text-mid/40 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold/40"
               />
             </label>
             {fenError && (
@@ -395,7 +395,7 @@ export default function DuelPage() {
 
         {/* Library tabs (no mate set — poor duel material) */}
         {source.startsWith("curated") && (
-          <p className="text-xs text-fg-muted py-2">
+          <p className="text-xs text-text-mid py-2">
             Browse the <strong>Classic endgames</strong> and <strong>Your analyzed positions</strong> sections below to pick a position, then come back here to create your duel.
           </p>
         )}
@@ -412,7 +412,7 @@ export default function DuelPage() {
         {fen.trim() && !fenError && (
           <>
             <div className="flex items-center gap-3 pt-2">
-              <label className="flex items-center gap-2 text-sm text-fg">
+              <label className="flex items-center gap-2 text-sm text-text">
                 <input
                   type="radio"
                   name="duelMode"
@@ -423,7 +423,7 @@ export default function DuelPage() {
                 />
                 Realtime (10 min)
               </label>
-              <label className="flex items-center gap-2 text-sm text-fg">
+              <label className="flex items-center gap-2 text-sm text-text">
                 <input
                   type="radio"
                   name="duelMode"
@@ -457,13 +457,13 @@ export default function DuelPage() {
             Duel created!
           </h2>
 
-          <p className="text-sm text-fg-muted">
+          <p className="text-sm text-text-mid">
             Send each player their color link. They don&rsquo;t need a Lichess
             account to play — just open the link.
           </p>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-mono uppercase tracking-wider text-fg-muted">
+            <span className="text-xs font-mono uppercase tracking-wider text-text-mid">
               White
             </span>
             <div className="flex items-center gap-2">
@@ -471,14 +471,14 @@ export default function DuelPage() {
                 type="text"
                 readOnly
                 value={result.urlWhite}
-                className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 font-mono text-sm text-fg"
+                className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 font-mono text-sm text-text"
               />
               <CopyButton text={result.urlWhite} label="Copy" />
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-mono uppercase tracking-wider text-fg-muted">
+            <span className="text-xs font-mono uppercase tracking-wider text-text-mid">
               Black
             </span>
             <div className="flex items-center gap-2">
@@ -486,7 +486,7 @@ export default function DuelPage() {
                 type="text"
                 readOnly
                 value={result.urlBlack}
-                className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 font-mono text-sm text-fg"
+                className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 font-mono text-sm text-text"
               />
               <CopyButton text={result.urlBlack} label="Copy" />
             </div>
@@ -504,7 +504,7 @@ export default function DuelPage() {
 
       {/* ── CLASSIC ENDGAMES LIBRARY ────────────────────────────── */}
       <Section title="Classic endgames">
-        <p className="text-xs text-fg-muted">
+        <p className="text-xs text-text-mid">
           Curated endgame positions — perfect duel material. Click one to
           select it above, then create your duel.
         </p>
@@ -530,7 +530,7 @@ export default function DuelPage() {
           />
         ) : (
           <>
-            <p className="text-xs text-fg-muted">
+            <p className="text-xs text-text-mid">
               Positions from{" "}
               <strong>
                 {bankUsername} ({bankPlatform})
@@ -538,13 +538,13 @@ export default function DuelPage() {
             </p>
 
             {bankLoading ? (
-              <p className="text-sm text-fg-muted">Loading…</p>
+              <p className="text-sm text-text-mid">Loading…</p>
             ) : (
               <>
                 {/* Unconverted */}
                 <Section title={`Your unconverted positions (${unconverted.length})`}>
                   {unconverted.length === 0 ? (
-                    <p className="text-xs text-fg-muted">
+                    <p className="text-xs text-text-mid">
                       No unconverted positions yet. Run a v1 analysis first.
                     </p>
                   ) : (
@@ -564,7 +564,7 @@ export default function DuelPage() {
                 {/* Blunders */}
                 <Section title={`Your recent mistakes (${blunders.length})`}>
                   {blunders.length === 0 ? (
-                    <p className="text-xs text-fg-muted">
+                    <p className="text-xs text-text-mid">
                       No blunder positions yet. Run a v1 analysis first.
                     </p>
                   ) : (
@@ -589,7 +589,7 @@ export default function DuelPage() {
                     setUnconverted([]);
                     setBlunders([]);
                   }}
-                  className="text-xs text-fg-muted underline hover:text-fg"
+                  className="text-xs text-text-mid underline hover:text-text"
                 >
                   Change player
                 </button>
@@ -602,14 +602,14 @@ export default function DuelPage() {
       {/* ── DUEL HISTORY ────────────────────────────────────────── */}
       <Section title="Your duels">
         {!user ? (
-          <p className="text-xs text-fg-muted">
+          <p className="text-xs text-text-mid">
             <a href="/login" className="text-gold underline hover:text-gold/80">
               Sign in
             </a>{" "}
             to keep your duel history.
           </p>
         ) : history.length === 0 ? (
-          <p className="text-xs text-fg-muted">
+          <p className="text-xs text-text-mid">
             No duels yet — create one above and they&rsquo;ll show up here.
           </p>
         ) : (
