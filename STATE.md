@@ -237,6 +237,40 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-02 · **V2-S13** · Progress feedback loop  🏁🏁 v2 FEATURE-COMPLETE
+- The LAST v2 session: an "Is it working?" section on the `/train` dashboard that correlates the
+  user's drilling with the movement of the matching v1 metric — HONESTLY. DeepSeek coded + committed
+  (`a391769`, no push); Opus reviewed, fixed a cosmetic token bug + pushed (`63e5349`). Backend:
+  `GET /api/train/progress` gained an optional `?since=` (count attempts after a timestamp) so drills
+  are scoped "since your last report." Frontend: reads `report.progress.vs_previous` (v1's already-
+  computed Deltas), pairs each with the matching trainer's drill count (retry/preventer→Blunders/game,
+  endgame→Endgame conversion; convert/mate show counts with no movement claim), and renders honest
+  hedges.
+- **Opus review — the feature is honest and correct; one pre-existing cosmetic bug fixed.**
+  - The copy is CORRELATION-not-causation, verified by reading every string: "You trained X N× since
+    your last report. **Meanwhile** {metric} went 53% → 61%" — never "your training improved Y." The
+    hedges are honest: `progress==null` (first/only report) → "re-analyze… a single report has
+    nothing to compare against" (no fabricated metric); low-signal → surfaces `progress.note`; and a
+    "we can't say why — keep drilling and re-analyzing" disclaimer. The `?since=` filter is correct
+    (tz-aware comparison handled — the recurring landmine avoided). Verified live: eleven_14 (whose
+    report has `progress: null`) shows the honest re-analyze hedge, no crash, no fake metric, no
+    console errors. The correlation-line rendering was verified by inspection (honest copy + correct
+    Delta→trainer mapping); the founder's DoD covers the real train+re-analyze end-to-end.
+  - **[bug, pre-existing cosmetic] phantom Tailwind tokens.** The dashboard AND duel pages used
+    `text-fg`/`text-fg-muted`/`var(--fg-muted)` — classes that don't exist (the tokens are
+    `--text`/`--text-mid`/`--text-dim` → `text-text`/`text-text-mid`). Text was visible only by
+    inheriting the v1 `--foreground` via `body`, and "muted" text never dimmed. Swapped all 43
+    occurrences to the real DESIGN.md tokens; verified live that muted text now renders a distinct
+    dimmer color (`--text-mid` vs `--text`).
+  - 268 tests pass offline; `npm run build` clean.
+- **[founder-to-verify] DoD:** train for real, re-analyze, and confirm the "Is it working?" section
+  shows a real metric moving with honest correlation wording — or the honest hedge when the signal
+  is thin.
+- 🏁🏁 **v2 IS FEATURE-COMPLETE** — all 13 sessions shipped (T0 foundations · T1 your mistakes ·
+  T2 self-tests · T3 play-a-friend · T4 dashboard+progress). Next is the **friends-beta loop**:
+  recruit the group, watch these 13 features in real use, fix what breaks, and decide from real use
+  what graduates from the v3 backlog (Part D). No new build sessions are queued.
+
 ### 2026-08-02 · **V2-S12** · Training dashboard  🎯 Phase T4 begins
 - The `/train` home (previously no index page): a platform+username picker (localStorage-remembered)
   driving the latest v1 report → a weakness scorecard (reusing S32 `categories.ts`) + a "what to
