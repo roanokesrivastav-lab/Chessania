@@ -237,6 +237,53 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-02 · **V2-S4** · Retry Your Mistakes — the first trainer  🎯 T1 begins
+- The first real trainer, and the first thing a friend actually DOES: `/train/retry` pulls a
+  batch of the player's own mined `blunder` positions (V2-S3), shows them on the V2-S1 board,
+  grades submitted moves two-tier (M1), shows the best line, tracks a daily streak for signed-in
+  users. Deepseek coded + committed (`67d24d3`, no push); Opus found and fixed serious bugs in the
+  client engine + pushed. New tables `attempts`/`streaks` (migration `0005`, additive, up/down
+  clean, keyed by `user_id` — guest attempts are graded live but never persisted). New endpoints
+  `GET /api/train/positions`, `POST /api/train/attempts` (401 for guests), `GET /api/train/streak`;
+  a clean daily-streak upsert algorithm (same day = no-op, consecutive day = +1, gap = reset).
+  `frontend/lib/engine.ts`: the `Engine`/`StockfishWasmEngine`/`FixtureEngine` seam mirroring
+  `engine_eval.py`'s Evaluator pattern; `gradeMove()` needs exactly ONE engine call (exact
+  UCI match = perfect for free, otherwise one eval compared via the exact `cp_loss()` formula
+  against the already-stored `eval_before_cp`) with a `BLUNDER_CP=200` constant mirroring
+  `analysis.py`'s own threshold.
+- **Opus review — TWO serious bugs found in the client engine, both fixed, pushed as one
+  squashed commit (`dc89085`).** The backend half (models/migration/endpoints/streak algorithm)
+  was clean — 250 tests pass offline, migration up/down clean, `_upsert_streak`'s four branches
+  correct. But the client engine was **completely non-functional as committed**:
+  1. `stockfish-worker.js` contained literal TypeScript syntax (`msg: any`) inside a plain `.js`
+     file served untouched from `public/` — confirmed with `node --check`: guaranteed
+     `SyntaxError` the instant a browser tried to load the worker. Nothing using the real engine
+     could ever have run.
+  2. Deepseek committed the **wrong stockfish.wasm build** — the full single-threaded engine at
+     **113MB**, not the lite-single build the SAME npm package ships at 7MB (the package's own
+     README explicitly recommends lite-single for exactly this use case). 113MB exceeds GitHub's
+     100MB per-file push limit — this commit could not have been pushed as-is.
+  Fixing the syntax error alone wasn't enough: even after that and swapping to the correct 7MB
+  build, the engine still silently never responded to any UCI command. I built a real
+  Playwright-driven headless-browser harness (installed temporarily, not committed) to trace it
+  live rather than guess from minified vendor code, and found the actual cause: the relay
+  script's `importScripts()` call leaves `self.location` pointed at the RELAY's own URL, so the
+  vendor build's default `.wasm` path resolution (its own script URL, `.js`→`.wasm`) was looking
+  for `stockfish-worker.wasm` and 404ing. Fixed by deleting the relay entirely — the vendor file
+  is now instantiated directly AS the Worker, `.wasm` alongside it under a matching basename (the
+  pattern upstream's own example actually uses). **Verified live, not just in theory:** a full UCI
+  handshake, a real depth-12 search, a correct `bestmove` returned, and the actual `/train/retry`
+  page loading and rendering with the real backend with zero console errors.
+  Because the original commit had the 113MB blob baked into its tree (which `git push` would have
+  tried to transfer regardless of a later commit deleting the file), squashed the feature commit
+  and my fix into one clean commit before pushing — confirmed via `AskUserQuestion` since it's a
+  git-history decision, not something to do silently.
+- **[founder-to-verify] DoD:** on your phone, retry 5 of your own real blunders at `/train/retry`;
+  confirm at least one submitted move grades "perfect" and one grades "pass" (not just fail/fail);
+  confirm signed-out (guest) works with zero errors and doesn't save anything; confirm a thin/empty
+  bank shows a friendly message instead of a blank page.
+- Next: **V2-S5** — Blunder Preventer (danger positions, same shell, same two-tier grading).
+
 ### 2026-08-02 · **V2-S3** · Position mining — the growing training-positions bank
 - The last T0 piece: `training_positions` mined from existing v1 `MoveEval` data, ACCUMULATING
   across every analysis (M2) — pure Python/SQL, zero new engine calls. Backend-only. Kimi coded +
