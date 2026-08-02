@@ -237,6 +237,34 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-02 · **V2-S10** · Position duels via Lichess challenge links  🤝 Phase T3 begins
+- Pick a position → `POST /api/duels` creates a Lichess open challenge FROM that FEN → hand back the
+  two per-color share-links → two friends play on Lichess. ZERO realtime code on our side (D4/A10).
+  DeepSeek coded + committed (`5454ce6`, no push); Opus reviewed, fixed two bugs + pushed
+  (`10e5de0`). New `duels` table (migration `0007`), `backend/app/duels.py`
+  (`create_lichess_open_challenge` via httpx, no OAuth token — open challenges need none), `POST
+  /api/duels` (rate-limited `RATE_LIMIT_DUELS`, FEN-validated, guest-friendly `creator_user_id`
+  nullable), and `/duel` page (paste-or-curated FEN picker, board preview, realtime/correspondence
+  toggle, two copy-able links, swap & replay).
+- **Opus review — Lichess integration confirmed against the REAL API; two bugs fixed.**
+  - **Confirmed live**: a real `POST https://lichess.org/api/challenge/open` (no auth) returns
+    `id`/`url`/`urlWhite`/`urlBlack` at the top level — exactly where the code reads them — for BOTH
+    a real-time clock and a correspondence (`days`) challenge. `initialFen` echoes the from-position
+    FEN. So the endpoint's parsing is right.
+  - **[bug] the correspondence toggle was a no-op.** The frontend never sent `days`, so the backend
+    fell through to a clock — every "correspondence" duel was silently created real-time. Fixed:
+    default `DUEL_CORRESPONDENCE_DAYS=2` when mode=correspondence and no days given (verified against
+    the real API → `speed: correspondence`).
+  - **[bug] FEN validation was incomplete.** `chess.Board(fen)` only raises on a MALFORMED FEN; a
+    parseable-but-illegal position (no kings, a pawn on the back rank) slipped through to a Lichess
+    502. Now also checks `board.is_valid()` → a clean 400, with a regression test.
+  - 261 tests pass offline (respx-mocked Lichess — no real network in tests); migration up/down
+    clean; `npm run build` clean; `/duel` renders, validates a FEN, and previews the board with zero
+    console errors.
+- **[founder-to-verify] DoD:** you + a friend play the SAME won-pawn endgame from both sides via the
+  shared links on your phones; confirm the duel is stored (check the DB, or wait for S11's history).
+- Next: **V2-S11** — the duel library (browse curated/bank/report positions + per-user duel history).
+
 ### 2026-08-02 · **V2-S9** · Endgame self-tests — curated win/hold  🏁 Phase T2 complete
 - `/train/endgame` — win-or-hold a curated endgame against full-strength stockfish.wasm, adjudged
   pass/fail against each position's theoretical target (eval-based: converted at +900 / forcing
