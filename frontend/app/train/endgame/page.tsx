@@ -62,11 +62,13 @@ function checkTerminal(
   pos: Chess,
   fen: string,
   target: "win" | "draw",
+  playerColor: "white" | "black",
 ): GameResult | null {
-  // Checkmate: the side to move is in checkmate → they lose.
+  // Checkmate: the side to move is checkmated → they lost. Compare to the
+  // PLAYER's color (not a hardcoded "white") so a black-player position — a
+  // duel/future set could have one — adjudicates correctly.
   if (pos.isCheckmate()) {
-    // The side in check loses. If the engine was checkmated, player wins.
-    return pos.turn === "white" ? "fail" : "pass";
+    return pos.turn === playerColor ? "fail" : "pass";
   }
 
   // Stalemate: no legals + not in check → draw.
@@ -625,7 +627,7 @@ function EndgamePageInner() {
       setMoveCount((c) => c + 1);
 
       // Check natural terminal.
-      const terminal = checkTerminal(pos, newFen, targetRef.current);
+      const terminal = checkTerminal(pos, newFen, targetRef.current, playerColorRef.current);
       if (terminal) {
         setGameResult(terminal);
         setEngineThinking(false);
@@ -671,7 +673,7 @@ function EndgamePageInner() {
       setMoveCount((c) => c + 1);
 
       // Check terminal after user's move.
-      const terminal = checkTerminal(pos, newFen, targetRef.current);
+      const terminal = checkTerminal(pos, newFen, targetRef.current, playerColorRef.current);
       if (terminal) {
         setGameResult(terminal);
         return;

@@ -56,10 +56,13 @@ function clampElo(rating: number | null | undefined): number {
 function checkTerminal(
   pos: Chess,
   fen: string,
+  playerColor: "white" | "black",
 ): GameResult | null {
-  // Checkmate: the side to move is in checkmate → they lose.
+  // Checkmate: the side to move is checkmated → they lost. Compare to the
+  // PLAYER's color (not a hardcoded "white") — unconverted positions can have
+  // the player as Black, so this must not assume White or it inverts win/loss.
   if (pos.isCheckmate()) {
-    return pos.turn === "white" ? "loss" : "win";
+    return pos.turn === playerColor ? "loss" : "win";
   }
 
   // Stalemate: the side to move has no legal moves but is not in check → draw.
@@ -601,7 +604,7 @@ function ConvertPageInner() {
       setMoveCount((c) => c + 1);
 
       // Check terminal after engine's move.
-      const terminal = checkTerminal(pos, newFen);
+      const terminal = checkTerminal(pos, newFen, playerColorRef.current);
       if (terminal) {
         setGameResult(terminal);
         setEngineThinking(false);
@@ -632,7 +635,7 @@ function ConvertPageInner() {
       setMoveCount((c) => c + 1);
 
       // Check terminal after user's move.
-      const terminal = checkTerminal(pos, newFen);
+      const terminal = checkTerminal(pos, newFen, playerColorRef.current);
       if (terminal) {
         setGameResult(terminal);
         return;
