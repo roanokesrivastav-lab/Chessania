@@ -24,6 +24,29 @@ from app.models import MagicLinkToken, User
 
 logger = logging.getLogger(__name__)
 
+
+def _lichess_redirect_uri() -> str:
+    """The redirect_uri registered with Lichess — always the BACKEND, since
+    only the backend holds the client credentials needed for the token
+    exchange. Used identically to build the authorize URL and to redeem the
+    code, since Lichess requires both to match exactly."""
+    return settings.LICHESS_OAUTH_REDIRECT_URI or "http://localhost:8000/api/auth/lichess/callback"
+
+
+def _as_aware_utc(value: datetime) -> datetime:
+    """Normalize a DB-read datetime to tz-aware UTC before comparing.
+
+    SQLAlchemy's DateTime(timezone=True) is a Postgres/MySQL hint that SQLite
+    can't honor: Postgres hands back a tz-aware datetime on read, SQLite
+    always hands back a naive one (confirmed — SQLite has no real timezone
+    storage), even though this app only ever writes tz-aware UTC values. A
+    naive value read back is therefore always UTC; comparing it directly
+    against a fresh `datetime.now(timezone.utc)` raises TypeError. Everything
+    that compares a DB-read datetime against "now" must go through this.
+    """
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+
+
 # ── Session cookie (itsdangerous) ─────────────────────────────────────
 
 COOKIE_NAME = "chessania_session"
@@ -93,13 +116,15 @@ def send_magic_link(session: Session, email: str) -> None:
     account — no user-enumeration leak (Hard Rule)."""
     raw_token = secrets.token_urlsafe(32)
     token_hash = _hash_token(raw_token)
-    # Store as naive UTC — SQLite's TIMESTAMP has no timezone, and the
-    # comparison in verify_magic_link uses datetime.now(timezone.utc) which is
-    # also timezone-aware. To make both work on SQLite AND Postgres, we store
-    # and compare in naive UTC (the UTC time without tzinfo).
-    expires_at = (datetime.now(timezone.utc) + timedelta(
+    # Timezone-AWARE UTC, matching the rest of the codebase (analysis.py's
+    # analyzed_at, coach.py's generated_at). Postgres's TIMESTAMPTZ columns
+    # always hand back a tz-aware datetime on read, even if you wrote a naive
+    # one — stripping tzinfo here would work against SQLite in dev but raise
+    # "can't compare offset-naive and offset-aware datetimes" the moment this
+    # runs against prod Postgres.
+    expires_at = datetime.now(timezone.utc) + timedelta(
         minutes=settings.MAGIC_LINK_TTL_MINUTES
-    )).replace(tzinfo=None)
+    )
 
     row = MagicLinkToken(
         token_hash=token_hash,
@@ -155,7 +180,7 @@ def verify_magic_link(session: Session, raw_token: str) -> User:
     """Hash the incoming token, look up the hash, check unused+unexpired,
     mark it used, and upsert the User by email. Returns the User row."""
     token_hash = _hash_token(raw_token)
-    now = datetime.now(timezone.utc).replace(tzinfo=None)  # naive UTC, matching storage
+    now = datetime.now(timezone.utc)
 
     row = session.scalars(
         select(MagicLinkToken).where(MagicLinkToken.token_hash == token_hash)
@@ -167,7 +192,7 @@ def verify_magic_link(session: Session, raw_token: str) -> User:
     if row.used_at is not None:
         raise HTTPException(status_code=400, detail="This link has already been used.")
 
-    if row.expires_at < now:
+    if _as_aware_utc(row.expires_at) < now:
         raise HTTPException(status_code=400, detail="This link has expired.")
 
     row.used_at = now
@@ -231,22 +256,10 @@ def lichess_authorize_url(state: str) -> tuple[str, str]:
         .decode()
     )
 
-    redirect_uri = settings.LICHESS_OAUTH_REDIRECT_URI or (
-        f"{settings.FRONTEND_BASE_URL}/api/auth/lichess/callback"
-    )
-    # Actually the redirect_uri must point to the BACKEND for the callback,
-    # since the frontend can't do the token exchange securely. So we
-    # use the backend URL. In dev, the backend is on localhost:8000.
-    # We'll use a configurable redirect that defaults to the backend.
-    backend_redirect = (
-        settings.LICHESS_OAUTH_REDIRECT_URI
-        or "http://localhost:8000/api/auth/lichess/callback"
-    )
-
     params = {
         "response_type": "code",
         "client_id": settings.LICHESS_OAUTH_CLIENT_ID,
-        "redirect_uri": backend_redirect,
+        "redirect_uri": _lichess_redirect_uri(),
         "code_challenge": code_challenge,
         "code_challenge_method": "S256",
         "state": state,
@@ -263,11 +276,6 @@ def exchange_lichess_code(
 ) -> User:
     """Exchange the OAuth code at Lichess's token endpoint, fetch the
     authenticated user's account info, and upsert a User row."""
-    backend_redirect = (
-        settings.LICHESS_OAUTH_REDIRECT_URI
-        or "http://localhost:8000/api/auth/lichess/callback"
-    )
-
     # Exchange code for access token.
     try:
         token_resp = httpx.post(
@@ -277,7 +285,7 @@ def exchange_lichess_code(
                 "client_id": settings.LICHESS_OAUTH_CLIENT_ID,
                 "code": code,
                 "code_verifier": code_verifier,
-                "redirect_uri": backend_redirect,
+                "redirect_uri": _lichess_redirect_uri(),
             },
             timeout=10,
         )

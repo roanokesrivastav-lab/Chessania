@@ -95,7 +95,7 @@ def test_verify_magic_link_succeeds_with_valid_token(shared_session):
     row = MagicLinkToken(
         token_hash=token_hash,
         email="test@example.com",
-        expires_at=expires.replace(tzinfo=None),
+        expires_at=expires,
     )
     shared_session.add(row)
     shared_session.commit()
@@ -117,8 +117,8 @@ def test_verify_magic_link_rejects_used_token(shared_session):
     row = MagicLinkToken(
         token_hash=token_hash,
         email="test@example.com",
-        expires_at=expires.replace(tzinfo=None),
-        used_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        expires_at=expires,
+        used_at=datetime.now(timezone.utc),
     )
     shared_session.add(row)
     shared_session.commit()
@@ -139,7 +139,7 @@ def test_verify_magic_link_rejects_expired_token(shared_session):
     row = MagicLinkToken(
         token_hash=token_hash,
         email="test@example.com",
-        expires_at=expires.replace(tzinfo=None),
+        expires_at=expires,
     )
     shared_session.add(row)
     shared_session.commit()
@@ -171,9 +171,7 @@ def test_upsert_user_by_email_is_idempotent(shared_session):
     row = MagicLinkToken(
         token_hash=_hash_token(raw),
         email="repeat@example.com",
-        expires_at=(datetime.now(timezone.utc) + timedelta(minutes=15)).replace(
-            tzinfo=None
-        ),
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
     )
     shared_session.add(row)
     shared_session.commit()
@@ -185,9 +183,7 @@ def test_upsert_user_by_email_is_idempotent(shared_session):
     row2 = MagicLinkToken(
         token_hash=_hash_token(raw2),
         email="repeat@example.com",
-        expires_at=(datetime.now(timezone.utc) + timedelta(minutes=15)).replace(
-            tzinfo=None
-        ),
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
     )
     shared_session.add(row2)
     shared_session.commit()
@@ -352,7 +348,7 @@ def test_verify_magic_link_endpoint_sets_cookie(shared_session):
     row = MagicLinkToken(
         token_hash=token_hash,
         email="verify-test@example.com",
-        expires_at=expires.replace(tzinfo=None),
+        expires_at=expires,
     )
     shared_session.add(row)
     shared_session.commit()
@@ -382,8 +378,8 @@ def test_verify_magic_link_endpoint_rejects_used_token(shared_session):
     row = MagicLinkToken(
         token_hash=token_hash,
         email="used-test@example.com",
-        expires_at=expires.replace(tzinfo=None),
-        used_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        expires_at=expires,
+        used_at=datetime.now(timezone.utc),
     )
     shared_session.add(row)
     shared_session.commit()
