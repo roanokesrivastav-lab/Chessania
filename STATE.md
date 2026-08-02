@@ -237,6 +237,48 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-02 · **V2-S3** · Position mining — the growing training-positions bank
+- The last T0 piece: `training_positions` mined from existing v1 `MoveEval` data, ACCUMULATING
+  across every analysis (M2) — pure Python/SQL, zero new engine calls. Backend-only. Kimi coded +
+  committed (`b65c353`, no push); Opus found and fixed one real bug + pushed. New table
+  `training_positions` (migration `0004`, additive, up/down both clean; `player_id`-keyed — NOT
+  `user_id`, so the bank exists independent of accounts, same as the v1 report). `backend/app/
+  positions.py`: `mine_positions(session, player)` mines three categories reusing v1's OWN
+  coaching thresholds (never new numbers) — `blunder` (every player-ply blunder), `unconverted`
+  (first ply a not-won game's POV eval crosses `FEATURE_ADVANTAGE_CP`, S28's own threshold),
+  `danger` (player-ply blunders inside S29's exact "trouble game" resourcefulness band, in lost
+  games). SAN→UCI conversion reuses `detectors.py`'s existing `chess.Board(fen).parse_san()`
+  pattern. Idempotent via the `(player_id, source_game_id, ply, category)` dedupe key
+  (SELECT-then-insert-or-bump-`last_seen`, mirroring `ingest.py`'s established dedupe style).
+  Hooked into `jobs.py`'s `run_job` right after the report is persisted, wrapped in try/except so a
+  mining bug can never fail the analysis job (v2 must never regress v1, A6). New
+  `scripts/backfill_positions.py` mirrors `backfill_openings.py`'s shape (bootstrap included from
+  the start this time — no repeat of S31a's forgotten-bootstrap bug).
+- **Opus review — one real bug found and fixed, pushed as a follow-up commit (`bf7bdc9`).**
+  Deepseek made the EXACT same mistake I fixed in V2-S2's `auth.py` last session: stripped tzinfo
+  off `mined_at`/`last_seen` with the same backwards "SQLite vs Postgres compatibility" reasoning.
+  Nothing crashes TODAY (nothing in this session's own code compares those fields against a fresh
+  `datetime.now()`), but it's the identical landmine — the moment a future session (V2-S12/S13's
+  "trained N positions this week," say) writes `TrainingPosition.mined_at > datetime.now(timezone
+  .utc) - timedelta(...)` against prod Postgres, it 500s with the same offset-naive/offset-aware
+  `TypeError`. Fixed proactively to match the codebase's tz-aware convention before it ships.
+  Everything else checked out clean: read `positions.py` line-by-line and confirmed the three
+  category rules exactly match `FEATURE_ADVANTAGE_CP`/`FEATURE_RESOURCE_LOST_CP`/
+  `FEATURE_RESOURCE_TROUBLE_CP` (no invented numbers), `eval_before_cp` stored White-POV untouched
+  (rule 7 intact); 241 tests pass offline, `pgrep -f stockfish` flat; `alembic upgrade head` +
+  `downgrade -1` both clean; ran `backfill_positions.py` against the REAL dev DB (both my own
+  Chess.com account and `hikaru`) and hand-verified 3 real mined positions against the actual
+  stored PGN/FEN — FEN matches `MoveEval.fen_before` exactly, `eval_before_cp` matches White-POV
+  `eval_cp_before` exactly, and each `best_line_uci` is a legal move from that FEN whose SAN
+  matches the stored `best_move_san` (e.g. a real Rxc7 blunder-save from a real
+  chess.com/live/170919731394 game). Ran the backfill twice live — second run found zero new rows,
+  proving idempotency outside the test suite too. `git diff --stat` — `backend/` only, no v1
+  route/table/report behavior touched.
+- **[founder-to-verify] DoD:** after your next real analysis (standard or deep), confirm your
+  account's `training_positions` count went up; run a second analysis (or the backfill script) and
+  confirm it grew again without duplicating; the v1 report is unaffected.
+- Next: **V2-S4** — Retry Your Mistakes, the first T1 trainer (starts PHASE T1, the core wedge).
+
 ### 2026-08-02 · **V2-S2** · Accounts — magic-link + Lichess OAuth + guest mode
 - Thin v2-only accounts, completely separate from the v1 report (Locked 5 — v1 stays
   username-only, no auth, forever). Kimi coded + committed (`8a1f3b1`, no push); Opus found and
