@@ -237,6 +237,35 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-02 · **V2-S9** · Endgame self-tests — curated win/hold  🏁 Phase T2 complete
+- `/train/endgame` — win-or-hold a curated endgame against full-strength stockfish.wasm, adjudged
+  pass/fail against each position's theoretical target (eval-based: converted at +900 / forcing
+  mate, held to a 30-move cap or draw terminal, failed if the eval swings). Frontend-only (ref_id
+  already Text from S8). DeepSeek coded + committed (`2f38e16`, no push); Opus reviewed, fixed a
+  bug + pushed (`c4aee09`). New `frontend/lib/endgameSet.ts` (6 curated positions), `/train/endgame`
+  page (its own playout loop, full-strength engine, eval-based adjudication with named thresholds
+  DRAW_BAND/CONVERTED_CP/LOST_HOLD_CP/MOVE_CAP), optional A7 tie-in to `endgame_conversion`.
+- **Opus review — FENs clean (a first!), one real bug fixed, verified live.**
+  - **Curated FENs: all 6 targets verified EXACT** against the Lichess tablebase (authoritative for
+    ≤6 pieces) — kp-vs-k WIN, lucena WIN, philidor/opposite-bishops/rp-draw/kp-draw all DRAW,
+    including the fortress and the K+P-vs-K-win-with-white-to-move I'd flagged as risky. DeepSeek got
+    the endgame FENs right (unlike the mate set).
+  - **[bug] `checkTerminal()` hardcoded `pos.turn === "white"`** to decide who was mated, assuming
+    the player is White. In endgame it's latent (all 6 positions are white-to-move) but a landmine;
+    in **convert it's an ACTIVE bug** — unconverted bank positions can have the player as Black
+    (real data), so a black player who mated the engine was scored "loss" and vice-versa, inverting
+    pass/fail. Fixed BOTH to compare `pos.turn` to the player's actual color.
+  - **Verified live end-to-end:** drove `/train/endgame`, converted the K+P vs K (winning move →
+    engine reply → "converted" pass), and cross-checked with the tablebase that the passing move
+    genuinely kept the win (a retreat would have drawn → correctly no pass). The `mateIn>0`
+    converted-path fires once a still-winning forced mate is reached — spec-compliant, a touch
+    generous. Moved the stray `verify_endgame_fens.py` → `scripts/`. 255 tests pass; build clean.
+- **[founder-to-verify] DoD:** on your phone, hold a drawn rook endgame and convert a K+P vs K;
+  confirm pass/fail adjudicates correctly and the "why this matters" copy reads well.
+- 🏁 **Phase T2 (set-position self-tests) COMPLETE** (V2-S8 mate · V2-S9 endgame). Next up is
+  Phase T3 — play-a-friend-from-a-position (Lichess challenge links).
+- Next: **V2-S10** — Play-a-friend duels (Lichess custom-FEN challenge links).
+
 ### 2026-08-02 · **V2-S8** · Checkmate challenges — curated mate self-tests  🎯 Phase T2 begins
 - `/train/mate` — mate-in-N from a committed curated set (D5: no puzzle pool), played out against a
   defending stockfish.wasm, two-tier graded (found the mate / found it in optimal moves). DeepSeek
