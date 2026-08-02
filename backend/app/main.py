@@ -706,3 +706,52 @@ def list_my_duels(
         }
         for d in duels
     ]
+
+
+# ── V2-S12: Training dashboard ────────────────────────────────────────
+
+
+@app.get("/api/train/progress")
+def get_training_progress(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> dict[str, dict]:
+    """Aggregate the signed-in user's attempts + streaks per trainer.
+    Guest → 401. One query: counts grouped by trainer, left-joining streaks.
+
+    Returns: { "retry": {attempts, perfect, pass, fail, current_streak, best_streak}, ... }"""
+    from app.auth import read_session
+    from app.models import Attempt, Streak
+
+    user_id = read_session(request)
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Sign in to see your progress.")
+
+    # Aggregate attempts per trainer + per-grade.
+    all_attempts = session.scalars(
+        select(Attempt).where(Attempt.user_id == user_id)
+    ).all()
+
+    # Group by trainer.
+    trainer_stats: dict[str, dict] = {}
+    for a in all_attempts:
+        stats = trainer_stats.setdefault(a.trainer, {"attempts": 0, "perfect": 0, "pass": 0, "fail": 0})
+        stats["attempts"] += 1
+        if a.grade in ("perfect", "pass", "fail"):
+            stats[a.grade] += 1
+
+    # Left-join streaks.
+    streaks = session.scalars(
+        select(Streak).where(Streak.user_id == user_id)
+    ).all()
+    streak_map = {s.trainer: {"current_streak": s.current, "best_streak": s.best} for s in streaks}
+
+    # Merge streak data into each trainer.
+    result: dict[str, dict] = {}
+    for trainer, stats in trainer_stats.items():
+        merged = dict(stats)
+        streak = streak_map.get(trainer, {"current_streak": 0, "best_streak": 0})
+        merged.update(streak)
+        result[trainer] = merged
+
+    return result

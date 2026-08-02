@@ -478,3 +478,134 @@ def test_positions_game_urls_no_match_returns_empty(shared_session):
         assert len(resp2.json()) == 1
     finally:
         app.dependency_overrides.pop(get_session, None)
+
+
+# ── V2-S12: Progress endpoint ─────────────────────────────────────────
+
+
+def test_progress_guest_returns_401(shared_session):
+    """Guest (no session) → 401."""
+    def override():
+        yield shared_session
+
+    app.dependency_overrides[get_session] = override
+    client = TestClient(app)
+    try:
+        resp = client.get("/api/train/progress")
+        assert resp.status_code == 401
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+
+def test_progress_aggregates_per_trainer_with_streaks(shared_session):
+    """Seed attempts across 2 trainers + streaks → correct per-trainer counts."""
+    user = User(
+        id=uuid.uuid4(),
+        email="progress@example.com",
+        display_name="Progress User",
+    )
+    shared_session.add(user)
+    shared_session.commit()
+
+    # Retry: 3 attempts (2 perfect, 1 pass).
+    for grade in ("perfect", "perfect", "pass"):
+        shared_session.add(Attempt(
+            user_id=user.id, ref_type="position", ref_id=str(uuid.uuid4()),
+            trainer="retry", grade=grade, seconds=5,
+        ))
+    # Preventer: 1 attempt (1 fail).
+    shared_session.add(Attempt(
+        user_id=user.id, ref_type="position", ref_id=str(uuid.uuid4()),
+        trainer="preventer", grade="fail", seconds=8,
+    ))
+    # Streak for retry.
+    shared_session.add(Streak(
+        user_id=user.id, trainer="retry", current=5, best=9,
+        last_active_date=date.today(),
+    ))
+    shared_session.commit()
+
+    token = _serializer().dumps({"user_id": str(user.id)})
+
+    def override():
+        yield shared_session
+
+    app.dependency_overrides[get_session] = override
+    client = TestClient(app)
+    try:
+        resp = client.get(
+            "/api/train/progress",
+            headers={"Cookie": f"chessania_session={token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+
+        # Retry: 3 attempts, 2 perfect, 1 pass, 0 fail, streak 5/9.
+        assert "retry" in data
+        r = data["retry"]
+        assert r["attempts"] == 3
+        assert r["perfect"] == 2
+        assert r["pass"] == 1
+        assert r["fail"] == 0
+        assert r["current_streak"] == 5
+        assert r["best_streak"] == 9
+
+        # Preventer: 1 attempt, 0/0/1, no streak row → zeros.
+        assert "preventer" in data
+        p = data["preventer"]
+        assert p["attempts"] == 1
+        assert p["perfect"] == 0
+        assert p["pass"] == 0
+        assert p["fail"] == 1
+        assert p["current_streak"] == 0
+        assert p["best_streak"] == 0
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+
+def test_progress_does_not_leak_other_users_data(shared_session):
+    """User A's progress query must not include User B's attempts."""
+    user_a = User(
+        id=uuid.uuid4(), email="a-progress@example.com", display_name="A"
+    )
+    user_b = User(
+        id=uuid.uuid4(), email="b-progress@example.com", display_name="B"
+    )
+    shared_session.add_all([user_a, user_b])
+    shared_session.commit()
+
+    shared_session.add(Attempt(
+        user_id=user_a.id, ref_type="position", ref_id=str(uuid.uuid4()),
+        trainer="retry", grade="perfect", seconds=5,
+    ))
+    shared_session.add(Attempt(
+        user_id=user_b.id, ref_type="position", ref_id=str(uuid.uuid4()),
+        trainer="convert", grade="pass", seconds=10,
+    ))
+    shared_session.add(Attempt(
+        user_id=user_b.id, ref_type="position", ref_id=str(uuid.uuid4()),
+        trainer="convert", grade="fail", seconds=12,
+    ))
+    shared_session.commit()
+
+    token = _serializer().dumps({"user_id": str(user_a.id)})
+
+    def override():
+        yield shared_session
+
+    app.dependency_overrides[get_session] = override
+    client = TestClient(app)
+    try:
+        resp = client.get(
+            "/api/train/progress",
+            headers={"Cookie": f"chessania_session={token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+
+        # A has only retry, not convert.
+        assert "retry" in data
+        assert "convert" not in data
+        assert data["retry"]["attempts"] == 1
+    finally:
+        app.dependency_overrides.pop(get_session, None)

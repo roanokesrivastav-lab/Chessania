@@ -89,3 +89,26 @@ export async function fetchStreak(
     return { current: 0, best: 0 };
   }
 }
+
+// ── V2-S12: Training progress ────────────────────────────────────────
+
+export interface TrainerProgress {
+  attempts: number;
+  perfect: number;
+  pass: number;
+  fail: number;
+  current_streak: number;
+  best_streak: number;
+}
+
+export async function fetchProgress(): Promise<Record<string, TrainerProgress> | null> {
+  try {
+    const resp = await fetch(`${BACKEND}/api/train/progress`, {
+      credentials: "include",
+    });
+    if (!resp.ok) return null;
+    return resp.json();
+  } catch {
+    return null;
+  }
+}
