@@ -237,6 +237,48 @@ Phase 5:  [x] S27 [x] S28 [x] S29 [x] S30 [x] S31a [x] S31 [x] S32 [x] S33  (pos
 
 ## SESSION LOG (newest first; honesty tags mandatory)
 
+### 2026-08-02 · **V2-S2** · Accounts — magic-link + Lichess OAuth + guest mode
+- Thin v2-only accounts, completely separate from the v1 report (Locked 5 — v1 stays
+  username-only, no auth, forever). Kimi coded + committed (`8a1f3b1`, no push); Opus found and
+  fixed one real bug + pushed. New tables `users` / `magic_link_tokens` (migration `0003`,
+  additive, up/down both clean). `backend/app/auth.py`: session = one signed httpOnly cookie
+  (`itsdangerous`, `SameSite=None; Secure` — required since Vercel↔Railway are different
+  origins); magic-link tokens are single-use, 15-min TTL, **SHA-256 hashed at rest** (raw token
+  never stored); `POST /api/auth/magic-link` returns an identical 200 whether or not the email
+  has an account (no user-enumeration leak); Resend sends via a raw `httpx` call, and with no
+  `RESEND_API_KEY` set it just logs the link to the console — local dev needs zero external
+  account. Lichess OAuth is a hand-rolled PKCE flow (no SDK) — the backend is always the
+  registered redirect URI, since only it holds the flow's `code_verifier`. Frontend: `/login`
+  page (email form + "Sign in with Lichess"), `AuthHeader` + a guest `chessania_anon_id` cookie,
+  both scoped to a NEW `frontend/app/train/layout.tsx` — the root layout and every v1 page are
+  byte-unchanged.
+- **Opus review — one real bug found and fixed, pushed as a follow-up commit (`5b93a5f`).** Kimi's
+  `send_magic_link`/`verify_magic_link` stored `expires_at` as a **naive** UTC datetime (stripped
+  `tzinfo`) with a comment claiming that's needed to make SQLite and Postgres agree. It's
+  backwards: Postgres's `TIMESTAMPTZ` always hands back a **tz-aware** datetime on read
+  regardless of what was written, so the very first magic-link click in prod would have raised
+  `TypeError: can't compare offset-naive and offset-aware datetimes` and 500'd — a bug that is
+  invisible on SQLite (where dev/tests run) and only bites in prod, the same shape as S24's
+  DATABASE_URL landmine. I proved it live: switching to always-aware storage (matching this
+  codebase's existing convention in `analysis.py`/`coach.py`) still crashed the *same* way in
+  the test suite, because SQLite's `DateTime(timezone=True)` silently **drops** tzinfo on
+  read-back no matter what's stored (confirmed with a standalone repro) — so neither
+  "always naive" nor "always aware" storage is safe across both dialects. Fixed with a
+  `_as_aware_utc()` normalizer applied at comparison time (treat a naive read as UTC, since
+  that's the only thing this app ever writes) — the correct fix is at the comparison, not the
+  storage convention. Also deduped `lichess_authorize_url`'s and `exchange_lichess_code`'s
+  identically-computed (and once dead-code-duplicated) `redirect_uri` into one
+  `_lichess_redirect_uri()` helper. Re-ran the full suite after each change: 234 passed offline,
+  no Stockfish spawned; `alembic upgrade head` + `downgrade -1` both clean; `npm run build`
+  clean, `/login` renders; confirmed `frontend/app/layout.tsx` and every v1 route are unchanged
+  in the diff; CORS already had `allow_credentials=True` from S23/S25 (no change needed).
+- **[founder-to-verify] DoD:** set a real `RESEND_API_KEY` (or just use the console-logged link
+  locally) and sign in via a real emailed magic link on your phone; have a friend sign in with
+  Lichess; confirm sign-out works; confirm the v1 report flow is completely unchanged and still
+  requires no sign-in at all.
+- Next: **V2-S3** — position mining (the growing training-positions bank, accumulating across
+  every analysis).
+
 ### 2026-08-01 · **V2-S1** · Board component + design tokens  🎬 v2 begins
 - The first v2 session: DESIGN.md tokens in code + the reusable chessboard. Kimi coded + committed
   (`55a2a04`, no push); Opus reviewed + pushed. `frontend/app/globals.css` now carries the full
